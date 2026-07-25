@@ -183,4 +183,71 @@ namespace gradc {
         
     }
 
+    inline FusedView fuse_dimensions(const std::vector<int64_t>& shared_shape, const std::vector<std::vector<int64_t>*>& strides_to_fuse) {
+        if (std::ssize(strides_to_fuse) < 1) {
+            throw std::runtime_error("Tried fusing 0 Tensors' metadata");
+        }
+        
+        const int64_t n_dim = std::ssize(shared_shape);
+        const int64_t n_tensors = std::ssize(strides_to_fuse);
+
+        if (n_dim <= 1) {
+            std::vector<std::vector<int64_t>> copied_strides;
+            copied_strides.reserve(n_tensors);
+            for (const std::vector<int64_t>* ptr : strides_to_fuse) {
+                copied_strides.push_back(*ptr);
+            }
+            return FusedView({shared_shape, std::move(copied_strides)});
+        }
+
+        std::vector<int64_t> fused_shape;
+        fused_shape.reserve(n_dim);
+
+        std::vector<std::vector<int64_t>> fused_strides;
+        fused_strides.resize(n_tensors);
+        for (auto& strides_vec : fused_strides) {
+            strides_vec.reserve(n_dim);
+        }
+
+        std::vector<bool> fusable_dims = std::vector<bool>(n_dim - 1, true);
+        for (int64_t shape_idx = 0; shape_idx < n_dim - 1; ++shape_idx) {
+            for (int64_t t_idx = 0; t_idx < n_tensors; ++t_idx) {
+                if ((*strides_to_fuse[t_idx])[shape_idx] != (*strides_to_fuse[t_idx])[shape_idx + 1] * shared_shape[shape_idx + 1]) {
+                    fusable_dims[shape_idx] = false;
+                }
+            }
+        }
+        int64_t running_vol = shared_shape[0];
+        std::vector<int64_t> running_min_strides = std::vector<int64_t>(n_tensors, 0);
+        for (int64_t t_idx = 0; t_idx < n_tensors; ++t_idx) {
+            running_min_strides[t_idx] = (*strides_to_fuse[t_idx])[0];
+        }
+
+        for (int64_t shape_idx = 0; shape_idx < n_dim - 1; ++shape_idx) {
+            if (fusable_dims[shape_idx]) {
+                running_vol *= shared_shape[shape_idx + 1];
+                for (int64_t t_idx = 0; t_idx < n_tensors; ++t_idx) {
+                    running_min_strides[t_idx] = (*strides_to_fuse[t_idx])[shape_idx + 1];
+                }
+            }
+            
+            else {
+                fused_shape.push_back(running_vol);
+                for (int64_t t_idx = 0; t_idx < n_tensors; ++t_idx) {
+                    fused_strides[t_idx].push_back(running_min_strides[t_idx]);
+                }
+                running_vol = shared_shape[shape_idx + 1];
+                for (int64_t t_idx = 0; t_idx < n_tensors; ++t_idx) {
+                    running_min_strides[t_idx] = (*strides_to_fuse[t_idx])[shape_idx + 1];
+                }
+            }
+        }
+        fused_shape.push_back(running_vol);
+        for (int64_t t_idx = 0; t_idx < n_tensors; ++t_idx) {
+            fused_strides[t_idx].push_back(running_min_strides[t_idx]);
+        }
+
+        return FusedView({std::move(fused_shape), std::move(fused_strides)});
+    }
+
 }

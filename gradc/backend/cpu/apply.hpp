@@ -2,6 +2,7 @@
 
 #include "../../core/tensor.hpp"
 #include "../../core/detail/tensor_lob_view.hpp"
+#include "../../core/detail/shape_inference.hpp"
 
 namespace gradc {
 
@@ -30,8 +31,8 @@ namespace gradc {
                 return;
             }
 
-            const std::vector<int64_t>* left_strides = &left.m_strides;
-            const std::vector<int64_t>* right_strides = &right.m_strides;
+            std::vector<int64_t>* left_strides = &left.m_strides;
+            std::vector<int64_t>* right_strides = &right.m_strides;
             int64_t left_offset = left.m_offset;
             int64_t right_offset = right.m_offset; 
             std::shared_ptr<Storage<T>> left_storage = left.m_state->m_storage; // broadcasting does not alter memory
@@ -53,9 +54,14 @@ namespace gradc {
                 right_offset = broad_right.m_offset;
             }
 
-            const int64_t n_dim = std::ssize(out.m_shape);
+            FusedView fused = fuse_dimensions(out.m_shape, {&out.m_strides, left_strides, right_strides});
+            std::vector<int64_t>* out_strides = &fused.strides[0] ;
+            left_strides = &fused.strides[1];
+            right_strides = &fused.strides[2];
+
+            const int64_t n_dim = std::ssize(fused.shared_shape);
             std::vector<int64_t> odometer(n_dim, 0);
-            while (odometer[0] < out.m_shape[0]) {
+            while (odometer[0] < fused.shared_shape[0]) {
                 int64_t left_strided_idx = left_offset; 
                 int64_t right_strided_idx = right_offset;
                 int64_t out_strided_idx = out.m_offset;
@@ -63,12 +69,12 @@ namespace gradc {
                 for (int64_t i = 0; i < n_dim; ++i) {
                     left_strided_idx += odometer[i] * (*left_strides)[i];
                     right_strided_idx += odometer[i] * (*right_strides)[i];
-                    out_strided_idx += odometer[i] * (out.m_strides[i]);
+                    out_strided_idx += odometer[i] * (*out_strides)[i];
                 }
                 (out.m_state->m_storage->m_data)[out_strided_idx] = op((left_storage->m_data)[left_strided_idx], (right_storage->m_data)[right_strided_idx]); // copied straight into CPU registers from RAM
                 ++odometer[n_dim - 1];
                 int64_t i = n_dim - 1;
-                while ((odometer[i] == out.m_shape[i]) && i > 0) {
+                while ((odometer[i] == fused.shared_shape[i]) && i > 0) {
                     odometer[i] = 0;
                     ++odometer[i - 1];
                     --i;
@@ -96,7 +102,7 @@ namespace gradc {
                 return;
             }
 
-            const std::vector<int64_t>* right_strides; // promise not to modify data, (can reassign the pointer)
+            std::vector<int64_t>* right_strides;
             int64_t right_offset;
 
             Tensor<T> broad_right;
@@ -111,20 +117,24 @@ namespace gradc {
                 right_offset = broad_right.m_offset;
             }
 
-            const int64_t n_dim = std::ssize(left.m_shape);
+            FusedView fused = fuse_dimensions(left.m_shape, {&left.m_strides, right_strides});
+            std::vector<int64_t>* left_strides = &fused.strides[0];
+            right_strides = &fused.strides[1];
+
+            const int64_t n_dim = std::ssize(fused.shared_shape);
             std::vector<int64_t> odometer(n_dim, 0);
-            while (odometer[0] < left.m_shape[0]) {
+            while (odometer[0] < fused.shared_shape[0]) {
                 int64_t left_strided_idx = left.m_offset; 
                 int64_t right_strided_idx = right_offset;
 
                 for (int64_t i = 0; i < n_dim; ++i) {
-                    left_strided_idx += odometer[i] * left.m_strides[i];
+                    left_strided_idx += odometer[i] * (*left_strides)[i];
                     right_strided_idx += odometer[i] * (*right_strides)[i];
                 }
                 op((left.m_state->m_storage->m_data)[left_strided_idx], (right.m_state->m_storage->m_data)[right_strided_idx]);
                 ++odometer[n_dim - 1];
                 int64_t i = n_dim - 1;
-                while ((odometer[i] == left.m_shape[i]) && i > 0) {
+                while ((odometer[i] == fused.shared_shape[i]) && i > 0) {
                     odometer[i] = 0;
                     ++odometer[i - 1];
                     --i;
@@ -152,20 +162,24 @@ namespace gradc {
                 return;
             }
 
-            const int64_t n_dim = std::ssize(source.m_shape);
+            FusedView fused = fuse_dimensions(out.m_shape, {&out.m_strides, &source.right_strides});
+            std::vector<int64_t>* out_strides = &fused.strides[0];
+            std::vector<int64_t>* source_strides = &fused.strides[1];
+
+            const int64_t n_dim = std::ssize(fused.shared_shape);
             std::vector<int64_t> odometer(n_dim, 0);
-            while (odometer[0] < source.m_shape[0]) {
+            while (odometer[0] < fused.shared_shape[0]) {
                 int64_t strided_in_idx = source.m_offset;
                 int64_t strided_out_idx = out.m_offset;
 
                 for (int64_t i = 0; i < n_dim; ++i) {
-                    strided_in_idx += odometer[i] * (source.m_strides)[i];
-                    strided_out_idx += odometer[i] * (out.m_strides)[i];
+                    strided_in_idx += odometer[i] * (*source_strides)[i];
+                    strided_out_idx += odometer[i] * (*out_strides)[i];
                 }
                 (out.m_state->m_storage->m_data)[strided_out_idx] = op((source.m_state->m_storage->m_data)[strided_in_idx]); 
                 ++odometer[n_dim - 1];
                 int64_t i = n_dim - 1;
-                while ((odometer[i] == source.m_shape[i]) && i > 0) {
+                while ((odometer[i] == fused.shared_shape[i]) && i > 0) {
                     odometer[i] = 0;
                     ++odometer[i - 1];
                     --i;
@@ -192,18 +206,21 @@ namespace gradc {
                 return;
             }
 
-            const int64_t n_dim = std::ssize(source.m_shape);
+            FusedView fused = fuse_dimensions(source.m_shape, {&source.m_strides});
+            std::vector<int64_t>* source_strides = &fused.strides[1];
+
+            const int64_t n_dim = std::ssize(fused.shared_shape);
             std::vector<int64_t> odometer(n_dim, 0);
-            while (odometer[0] < source.m_shape[0]) {
-                int64_t strided_idx = source.m_offset; 
+            while (odometer[0] < fused.shared_shape[0]) {
+                int64_t strided_idx = source.m_offset;
 
                 for (int64_t i = 0; i < n_dim; ++i) {
-                    strided_idx += odometer[i] * source.m_strides[i];
+                    strided_idx += odometer[i] * (*source_strides)[i];
                 }
                 op((source.m_state->m_storage->m_data)[strided_idx]);
                 ++odometer[n_dim - 1];
                 int64_t i = n_dim - 1;
-                while ((odometer[i] == source.m_shape[i]) && i > 0) {
+                while ((odometer[i] == fused.shared_shape[i]) && i > 0) {
                     odometer[i] = 0;
                     ++odometer[i - 1];
                     --i;

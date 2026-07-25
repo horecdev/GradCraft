@@ -38,6 +38,7 @@ DONE Integrate CUDAMemPool into Storage class for allocations (write first kerne
 DONE Compile after first CUDA + get right results (fix the CUDAMemPool ptr** pass)
 - DIM COALESCING ALGO HELPER
 - INTEGRATE DIM FUSING post-broadcast
+- Compile with dim fusing + get right results
 - CUDA KERNELS!
 - Write alternative ctors for ones, zeros, normal, uniform etc.
 - Link up BLAS and cuBLAS
