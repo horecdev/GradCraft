@@ -39,7 +39,8 @@ DONE Compile after first CUDA + get right results (fix the CUDAMemPool ptr** pas
 DONE DIM COALESCING ALGO HELPER
 DONE INTEGRATE DIM FUSING post-broadcast
 DONE Compile with dim fusing + get right results
-- CUDA KERNELS!
+- Write CPU/CUDA allocator to root out aligned mallocs and cudaMalloc from Storage / mempools
+- Create generic CUDA backend structure 
 - Write alternative ctors for ones, zeros, normal, uniform etc.
 - Link up BLAS and cuBLAS
 - Write STACK node
