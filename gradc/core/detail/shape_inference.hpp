@@ -183,7 +183,7 @@ namespace gradc {
         
     }
 
-    inline FusedView fuse_dimensions(const std::vector<int64_t>& shared_shape, const std::vector<std::vector<int64_t>*>& strides_to_fuse) {
+    inline FusedView fuse_dimensions(const std::vector<int64_t>& shared_shape, const std::vector<const std::vector<int64_t>*>& strides_to_fuse) {
         if (std::ssize(strides_to_fuse) < 1) {
             throw std::runtime_error("Tried fusing 0 Tensors' metadata");
         }

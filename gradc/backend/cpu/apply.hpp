@@ -31,8 +31,8 @@ namespace gradc {
                 return;
             }
 
-            std::vector<int64_t>* left_strides = &left.m_strides;
-            std::vector<int64_t>* right_strides = &right.m_strides;
+            const std::vector<int64_t>* left_strides = &left.m_strides;
+            const std::vector<int64_t>* right_strides = &right.m_strides;
             int64_t left_offset = left.m_offset;
             int64_t right_offset = right.m_offset; 
             std::shared_ptr<Storage<T>> left_storage = left.m_state->m_storage; // broadcasting does not alter memory
@@ -102,7 +102,7 @@ namespace gradc {
                 return;
             }
 
-            std::vector<int64_t>* right_strides;
+            const std::vector<int64_t>* right_strides;
             int64_t right_offset;
 
             Tensor<T> broad_right;
@@ -162,9 +162,9 @@ namespace gradc {
                 return;
             }
 
-            FusedView fused = fuse_dimensions(out.m_shape, {&out.m_strides, &source.right_strides});
-            std::vector<int64_t>* out_strides = &fused.strides[0];
-            std::vector<int64_t>* source_strides = &fused.strides[1];
+            FusedView fused = fuse_dimensions(out.m_shape, {&out.m_strides, &source.m_strides});
+            const std::vector<int64_t>* out_strides = &fused.strides[0];
+            const std::vector<int64_t>* source_strides = &fused.strides[1];
 
             const int64_t n_dim = std::ssize(fused.shared_shape);
             std::vector<int64_t> odometer(n_dim, 0);
@@ -207,7 +207,7 @@ namespace gradc {
             }
 
             FusedView fused = fuse_dimensions(source.m_shape, {&source.m_strides});
-            std::vector<int64_t>* source_strides = &fused.strides[1];
+            const std::vector<int64_t>* source_strides = &fused.strides[1];
 
             const int64_t n_dim = std::ssize(fused.shared_shape);
             std::vector<int64_t> odometer(n_dim, 0);
