@@ -16,7 +16,8 @@ set(CMAKE_CUDA_ARCHITECTURES 86)
 add_executable(tensor 
     main.cpp
     gradc/gradc.hpp
-    gradc/backend/cuda/kernels.cu
+    gradc/backend/cuda/kernels_math.cu
+    gradc/backend/cuda/kernels_utils.cu
 )
 
 # Find the CUDA toolkit installation

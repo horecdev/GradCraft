@@ -17,6 +17,8 @@ namespace gradc {
     template <typename T> struct TensorState;
 
     class CPUBackend;
+    class CUDAMath;
+    class CUDAUtils;
     
     template <typename T>
     class Tensor {
@@ -144,8 +146,10 @@ namespace gradc {
             // NN
             Tensor relu() const;
             
-            // MATH
+            // BACKEND
             friend CPUBackend;
+            friend CUDAMath;
+            friend CUDAMath;
 
             template <typename U, typename W> friend auto operator+(Tensor<U> left, Tensor<W> right); // we befriend whole family of functions named operator+. 
             template <typename U, typename W> friend auto operator*(Tensor<U> left, Tensor<W> right); // It operates on type U and U can be virtually anything

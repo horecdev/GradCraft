@@ -1,6 +1,9 @@
 CompileFlags:
   Add: 
     - "-std=c++23"
+    - "/std:c++latest"
+    - "-x"
+    - "c++-header"
     - "--cuda-path=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.2"
   Remove: 
     - "-forward-unknown-to-host-compiler"
