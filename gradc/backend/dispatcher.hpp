@@ -113,7 +113,7 @@ namespace gradc {
                     break;
 
                 case BinaryOp::ReLUBackward:
-                    CPUBackend::apply_binary_out_of_place(out, left, right, [](T a, T b){return b > 0 ? a : 0;});
+                    CPUBackend::apply_binary_out_of_place(out, left, right, [](T grad, T value){return value > 0 ? grad : 0;});
                     break;
 
                 default:

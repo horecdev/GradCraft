@@ -39,9 +39,9 @@ DONE Compile after first CUDA + get right results (fix the CUDAMemPool ptr** pas
 DONE DIM COALESCING ALGO HELPER
 DONE INTEGRATE DIM FUSING post-broadcast
 DONE Compile with dim fusing + get right results
-- Write a CUDA kernel for odometer OUT OF PLACE BINARY with CUDA - with all the math that comes with CUDA
-- Integrate it + compile (add switches inside apply cuda)
-- Wrap it up for UOP, UIP, BIP, REDUCTIONS
+DONE Write all functors in Functor::BIP::etc
+- Write cuda kernels for UOP, UIP, BIP, REDUCTIONS, BOOP
+- Apply for scalars / fast paths on the GPU
 - Write alternative ctors for ones, zeros, normal, uniform etc.
 - Link up BLAS and cuBLAS
 - Write STACK node

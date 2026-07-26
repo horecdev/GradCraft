@@ -1,20 +1,55 @@
 #include "gradc/backend/cuda/cuda_math.hpp"
 #include <cuda_runtime.h>
 #include "gradc/core/detail/shape_inference.hpp"
+#include "gradc/backend/math_functors.hpp"
 
 namespace gradc {
     constexpr int MAX_DIMS = 8;
 
-    struct GPUMeta { // when you copy a struct with an array, it doesnt decay. The compiler respects struct's size.
+    struct CUDAMeta { // when you copy a struct with an array, it doesnt decay. The compiler respects struct's size.
         int64_t data[MAX_DIMS];
-        int size;
+        int64_t size;
     };
 
-    template <typename T>
-    __global__ void binary_out_of_place_kernel(T* ptr, T val, int64_t size) {
-        int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-        if (idx < size) {
-            ptr[idx] = val;
+    inline CUDAMeta to_cuda_meta(const std::vector<int64_t>& vec) { // turning CPU vector into primitive struct
+        CUDAMeta meta;
+        meta.size = std::ssize(vec);
+        for (int64_t i = 0; i < std::ssize(vec); ++i) {
+            meta.data[i] = vec[i];
+        }
+        return meta;
+    }
+
+    // BINARY OUT OF PLACE
+
+    template <typename T, typename Func>
+    __global__ void binary_out_of_place_kernel(
+        T* p_out, const T* p_left, const T* p_right, 
+        const CUDAMeta shared_shape, 
+        const CUDAMeta out_strides, const CUDAMeta left_strides, const CUDAMeta right_strides,
+        const int64_t out_offset, const int64_t left_offset, const int64_t right_offset,
+        const int64_t total_elements, const Func op) {
+
+        int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        if (linear_idx < total_elements) {
+
+            int64_t temp_idx = linear_idx;
+
+            int64_t out_strided_idx = out_offset;
+            int64_t left_strided_idx = left_offset;
+            int64_t right_strided_idx = right_offset;
+
+            for (int64_t i = shared_shape.size - 1; i >= 0; --i) {
+                int64_t coord = temp_idx % shared_shape.data[i];
+                temp_idx /= shared_shape.data[i];
+
+                out_strided_idx += coord * out_strides.data[i];
+                left_strided_idx += coord * left_strides.data[i];
+                right_strided_idx += coord * right_strides.data[i];
+            }
+
+            p_out[out_strided_idx] = op(p_left[left_strided_idx], p_right[right_strided_idx]);
         }
     }
 
@@ -44,19 +79,193 @@ namespace gradc {
         }
 
         FusedView fused = fuse_dimensions(out.m_shape, {&out.m_strides, left_strides, right_strides});
-        std::vector<int64_t>* out_strides = &fused.strides[0] ;
-        left_strides = &fused.strides[1];
-        right_strides = &fused.strides[2];
 
-        // TODO: Write the function to ship vectors to the GPUMeta struct (it is copied to GPU constant memory when u invoke kernel and pass by value, doesnt live in a vector)
-        // Then ship the strides over PCIE bus, pass in raw pointers (cannot pass struct like Storage or Tensor cuz its CPU)
+        CUDAMeta gpu_shape = to_cuda_meta(fused.shared_shape);
+        CUDAMeta gpu_out_strides = to_cuda_meta(fused.strides[0]);
+        CUDAMeta gpu_left_strides = to_cuda_meta(fused.strides[1]);
+        CUDAMeta gpu_right_strides = to_cuda_meta(fused.strides[2]);
+
+        T* p_out = out._get_storage()->data();
+        const T* p_left = left._get_storage()->data();
+        const T* p_right = left._get_storage()->data(); 
+
+        int64_t total_elems = out.volume();
+        int16_t threads = 256;
+        int blocks = (total_elems + threads - 1) / threads;
+        cudaSetDevice(out.device().index);
+
+        switch (op) {
+            case BinaryOp::Add:
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::Add<T>());
+                break;
+            case BinaryOp::Sub:
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::Sub<T>());
+                break;
+            case BinaryOp::Mul:
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::Mul<T>());
+                break;
+            case BinaryOp::Div:
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::Div<T>());
+                break;
+            case BinaryOp::ReLUBackward:
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::ReLUBackward<T>());
+            case BinaryOp::MatMul:
+                throw std::runtime_error("Unimplemented CUDA BOOP MatMul");
+                break;
+        }
     }
-    
-    template void CUDAMath::apply_binary_out_of_place<float>(Tensor<float>& out, const Tensor<float>& left, const Tensor<float>& right, BinaryOp op);
-    template void CUDAMath::apply_binary_out_of_place<double>(double* ptr, double val, int64_t size, Device device);
-    template void CUDAMath::apply_binary_out_of_place<int16_t>(int16_t* ptr, int16_t val, int64_t size, Device device);
-    template void CUDAMath::apply_binary_out_of_place<int32_t>(int32_t* ptr, int32_t val, int64_t size, Device device);
-    template void CUDAMath::apply_binary_out_of_place<int64_t>(int64_t* ptr, int64_t val, int64_t size, Device device);
 
-    
+    // BINARY IN PLACE
+
+    template <typename T, typename Func>
+    __global__ void binary_in_place_kernel(
+        T* p_left, const T* p_right, 
+        const CUDAMeta shared_shape, 
+        const CUDAMeta left_strides, const CUDAMeta right_strides,
+        const int64_t left_offset, const int64_t right_offset,
+        const int64_t total_elements, const Func op
+    ) {
+
+        int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        if (linear_idx < total_elements) {
+
+            int64_t temp_idx = linear_idx;
+
+            int64_t left_strided_idx = left_offset;
+            int64_t right_strided_idx = right_offset;
+
+            for (int64_t i = shared_shape.size - 1; i >= 0; --i) {
+                int64_t coord = temp_idx % shared_shape.data[i];
+                temp_idx /= shared_shape.data[i];
+
+                left_strided_idx += coord * left_strides.data[i];
+                right_strided_idx += coord * right_strides.data[i];
+            }
+
+            op(p_left[left_strided_idx], p_right[right_strided_idx]);
+        }
+    }
+
+    template <typename T>
+    void CUDAMath::apply_binary_in_place(Tensor<T>& left, const Tensor<T>& right, BinaryOpInPlace op) {
+        const std::vector<int64_t>* right_strides;
+        int64_t right_offset;
+
+        Tensor<T> broad_right;
+        if (left.m_shape == right.m_shape) {
+            right_strides = &right.m_strides;
+            right_offset = right.m_offset;
+        }
+        else {
+            broad_right = lobotomized_broadcast_view(right, left.m_shape);
+
+            right_strides = &broad_right.m_strides;
+            right_offset = broad_right.m_offset;
+        }
+
+        FusedView fused = fuse_dimensions(left.m_shape, {&left.m_strides, right_strides});
+        std::vector<int64_t>* left_strides = &fused.strides[0];
+        right_strides = &fused.strides[1];
+
+
+        CUDAMeta gpu_shape = to_cuda_meta(fused.shared_shape);
+        CUDAMeta gpu_left_strides = to_cuda_meta(fused.strides[0]);
+        CUDAMeta gpu_right_strides = to_cuda_meta(fused.strides[1]);
+
+        T* p_left = left._get_storage()->data();
+        const T* p_right = left._get_storage()->data(); 
+
+        int64_t total_elems = left.volume();
+        int16_t threads = 256;
+        int blocks = (total_elems + threads - 1) / threads;
+        cudaSetDevice(left.device().index);
+
+        switch (op) {
+            case BinaryOpInPlace::Add:
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right.m_offset, total_elems, functors::BIP::Add<T>());
+                break;
+            case BinaryOpInPlace::Sub:
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right.m_offset, total_elems, functors::BIP::Sub<T>());
+                break;
+            case BinaryOpInPlace::Mul:
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right.m_offset, total_elems, functors::BIP::Mul<T>());
+                break;
+            case BinaryOpInPlace::Div:
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right.m_offset, total_elems, functors::BIP::Div<T>());
+                break;
+            case BinaryOpInPlace::MatMul:
+                throw std::runtime_error("Unimplemented CUDA BIP MatMul");
+                break;
+        }
+    }
+
+    template <typename T, typename Func>
+    __global__ void unary_out_of_place_kernel(
+        T* p_out, const T* p_source, 
+        const CUDAMeta shared_shape, 
+        const CUDAMeta out_strides, const CUDAMeta source_strides,
+        const int64_t out_offset, const int64_t source_offset,
+        const int64_t total_elements, const Func op
+    ) {
+
+        int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        if (linear_idx < total_elements) {
+
+            int64_t temp_idx = linear_idx;
+
+            int64_t out_strided_idx = out_offset;
+            int64_t source_strided_idx = source_offset;
+
+            for (int64_t i = shared_shape.size - 1; i >= 0; --i) {
+                int64_t coord = temp_idx % shared_shape.data[i];
+                temp_idx /= shared_shape.data[i];
+
+                out_strided_idx += coord * out_strides.data[i];
+                source_strided_idx += coord * source_strides.data[i];
+            }
+
+            p_out[out_strided_idx] = op(p_source[source_strided_idx]);
+        }
+    }
+
+    template <typename OutT, typename InT, typename Func>
+    void CUDAMath::apply_unary_out_of_place(Tensor<OutT>& out, const Tensor<InT>& source, Func op) {
+        FusedView fused = fuse_dimensions(out.m_shape, {&out.m_strides, &source.m_strides});
+        const std::vector<int64_t>* out_strides = &fused.strides[0];
+        const std::vector<int64_t>* source_strides = &fused.strides[1];
+
+
+        CUDAMeta gpu_shape = to_cuda_meta(fused.shared_shape);
+        CUDAMeta gpu_out_strides = to_cuda_meta(fused.strides[0]);
+        CUDAMeta gpu_source_strides = to_cuda_meta(fused.strides[1]);
+
+        OutT* p_out = out._get_storage()->data();
+        const InT* p_source = source._get_storage()->data(); 
+
+        int64_t total_elems = out.volume();
+        int16_t threads = 256;
+        int blocks = (total_elems + threads - 1) / threads;
+        cudaSetDevice(out.device().index);
+
+        switch (op) {
+            case UnaryOp::Identity:
+                binary_in_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, functors::UOP::Identity<T>());
+                break;
+            case UnaryOp::ReLU:
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right.m_offset, total_elems, functors::BIP::Sub<T>());
+                break;
+            case UnaryOp::Sigmoid:
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right.m_offset, total_elems, functors::BIP::Mul<T>());
+                break;
+            case UnaryOp::Exp:
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right.m_offset, total_elems, functors::BIP::Div<T>());
+                break;
+            case UnaryOp::Log:
+                throw std::runtime_error("Unimplemented CUDA BIP MatMul");
+                break;
+        }
+    }
+
 }
