@@ -2,6 +2,7 @@
 #include <cuda_runtime.h>
 #include "gradc/core/detail/shape_inference.hpp"
 #include "gradc/backend/math_functors.hpp"
+#include "gradc/backend/cuda/cuda_utils.hpp"
 
 namespace gradc {
     constexpr int MAX_DIMS = 8;
@@ -20,7 +21,7 @@ namespace gradc {
         return meta;
     }
 
-    // BINARY OUT OF PLACE
+    #pragma region BINARY OUT OF PLACE
 
     template <typename T, typename Func>
     __global__ void binary_out_of_place_kernel(
@@ -109,13 +110,13 @@ namespace gradc {
                 break;
             case BinaryOp::ReLUBackward:
                 binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::ReLUBackward<T>());
-            case BinaryOp::MatMul:
-                throw std::runtime_error("Unimplemented CUDA BOOP MatMul");
-                break;
+            default:
+                throw std::runtime_error("Unsupported CUDA BOOP");
         }
     }
 
-    // BINARY IN PLACE
+    #pragma endregion BINARY OUT OF PLACE
+    #pragma region BINARY IN PLACE
 
     template <typename T, typename Func>
     __global__ void binary_in_place_kernel(
@@ -123,8 +124,7 @@ namespace gradc {
         const CUDAMeta shared_shape, 
         const CUDAMeta left_strides, const CUDAMeta right_strides,
         const int64_t left_offset, const int64_t right_offset,
-        const int64_t total_elements, const Func op
-    ) {
+        const int64_t total_elements, const Func op) {
 
         int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -194,11 +194,13 @@ namespace gradc {
             case BinaryOpInPlace::Div:
                 binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right.m_offset, total_elems, functors::BIP::Div<T>());
                 break;
-            case BinaryOpInPlace::MatMul:
-                throw std::runtime_error("Unimplemented CUDA BIP MatMul");
-                break;
+            default:
+                throw std::runtime_error("Unsupported CUDA BIP");
         }
     }
+
+    #pragma endregion BINARY IN PLACE
+    #pragma region UNARY OUT OF PLACE
 
     template <typename T, typename Func>
     __global__ void unary_out_of_place_kernel(
@@ -206,8 +208,7 @@ namespace gradc {
         const CUDAMeta shared_shape, 
         const CUDAMeta out_strides, const CUDAMeta source_strides,
         const int64_t out_offset, const int64_t source_offset,
-        const int64_t total_elements, const Func op
-    ) {
+        const int64_t total_elements, const Func op) {
 
         int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -230,8 +231,8 @@ namespace gradc {
         }
     }
 
-    template <typename OutT, typename InT, typename Func>
-    void CUDAMath::apply_unary_out_of_place(Tensor<OutT>& out, const Tensor<InT>& source, Func op) {
+    template <typename OutT, typename InT>
+    void CUDAMath::apply_unary_out_of_place(Tensor<OutT>& out, const Tensor<InT>& source, UnaryOp op) {
         FusedView fused = fuse_dimensions(out.m_shape, {&out.m_strides, &source.m_strides});
         const std::vector<int64_t>* out_strides = &fused.strides[0];
         const std::vector<int64_t>* source_strides = &fused.strides[1];
@@ -251,21 +252,150 @@ namespace gradc {
 
         switch (op) {
             case UnaryOp::Identity:
-                binary_in_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, functors::UOP::Identity<T>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, functors::UOP::Identity<InT>());
                 break;
             case UnaryOp::ReLU:
-                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right.m_offset, total_elems, functors::BIP::Sub<T>());
-                break;
-            case UnaryOp::Sigmoid:
-                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right.m_offset, total_elems, functors::BIP::Mul<T>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, functors::UOP::ReLU<InT>());
                 break;
             case UnaryOp::Exp:
-                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right.m_offset, total_elems, functors::BIP::Div<T>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, functors::UOP::Exp<InT>());
                 break;
             case UnaryOp::Log:
-                throw std::runtime_error("Unimplemented CUDA BIP MatMul");
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, functors::UOP::Log<InT>());
                 break;
+            default:
+                throw std::runtime_error("Unsupported CUDA UOP");
         }
     }
+
+    #pragma endregion UNARY OUT OF PLACE
+    #pragma region UNARY IN PLACE
+
+    template <typename T, typename Func>
+    __global__ void unary_in_place_kernel(
+        T* p_source, 
+        const CUDAMeta shared_shape, 
+        const CUDAMeta source_strides,
+        const int64_t source_offset,
+        const int64_t total_elements, const Func op) {
+
+        int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        if (linear_idx < total_elements) {
+
+            int64_t temp_idx = linear_idx;
+
+            int64_t source_strided_idx = source_offset;
+
+            for (int64_t i = shared_shape.size - 1; i >= 0; --i) {
+                int64_t coord = temp_idx % shared_shape.data[i];
+                temp_idx /= shared_shape.data[i];
+
+                source_strided_idx += coord * source_strides.data[i];
+            }
+
+            op(p_source[source_strided_idx]);
+        }
+    }
+
+    template <typename T>
+    void CUDAMath::apply_unary_in_place(Tensor<T>& source, UnaryOpInPlace op) {
+
+        FusedView fused = fuse_dimensions(source.m_shape, {&source.m_strides});
+        
+        CUDAMeta gpu_shape = to_cuda_meta(fused.shared_shape);
+        CUDAMeta gpu_source_strides = to_cuda_meta(fused.strides[0]);
+
+        T* p_source = source._get_storage()->data();
+
+        int64_t total_elems = source.volume();
+        int16_t threads = 256;
+        int64_t blocks = (total_elems + threads - 1) / threads;
+        cudaSetDevice(source.device().index);
+
+        switch (op) {
+            case UnaryOpInPlace::ReLU:
+                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, functors::UIP::ReLU<T>());
+                break;
+            case UnaryOpInPlace::Exp:
+                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, functors::UIP::Exp<T>());
+                break;
+            case UnaryOpInPlace::Log:
+                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, functors::UIP::Log<T>());
+                break;
+            default:
+                throw std::runtime_error("Unsupported CUDA UIP");
+        }
+
+    }
+
+    #pragma endregion UNARY IN PLACE
+    #pragma region REDUCTIONS
+
+    template <typename T, typename Func>
+    __global__ void reduction_kernel(
+        T* p_out, const T* p_source, 
+        const CUDAMeta shared_shape, 
+        const CUDAMeta out_strides, const CUDAMeta source_strides,
+        const int64_t source_offset,
+        const int64_t total_elements, const Func op) {
+
+        int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        if (linear_idx < total_elements) {
+
+            int64_t temp_idx = linear_idx;
+
+            int64_t out_strided_idx = 0;
+            int64_t source_strided_idx = source_offset;
+
+            for (int64_t i = shared_shape.size - 1; i >= 0; --i) {
+                int64_t coord = temp_idx % shared_shape.data[i];
+                temp_idx /= shared_shape.data[i];
+
+                out_strided_idx += coord * out_strides.data[i];
+                source_strided_idx += coord * source_strides.data[i];
+            }
+
+            p_out[out_strided_idx] = op(p_source[source_strided_idx], p_out(out_strided_idx));
+        }
+    }
+
+    template <typename T>
+    static void apply_reduction_operation(Tensor<T>& out, const Tensor<T>& source, const ReductionMetadata& reduction_metadata, T init_value, ReduceOp op) {
+        
+
+        // first fill the out tensor with init_value
+        // then invoke the right op and pass it into the kernel
+        T* p_out = out._get_storage()->data();
+        T* p_source = source._get_storage()->data();
+
+        CUDAMeta shared_shape = to_cuda_meta(source.m_shape);
+        CUDAMeta out_strides = to_cuda_meta(reduction_metadata.temp_strides);
+        CUDAMeta source_strides = to_cuda_meta(source.m_strides);
+
+        CUDAUtils::fill(p_out, init_value, out.volume(), out.device());
+
+        int64_t total_elems = source.volume();
+        int64_t threads = 256;
+        int64_t blocks = (total_elems + threads - 1) / threads;
+
+        switch (op) {
+            case ReduceOp::Sum:
+                reduction_kernel<<<blocks, threads>>>(p_out, p_source, source.shape(), out_strides, source_strides, source.m_offset, total_elems, functors::RED::Sum<T>());
+                break;
+            case ReduceOp::Max:
+                reduction_kernel<<<blocks, threads>>>(p_out, p_source, source.shape(), out_strides, source_strides, source.m_offset, total_elems, functors::RED::Max<T>());
+                break;
+            case ReduceOp::Min:
+                reduction_kernel<<<blocks, threads>>>(p_out, p_source, source.shape(), out_strides, source_strides, source.m_offset, total_elems, functors::RED::Min<T>());
+                break;
+            default:
+                throw std::runtime_error("Unsupported CUDA ReduceOp");
+        }
+    }
+
+
+    #pragma endregion REDUCTIONS
 
 }

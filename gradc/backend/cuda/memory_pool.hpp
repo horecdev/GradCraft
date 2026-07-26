@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <vector>
 #include <unordered_map>
+#include <format>
 
 namespace gradc {
     class CUDAMemPool {

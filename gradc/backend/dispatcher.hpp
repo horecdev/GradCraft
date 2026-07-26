@@ -36,61 +36,6 @@ namespace gradc {
         return target_device;
     }
 
-    template <typename T>
-    inline void dispatch(Device device, UnaryOp op, Tensor<T>& out, const Tensor<T>& in) {
-        if (device.is_cpu()) {
-            switch (op) {
-                case UnaryOp::Identity:
-                    CPUBackend::apply_unary_out_of_place(out, in, [](T a){return a;});
-                    break;
-
-                case UnaryOp::Exp:
-                    CPUBackend::apply_unary_out_of_place(out, in, [](T a){return std::exp(a);});
-                    break;
-
-                case UnaryOp::Log:
-                    CPUBackend::apply_unary_out_of_place(out, in, [](T a){return std::log(a);});
-                    break;
-
-                case UnaryOp::ReLU:
-                    CPUBackend::apply_unary_out_of_place(out, in, [](T a){return a > 0 ? a : 0;});
-                    break;
-
-                default:
-                    throw std::runtime_error("Unsupported UnaryOp in CPU Dispatcher.");
-            }
-        }
-
-        else if (device.is_cuda()) {
-            // same but for CUDA
-        }
-    }
-
-    template <typename T>
-    inline void dispatch(Device device, UnaryOpInPlace op, Tensor<T>& in) {
-        if (device.is_cpu()) {
-            switch (op) {
-                case UnaryOpInPlace::Exp:
-                    CPUBackend::apply_unary_in_place(in, [](T& a){a = std::exp(a);});
-                    break;
-
-                case UnaryOpInPlace::Log:
-                    CPUBackend::apply_unary_in_place(in, [](T& a){a = std::log(a);});
-                    break;
-
-                case UnaryOpInPlace::ReLU:
-                    CPUBackend::apply_unary_in_place(in, [](T& a){a = a > 0 ? a : 0;});
-                    break;
-
-                default:
-                    throw std::runtime_error("Unsupported UnaryOpInPlace in CPU Dispatcher.");
-            }
-        }
-
-        else if (device.is_cuda()) {
-            // same but for CUDA
-        }
-    }
 
     template <typename T>
     inline void dispatch(Device device, BinaryOp op, Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right) {
@@ -148,6 +93,62 @@ namespace gradc {
 
                 default:
                     throw std::runtime_error("Unsupported BinaryOpInPlace in CPU Dispatcher.");
+            }
+        }
+
+        else if (device.is_cuda()) {
+            // same but for CUDA
+        }
+    }
+
+    template <typename T>
+    inline void dispatch(Device device, UnaryOp op, Tensor<T>& out, const Tensor<T>& in) {
+        if (device.is_cpu()) {
+            switch (op) {
+                case UnaryOp::Identity:
+                    CPUBackend::apply_unary_out_of_place(out, in, [](T a){return a;});
+                    break;
+
+                case UnaryOp::Exp:
+                    CPUBackend::apply_unary_out_of_place(out, in, [](T a){return std::exp(a);});
+                    break;
+
+                case UnaryOp::Log:
+                    CPUBackend::apply_unary_out_of_place(out, in, [](T a){return std::log(a);});
+                    break;
+
+                case UnaryOp::ReLU:
+                    CPUBackend::apply_unary_out_of_place(out, in, [](T a){return a > 0 ? a : 0;});
+                    break;
+
+                default:
+                    throw std::runtime_error("Unsupported UnaryOp in CPU Dispatcher.");
+            }
+        }
+
+        else if (device.is_cuda()) {
+            // same but for CUDA
+        }
+    }
+
+    template <typename T>
+    inline void dispatch(Device device, UnaryOpInPlace op, Tensor<T>& in) {
+        if (device.is_cpu()) {
+            switch (op) {
+                case UnaryOpInPlace::Exp:
+                    CPUBackend::apply_unary_in_place(in, [](T& a){a = std::exp(a);});
+                    break;
+
+                case UnaryOpInPlace::Log:
+                    CPUBackend::apply_unary_in_place(in, [](T& a){a = std::log(a);});
+                    break;
+
+                case UnaryOpInPlace::ReLU:
+                    CPUBackend::apply_unary_in_place(in, [](T& a){a = a > 0 ? a : 0;});
+                    break;
+
+                default:
+                    throw std::runtime_error("Unsupported UnaryOpInPlace in CPU Dispatcher.");
             }
         }
 

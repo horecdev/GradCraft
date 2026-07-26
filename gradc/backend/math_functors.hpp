@@ -129,5 +129,28 @@ namespace gradc::functors {
             }
         };
     }
+
+    namespace RED {
+        template <typename T>
+        struct Sum {
+            __device__ T operator()(T a, T b) const {
+                return a + b;
+            }
+        };
+
+        template <typename T>
+        struct Max {
+            __device__ T operator()(T a, T b) const {
+                return max(a, b);
+            }
+        };
+
+        template <typename T>
+        struct Min {
+            __device__ T operator()(T a, T b) const {
+                return min(a, b);
+            }
+        };
+    }
     
 }

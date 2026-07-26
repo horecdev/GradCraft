@@ -10,7 +10,11 @@ namespace gradc {
             static void apply_binary_out_of_place(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, BinaryOp op);
             template <typename T>
             static void apply_binary_in_place(Tensor<T>& left, const Tensor<T>& right, BinaryOpInPlace op);
-            template <typename OutT, typename InT, typename Func>
-            static void apply_unary_out_of_place(Tensor<OutT>& out, const Tensor<InT>& source, Func op);
+            template <typename OutT, typename InT>
+            static void apply_unary_out_of_place(Tensor<OutT>& out, const Tensor<InT>& source, UnaryOp op);
+            template <typename T>
+            static void apply_unary_in_place(Tensor<T>& source, UnaryOpInPlace op);
+            template <typename T>
+            static void apply_reduction_operation(Tensor<T>& out, const Tensor<T>& source, const ReductionMetadata& reduction_metadata, T init_value, ReduceOp op);
     };
 }

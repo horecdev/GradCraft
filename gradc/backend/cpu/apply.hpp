@@ -207,7 +207,7 @@ namespace gradc {
             }
 
             FusedView fused = fuse_dimensions(source.m_shape, {&source.m_strides});
-            const std::vector<int64_t>* source_strides = &fused.strides[1];
+            const std::vector<int64_t>* source_strides = &fused.strides[0];
 
             const int64_t n_dim = std::ssize(fused.shared_shape);
             std::vector<int64_t> odometer(n_dim, 0);
