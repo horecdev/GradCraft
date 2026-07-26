@@ -54,14 +54,40 @@ namespace gradc {
         }
     }
 
+    template <typename T, typename Func>
+    __global__ void binary_out_of_place_fast_kernel(
+        T* p_out, const T* p_left, const T* p_right, 
+        const int64_t out_offset, const int64_t left_offset, const int64_t right_offset,
+        const int64_t total_elements, const Func op) {
+
+        int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        if (linear_idx < total_elements) {
+
+            int64_t out_strided_idx = out_offset;
+            int64_t left_strided_idx = left_offset;
+            int64_t right_strided_idx = right_offset;
+
+            p_out[out_strided_idx + linear_idx] = op(p_left[left_strided_idx + linear_idx], p_right[right_strided_idx + linear_idx]);
+        }
+    }
+
     template <typename T>
     void CUDAMath::apply_binary_out_of_place(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, BinaryOp op) {
+        if (out.is_contiguous() && left.is_contiguous() && right.is_contiguous() && out.m_shape == left.m_shape == right.m_shape) {
+            int64_t total_elems = out.volume();
+            int64_t threads = 256;
+            int64_t blocks = (total_elems + threads - 1) / threads;
+            switch (op) {
+                case BinaryOp::Add:
+                    binary_out_of_place_fast_kernel<<<blocks, threads>>>(out._get_storage()->data(), left._get_storage()->data(), right._get_storage()->data(), out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::Add<T>());
+            }
+        }
+
         const std::vector<int64_t>* left_strides = &left.m_strides;
         const std::vector<int64_t>* right_strides = &right.m_strides;
         int64_t left_offset = left.m_offset;
         int64_t right_offset = right.m_offset; 
-        std::shared_ptr<Storage<T>> left_storage = left.m_state->m_storage; // broadcasting does not alter memory
-        std::shared_ptr<Storage<T>> right_storage = right.m_state->m_storage;
 
         Tensor<T> broad_right;
         Tensor<T> broad_left;
@@ -88,7 +114,7 @@ namespace gradc {
 
         T* p_out = out._get_storage()->data();
         const T* p_left = left._get_storage()->data();
-        const T* p_right = left._get_storage()->data(); 
+        const T* p_right = right._get_storage()->data(); 
 
         int64_t total_elems = out.volume();
         int16_t threads = 256;
@@ -97,19 +123,19 @@ namespace gradc {
 
         switch (op) {
             case BinaryOp::Add:
-                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::Add<T>());
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, functors::BOOP::Add<T>());
                 break;
             case BinaryOp::Sub:
-                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::Sub<T>());
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, functors::BOOP::Sub<T>());
                 break;
             case BinaryOp::Mul:
-                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::Mul<T>());
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, functors::BOOP::Mul<T>());
                 break;
             case BinaryOp::Div:
-                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::Div<T>());
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, functors::BOOP::Div<T>());
                 break;
             case BinaryOp::ReLUBackward:
-                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::ReLUBackward<T>());
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, functors::BOOP::ReLUBackward<T>());
             default:
                 throw std::runtime_error("Unsupported CUDA BOOP");
         }
@@ -174,7 +200,7 @@ namespace gradc {
         CUDAMeta gpu_right_strides = to_cuda_meta(fused.strides[1]);
 
         T* p_left = left._get_storage()->data();
-        const T* p_right = left._get_storage()->data(); 
+        const T* p_right = right._get_storage()->data(); 
 
         int64_t total_elems = left.volume();
         int16_t threads = 256;
@@ -183,16 +209,16 @@ namespace gradc {
 
         switch (op) {
             case BinaryOpInPlace::Add:
-                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right.m_offset, total_elems, functors::BIP::Add<T>());
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, functors::BIP::Add<T>());
                 break;
             case BinaryOpInPlace::Sub:
-                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right.m_offset, total_elems, functors::BIP::Sub<T>());
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, functors::BIP::Sub<T>());
                 break;
             case BinaryOpInPlace::Mul:
-                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right.m_offset, total_elems, functors::BIP::Mul<T>());
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, functors::BIP::Mul<T>());
                 break;
             case BinaryOpInPlace::Div:
-                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right.m_offset, total_elems, functors::BIP::Div<T>());
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, functors::BIP::Div<T>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA BIP");

@@ -41,9 +41,11 @@ DONE INTEGRATE DIM FUSING post-broadcast
 DONE Compile with dim fusing + get right results
 DONE Write all functors in Functor::BIP::etc
 DONE Write cuda kernels for UOP, UIP, BIP, REDUCTIONS, BOOP
-- Apply for scalars / fast paths on the GPU
+- Apply for scalars / fast paths on the GPU (scalars fall into the fast path) (all 4 main op types) (add swtiches to invoke with right functor the fast version)
+- Apply for all dim reduction on the Reduction ops (turns into a scalar - or an edge case when scalar is reduced)
 - Template instantiate all
 - Integrate them into dispatchers
+- Compile the code
 - Write alternative ctors for ones, zeros, normal, uniform etc.
 - Link up BLAS and cuBLAS
 - Write STACK node
