@@ -120,7 +120,7 @@ namespace gradc {
                     // grad_view has buffer of full_grad that matches shape of m_parent, so in-place assignment actually edits full_grad.
                     m_parent.accumulate_grad(full_grad);
                 }
-            } 
+            }
 
             std::vector<TensorStateBase*> get_input_states() override {
                 return {m_parent._get_state_base()};

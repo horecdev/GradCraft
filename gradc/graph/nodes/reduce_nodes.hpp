@@ -64,4 +64,20 @@ namespace gradc {
                 return {m_parent._get_state_base()};
             }
     };
+
+    template <typename T>
+    class MaxNode : public Node<T> {
+        private:
+            Tensor<T> m_parent;
+            Tensor<T> max_args;
+            ReductionMetadata m_reduction_metadata;
+        public:
+            MaxNode(Tensor<T> parent, ReductionMetadata reduction_metadata) : m_parent(parent), m_reduction_metadata(reduction_metadata) {}
+            
+            Tensor<T> realize() override {
+                m_parent.realize();
+                Tensor<T> collapsed = Tensor<T>(m_reduction_metadata.result_shape, m_parent.device(), uninitialized);
+                dispatch();
+            }
+    };
 }

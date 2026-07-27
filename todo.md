@@ -50,6 +50,7 @@ DONE Make CPU functors and GPU functors + integrate CPU ones
 DONE Compile the code
 - Write a MaxNode, ArgMaxNode, (for CPU) (add check for ReduceOp::Max etc)
 - Write Max, Argmax for CUDA
+- Swap out current CPU testpark for CUDA testpark. Compile.
 - Write alternative ctors for ones, zeros, normal, uniform etc.
 - Link up BLAS and cuBLAS
 - add multithreading with OpenMP (no writing mutexes and shit)
