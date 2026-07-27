@@ -489,7 +489,7 @@ namespace gradc {
                 source_strided_idx += coord * source_strides.data[i];
             }
 
-            p_out[out_strided_idx] = op(p_out(out_strided_idx), p_source[source_strided_idx]);
+            op.atomic(&p_out[out_strided_idx], p_source[source_strided_idx]);
         }
     }
 
@@ -510,17 +510,17 @@ namespace gradc {
         else {
             shared_data[t_idx] = init_value;
         }
-        __syncthreads(); // all wait for this to finish
+        __syncthreads(); // all threads wait for init to finish
 
         for (int stride = blockDim.x; stride > 0; stride /= 2) {
             if (t_idx < stride) {
-                shared_data[t_idx] = op(shared_data[t_idx], shared_data[t_idx + stride]);
+                shared_data[t_idx] = op(shared_data[t_idx], shared_data[t_idx + stride]); // not atomic since its thread safe
             } 
             __syncthreads(); // wait till halving is done
         }
 
         if (t_idx == 0) {
-            p_out[0] = shared_data[0];
+            op.atomic(&p_out[0], shared_data[0]);
         }
     }
 

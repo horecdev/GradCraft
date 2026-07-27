@@ -149,7 +149,44 @@ namespace gradc::functors {
             }
 
             __device__ void atomic(T* adress, T val) const {
-                atomicMax(adress, val);
+                if constexpr (std::is_integral_v<T>) {
+                    atomicMax(adress, val);
+                }
+                
+                else if constexpr (std::is_same_v<T, float>) {
+                    int* adress_as_int = (int*)adress;
+                    int old = *adress_as_int; // what was in the adress when we entered the function
+                    int assumed;
+
+                    do {
+                        assumed = old; // we assume what is in memory is still our adress
+
+                        if (__int_as_float(assumed) >= val) { // perform a check here
+                            break; // if what is now sitting in memory is bigger, skip
+                        }
+
+                        old = atomicCAS(adress_as_int, assumed, __float_as_int(val)); // CAS doesnt support integers either
+                        // create a new expected value to compare against. If any of those was bigger than our number, break
+                        // Why? Say current number at adress was 5. Our thread read it, and some other too. The other was bigger, so it overwrote it to 10. Ours is 7.
+                        // If you overwrote either way, youre cooked.
+                    } while (assumed != old);
+                }
+
+                else if constexpr (std::is_same_v<T, double>) {
+                    unsigned long long int* adress_as_ull = (unsigned long long int*)adress;
+                    unsigned long long int old = *adress_as_ull; // old is smth like 13 quintillion because leftmost bit is signed. But CAS only compares bytes (same or not?)
+                    unsigned long long int assumed;
+
+                    do {
+                        assumed = old;
+                        if (__longlong_as_double(assumed) >= val) { // compare doubles, not integers
+                            break;
+                        }
+
+                        old = atomicCAS(adress_as_ull, assumed, __double_as_int(val));
+
+                    } while (assumed != old);
+                }
             }
         };
 
@@ -157,6 +194,45 @@ namespace gradc::functors {
         struct Min {
             __device__ T operator()(T a, T b) const {
                 return min(a, b);
+            }
+
+            __device__ void atomic(T* adress, T val) const {
+                if constexpr (std::is_integral_v<T>) {
+                    atomicMax(adress, val);
+                }
+                
+                else if constexpr (std::is_same_v<T, float>) {
+                    int* adress_as_int = (int*)adress;
+                    int old = *adress_as_int;
+                    int assumed;
+
+                    do {
+                        assumed = old;
+
+                        if (__int_as_float(assumed) <= val) {
+                            break; 
+                        }
+
+                        old = atomicCAS(adress_as_int, assumed, __float_as_int(val)); 
+
+                    } while (assumed != old);
+                }
+
+                else if constexpr (std::is_same_v<T, double>) {
+                    unsigned long long int* adress_as_ull = (unsigned long long int*)adress;
+                    unsigned long long int old = *adress_as_ull;
+                    unsigned long long int assumed;
+
+                    do {
+                        assumed = old;
+                        if (__longlong_as_double(assumed) <= val) {
+                            break;
+                        }
+
+                        old = atomicCAS(adress_as_ull, assumed, __double_as_int(val));
+
+                    } while (assumed != old);
+                }
             }
         };
     }
