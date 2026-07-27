@@ -22,7 +22,7 @@ namespace gradc {
 
         Storage() : m_data(nullptr), m_size(0), m_device(Device(DeviceType::CPU)) {}
 
-        Storage(int64_t size, T init_val = T(), Device device = Device(DeviceType::CPU), bool allocate = true, bool fill = true) : m_size(size), m_device(device) {
+        Storage(int64_t size, T init_val = T(0), Device device = Device(DeviceType::CPU), bool allocate = true, bool fill = true) : m_size(size), m_device(device) {
             int64_t bytes = size * sizeof(T);
                 if (allocate) {
                     if (m_device.is_cpu()) {

@@ -34,7 +34,7 @@ DONE Update CUDAMemPool to apply for multiple devices (mallocs too)
 DONE Rename the repo on github to gradcraft
 DONE CUDA BRIDGE - ToNode and .to() without math on accumulate yet. Just call the dispatcher. CONTIGUITY FORCED. APPLY FOR OFFSET
 DONE Write cuda kernels for filling with values (same or from a list)
-DONE Integrate CUDAMemPool into Storage class for allocations (write first kernel for T() init value)
+DONE Integrate CUDAMemPool into Storage class for allocations (write first kernel for T(0) init value)
 DONE Compile after first CUDA + get right results (fix the CUDAMemPool ptr** pass)
 DONE DIM COALESCING ALGO HELPER
 DONE INTEGRATE DIM FUSING post-broadcast

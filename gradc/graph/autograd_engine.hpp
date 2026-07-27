@@ -50,7 +50,7 @@ namespace gradc {
         if (!m_requires_grad) {return;}
 
         if (!m_state->m_grad.has_value()) {
-            Tensor<T> local_grad = Tensor<T>(m_shape, T(), target_device);
+            Tensor<T> local_grad = Tensor<T>(m_shape, T(0), target_device);
             dispatch(target_device, BinaryOpInPlace::Add, local_grad, incoming_grad);
             m_state->m_grad = std::move(local_grad);
         }

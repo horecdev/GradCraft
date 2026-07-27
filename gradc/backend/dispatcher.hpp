@@ -2,6 +2,7 @@
 
 #include "op_types.hpp"
 #include "cpu/apply.hpp"
+#include "gradc/backend/cuda/cuda_math.hpp"
 #include "../core/tensor.hpp"
 #include "../core/types.hpp"
 
@@ -67,7 +68,7 @@ namespace gradc {
         }
 
         else if (device.is_cuda()) {
-            // same but for CUDA
+            CUDAMath::apply_binary_out_of_place(out, left, right, op);
         }
     }
 
@@ -97,7 +98,7 @@ namespace gradc {
         }
 
         else if (device.is_cuda()) {
-            // same but for CUDA
+            CUDAMath::apply_binary_in_place(left, right, op);
         }
     }
 
@@ -127,7 +128,7 @@ namespace gradc {
         }
 
         else if (device.is_cuda()) {
-            // same but for CUDA
+            CUDAMath::apply_unary_out_of_place(out, in, op);
         }
     }
 
@@ -153,7 +154,7 @@ namespace gradc {
         }
 
         else if (device.is_cuda()) {
-            // same but for CUDA
+            CUDAMath::apply_unary_in_place(in, op);
         }
     }
 
@@ -162,11 +163,11 @@ namespace gradc {
         if (device.is_cpu()) {
             switch (op) {
                 case ReduceOp::Sum:
-                    CPUBackend::apply_reduction_operation(out, in, reduction_metadata, T(), [](T a, T b){return a + b;});
+                    CPUBackend::apply_reduction_operation(out, in, reduction_metadata, T(0), [](T a, T b){return a + b;});
                     break;
 
                 case ReduceOp::Mean:
-                    CPUBackend::apply_reduction_operation(out, in, reduction_metadata, T(), [](T a, T b){return a + b;});
+                    CPUBackend::apply_reduction_operation(out, in, reduction_metadata, T(0), [](T a, T b){return a + b;});
                     CPUBackend::apply_binary_in_place(out, Tensor<T>(static_cast<T>(reduction_metadata.reduced_vol), out.device()), [](T& a, T b){a /= b;});
                     break;
 
@@ -176,7 +177,20 @@ namespace gradc {
         }
 
         else if (device.is_cuda()) {
-            // same but for CUDA
+            switch (op) {
+                case ReduceOp::Sum:
+                    CUDAMath::apply_reduction_operation(out, in, reduction_metadata, T(0), ReduceOp::Sum);
+                    break;
+
+                case ReduceOp::Mean:
+                    CPUBackend::apply_reduction_operation(out, in, reduction_metadata, T(0), ReduceOp::Sum);
+                    CPUBackend::apply_binary_in_place(out, Tensor<T>(static_cast<T>(reduction_metadata.reduced_vol), out.device()), BinaryOpInPlace::Div);
+                    break;
+
+
+                default:
+                    throw std::runtime_error("Unsupported ReduceOp in CPU Dispatcher.");
+            }
         }
     }
 

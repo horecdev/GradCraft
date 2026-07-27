@@ -112,7 +112,7 @@ namespace gradc {
 
             void backward(const Tensor<T>& out_grad) override {
                 if (m_parent.requires_grad()) {
-                    Tensor<T> full_grad = Tensor<T>(m_parent.shape(), T(), out_grad.device()); // Incoming grad is [5, 32] but the parent is [5, 10, 32]. 
+                    Tensor<T> full_grad = Tensor<T>(m_parent.shape(), T(0), out_grad.device()); // Incoming grad is [5, 32] but the parent is [5, 10, 32]. 
                     // You add dimension back for the temporary tensor (filled with 0s).
                     Tensor<T> grad_view = create_lobotomized_slice_view(full_grad, m_descriptors);
                     dispatch(out_grad.device(), UnaryOp::Identity, grad_view, out_grad);

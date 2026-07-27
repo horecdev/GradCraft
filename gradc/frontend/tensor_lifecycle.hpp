@@ -37,14 +37,14 @@ namespace gradc {
     Tensor<T>::Tensor(std::vector<int64_t> shape, Device device, UninitializedTag)
         : m_shape(std::move(shape)), m_strides(std::ssize(m_shape)), m_offset(0), m_requires_grad(false) {
             if (std::ssize(m_shape) == 0) { // a scalar (0-dimensional)
-                m_state = std::make_shared<TensorState<T>>(1, T(), device, true, false);
+                m_state = std::make_shared<TensorState<T>>(1, T(0), device, true, false);
             }
             else {
                 m_strides[std::ssize(m_shape) - 1] = 1; 
                 for (int64_t i = std::ssize(m_shape) - 1; i > 0; --i) {
                     m_strides[i - 1] = m_shape[i] * m_strides[i];
                 }
-                m_state = std::make_shared<TensorState<T>>(m_shape[0] * m_strides[0], T(), device, true, false);
+                m_state = std::make_shared<TensorState<T>>(m_shape[0] * m_strides[0], T(0), device, true, false);
             }
         }
     
@@ -57,14 +57,14 @@ namespace gradc {
         // can pass integer as m_strides, because it implicitly constructs a std::vector by just variable(arguments)
         : m_shape(std::move(shape)), m_strides(std::ssize(m_shape)), m_offset(0), m_requires_grad(validate_requires_grad(requires_grad)) {
             if (std::ssize(m_shape) == 0) { // a scalar (0-dimensional)
-                m_state = std::make_shared<TensorState<T>>(1, T(), device, false);
+                m_state = std::make_shared<TensorState<T>>(1, T(0), device, false);
             }
             else {
                 m_strides[std::ssize(m_shape) - 1] = 1; 
                 for (int64_t i = std::ssize(m_shape) - 1; i > 0; --i) {
                     m_strides[i - 1] = m_shape[i] * m_strides[i];
                 }
-                m_state = std::make_shared<TensorState<T>>(m_shape[0] * m_strides[0], T(), device, false);
+                m_state = std::make_shared<TensorState<T>>(m_shape[0] * m_strides[0], T(0), device, false);
             }
         }
 

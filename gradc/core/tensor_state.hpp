@@ -31,7 +31,7 @@ namespace gradc {
 
 
         TensorState() : m_storage(std::make_shared<Storage<T>>()), m_creation_op(nullptr), m_is_realized(false) {}
-        TensorState(int64_t size, T init_val = T(), Device device = Device(DeviceType::CPU), bool allocate = true, bool fill = true) : m_storage(std::make_shared<Storage<T>>(size, init_val, device, allocate, fill)), m_creation_op(nullptr), m_is_realized(allocate) {}
+        TensorState(int64_t size, T init_val = T(0), Device device = Device(DeviceType::CPU), bool allocate = true, bool fill = true) : m_storage(std::make_shared<Storage<T>>(size, init_val, device, allocate, fill)), m_creation_op(nullptr), m_is_realized(allocate) {}
         TensorState(std::shared_ptr<Storage<T>> storage) : m_storage(std::move(storage)), m_creation_op(nullptr), m_is_realized(false) {} // copy tensor storage, set m_r_op to be nothing
         TensorState(std::shared_ptr<Storage<T>> storage, std::unique_ptr<Node<T>> realize_op) : m_storage(std::move(storage)), m_creation_op(std::move(realize_op)), m_is_realized(false) {}
 

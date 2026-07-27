@@ -77,10 +77,11 @@ namespace gradc {
         const T* p_left = left._get_storage()->data();
         const T* p_right = right._get_storage()->data(); 
         
-        if (out.is_contiguous() && left.is_contiguous() && right.is_contiguous() && out.m_shape == left.m_shape == right.m_shape) {
+        if (out.is_contiguous() && left.is_contiguous() && right.is_contiguous() && out.m_shape == left.m_shape && left.m_shape == right.m_shape) {
             switch (op) {
                 case BinaryOp::Add:
                     binary_out_of_place_fast_kernel<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::Add<T>());
+                    break;
                 case BinaryOp::Sub:
                     binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::Sub<T>());
                     break;
@@ -92,9 +93,11 @@ namespace gradc {
                     break;
                 case BinaryOp::ReLUBackward:
                     binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::ReLUBackward<T>());
+                    break;
                 default:
                     throw std::runtime_error("Unsupported CUDA BOOP FAST");
             }
+            return;
         }
 
         const std::vector<int64_t>* left_strides = &left.m_strides;
@@ -142,6 +145,7 @@ namespace gradc {
                 break;
             case BinaryOp::ReLUBackward:
                 binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, functors::BOOP::ReLUBackward<T>());
+                break;
             default:
                 throw std::runtime_error("Unsupported CUDA BOOP SLOW");
         }
@@ -217,7 +221,8 @@ namespace gradc {
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA BIP FAST");
-        }
+            }
+            return;
         }
 
         const std::vector<int64_t>* right_strides;
@@ -312,7 +317,7 @@ namespace gradc {
     template <typename OutT, typename InT>
     void CUDAMath::apply_unary_out_of_place(Tensor<OutT>& out, const Tensor<InT>& source, UnaryOp op) {
         int64_t total_elems = out.volume();
-        int16_t threads = 256;
+        int64_t threads = 256;
         int64_t blocks = (total_elems + threads - 1) / threads;
 
         OutT* p_out = out._get_storage()->data();
@@ -338,6 +343,7 @@ namespace gradc {
                 default:
                     throw std::runtime_error("Unsupported CUDA UOP");
             }
+            return;
         }
 
         FusedView fused = fuse_dimensions(out.m_shape, {&out.m_strides, &source.m_strides});
@@ -417,7 +423,7 @@ namespace gradc {
     template <typename T>
     void CUDAMath::apply_unary_in_place(Tensor<T>& source, UnaryOpInPlace op) {
         int64_t total_elems = source.volume();
-        int16_t threads = 256;
+        int64_t threads = 256;
         int64_t blocks = (total_elems + threads - 1) / threads;
 
         T* p_source = source._get_storage()->data();
@@ -436,6 +442,7 @@ namespace gradc {
                 default:
                     throw std::runtime_error("Unsupported CUDA UIP");
             }
+            return;
         }
 
         FusedView fused = fuse_dimensions(source.m_shape, {&source.m_strides});
@@ -512,7 +519,7 @@ namespace gradc {
         }
         __syncthreads(); // all threads wait for init to finish
 
-        for (int stride = blockDim.x; stride > 0; stride /= 2) {
+        for (int stride = blockDim.x / 2; stride > 0; stride /= 2) {
             if (t_idx < stride) {
                 shared_data[t_idx] = op(shared_data[t_idx], shared_data[t_idx + stride]); // not atomic since its thread safe
             } 
@@ -534,7 +541,20 @@ namespace gradc {
         T* p_source = source._get_storage()->data();
 
         if (out.volume() == 1 && source.is_contiguous()) {
-            
+            switch (op) {
+                case ReduceOp::Sum:
+                    reduction_kernel_whole<<<blocks, threads>>>(p_out, p_source, source.m_offset, init_value, total_elems, functors::RED::Sum<T>());
+                    break;
+                case ReduceOp::Max:
+                    reduction_kernel_whole<<<blocks, threads>>>(p_out, p_source, source.m_offset, init_value, total_elems, functors::RED::Max<T>());
+                    break;
+                case ReduceOp::Min:
+                    reduction_kernel_whole<<<blocks, threads>>>(p_out, p_source, source.m_offset, init_value, total_elems, functors::RED::Min<T>());
+                    break;
+                default:
+                    throw std::runtime_error("Unsupported CUDA ReduceOp");  
+            }
+            return;
         }
 
         CUDAMeta shared_shape = to_cuda_meta(source.m_shape);
@@ -545,19 +565,18 @@ namespace gradc {
 
         switch (op) {
             case ReduceOp::Sum:
-                reduction_kernel<<<blocks, threads>>>(p_out, p_source, source.shape(), out_strides, source_strides, source.m_offset, total_elems, functors::RED::Sum<T>());
+                reduction_kernel<<<blocks, threads>>>(p_out, p_source, shared_shape, out_strides, source_strides, source.m_offset, total_elems, functors::RED::Sum<T>());
                 break;
             case ReduceOp::Max:
-                reduction_kernel<<<blocks, threads>>>(p_out, p_source, source.shape(), out_strides, source_strides, source.m_offset, total_elems, functors::RED::Max<T>());
+                reduction_kernel<<<blocks, threads>>>(p_out, p_source, shared_shape, out_strides, source_strides, source.m_offset, total_elems, functors::RED::Max<T>());
                 break;
             case ReduceOp::Min:
-                reduction_kernel<<<blocks, threads>>>(p_out, p_source, source.shape(), out_strides, source_strides, source.m_offset, total_elems, functors::RED::Min<T>());
+                reduction_kernel<<<blocks, threads>>>(p_out, p_source, shared_shape, out_strides, source_strides, source.m_offset, total_elems, functors::RED::Min<T>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA ReduceOp");
         }
     }
-
 
     #pragma endregion REDUCTIONS
 
