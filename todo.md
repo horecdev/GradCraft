@@ -47,6 +47,8 @@ DONE Fast path for reduction with all axes on the CPU
 - Template instantiate all
 - Integrate them into dispatchers
 - Compile the code
+- Write MinNode for the CPU (with a backward pass)
+- Write a Max, ArgMax, ArgMin
 - Write alternative ctors for ones, zeros, normal, uniform etc.
 - Link up BLAS and cuBLAS
 - Write STACK node

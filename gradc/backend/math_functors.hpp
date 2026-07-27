@@ -136,12 +136,20 @@ namespace gradc::functors {
             __device__ T operator()(T a, T b) const {
                 return a + b;
             }
+
+            __device__ void atomic(T* adress, T val) const {
+                atomicAdd(adress, val);
+            }
         };
 
         template <typename T>
         struct Max {
             __device__ T operator()(T a, T b) const {
                 return max(a, b);
+            }
+
+            __device__ void atomic(T* adress, T val) const {
+                atomicMax(adress, val);
             }
         };
 

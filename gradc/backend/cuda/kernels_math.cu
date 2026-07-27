@@ -498,11 +498,29 @@ namespace gradc {
         T* p_out, const T* p_source, 
         int64_t source_offset, T init_value,
         const int64_t total_elements, const Func op) {
+        
+        __shared__ T shared_data[256];
 
-        int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
+        int64_t t_idx = threadIdx.x;
+        int64_t  global_idx = blockIdx.x * blockDim.x + threadIdx.x;
+        
+        if (global_idx < total_elements) {
+            shared_data[t_idx] = p_source[source_offset + global_idx];
+        }
+        else {
+            shared_data[t_idx] = init_value;
+        }
+        __syncthreads(); // all wait for this to finish
 
-        if (linear_idx < total_elements) {
-            p_out[0] = op(p_out[0], p_source[source_offset + linear_idx]);
+        for (int stride = blockDim.x; stride > 0; stride /= 2) {
+            if (t_idx < stride) {
+                shared_data[t_idx] = op(shared_data[t_idx], shared_data[t_idx + stride]);
+            } 
+            __syncthreads(); // wait till halving is done
+        }
+
+        if (t_idx == 0) {
+            p_out[0] = shared_data[0];
         }
     }
 
