@@ -1,7 +1,7 @@
 #include "gradc/backend/cuda/cuda_math.hpp"
 #include <cuda_runtime.h>
 #include "gradc/core/detail/shape_inference.hpp"
-#include "gradc/backend/math_functors.hpp"
+#include "gradc/backend/cuda/math_functors.cuh"
 #include "gradc/backend/cuda/cuda_utils.hpp"
 
 namespace gradc {
@@ -55,7 +55,7 @@ namespace gradc {
     }
 
     template <typename T, typename Func>
-    __global__ void binary_out_of_place_fast_kernel(
+    __global__ void binary_out_of_place_kernel_fast(
         T* p_out, const T* p_left, const T* p_right, 
         const int64_t out_offset, const int64_t left_offset, const int64_t right_offset,
         const int64_t total_elements, const Func op) {
@@ -80,19 +80,19 @@ namespace gradc {
         if (out.is_contiguous() && left.is_contiguous() && right.is_contiguous() && out.m_shape == left.m_shape && left.m_shape == right.m_shape) {
             switch (op) {
                 case BinaryOp::Add:
-                    binary_out_of_place_fast_kernel<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::Add<T>());
+                    binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::Add<T>());
                     break;
                 case BinaryOp::Sub:
-                    binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::Sub<T>());
+                    binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::Sub<T>());
                     break;
                 case BinaryOp::Mul:
-                    binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::Mul<T>());
+                    binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::Mul<T>());
                     break;
                 case BinaryOp::Div:
-                    binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::Div<T>());
+                    binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::Div<T>());
                     break;
                 case BinaryOp::ReLUBackward:
-                    binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, functors::BOOP::ReLUBackward<T>());
+                    binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::ReLUBackward<T>());
                     break;
                 default:
                     throw std::runtime_error("Unsupported CUDA BOOP FAST");
@@ -132,19 +132,19 @@ namespace gradc {
 
         switch (op) {
             case BinaryOp::Add:
-                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, functors::BOOP::Add<T>());
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::Add<T>());
                 break;
             case BinaryOp::Sub:
-                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, functors::BOOP::Sub<T>());
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::Sub<T>());
                 break;
             case BinaryOp::Mul:
-                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, functors::BOOP::Mul<T>());
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::Mul<T>());
                 break;
             case BinaryOp::Div:
-                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, functors::BOOP::Div<T>());
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::Div<T>());
                 break;
             case BinaryOp::ReLUBackward:
-                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, functors::BOOP::ReLUBackward<T>());
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::ReLUBackward<T>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA BOOP SLOW");
@@ -208,16 +208,16 @@ namespace gradc {
         if (left.m_shape == right.m_shape && left.is_contiguous() && right.is_contiguous()) {
             switch (op) {
             case BinaryOpInPlace::Add:
-                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, left.m_offset, right.m_offset, total_elems, functors::BIP::Add<T>());
+                binary_in_place_kernel_fast<<<blocks, threads>>>(p_left, p_right, left.m_offset, right.m_offset, total_elems, cuda_functors::BIP::Add<T>());
                 break;
             case BinaryOpInPlace::Sub:
-                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, left.m_offset, right.m_offset, total_elems, functors::BIP::Sub<T>());
+                binary_in_place_kernel_fast<<<blocks, threads>>>(p_left, p_right, left.m_offset, right.m_offset, total_elems, cuda_functors::BIP::Sub<T>());
                 break;
             case BinaryOpInPlace::Mul:
-                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, left.m_offset, right.m_offset, total_elems, functors::BIP::Mul<T>());
+                binary_in_place_kernel_fast<<<blocks, threads>>>(p_left, p_right, left.m_offset, right.m_offset, total_elems, cuda_functors::BIP::Mul<T>());
                 break;
             case BinaryOpInPlace::Div:
-                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, left.m_offset, right.m_offset, total_elems, functors::BIP::Div<T>());
+                binary_in_place_kernel_fast<<<blocks, threads>>>(p_left, p_right, left.m_offset, right.m_offset, total_elems, cuda_functors::BIP::Div<T>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA BIP FAST");
@@ -253,16 +253,16 @@ namespace gradc {
 
         switch (op) {
             case BinaryOpInPlace::Add:
-                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, functors::BIP::Add<T>());
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, cuda_functors::BIP::Add<T>());
                 break;
             case BinaryOpInPlace::Sub:
-                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, functors::BIP::Sub<T>());
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, cuda_functors::BIP::Sub<T>());
                 break;
             case BinaryOpInPlace::Mul:
-                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, functors::BIP::Mul<T>());
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, cuda_functors::BIP::Mul<T>());
                 break;
             case BinaryOpInPlace::Div:
-                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, functors::BIP::Div<T>());
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, cuda_functors::BIP::Div<T>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA BIP SLOW");
@@ -326,19 +326,19 @@ namespace gradc {
         if (out.is_contiguous() && source.is_contiguous() && out.m_shape == source.m_shape) {
             switch (op) {
                 case UnaryOp::Identity:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, functors::UOP::Identity<InT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Identity<InT>());
                     break;
                 case UnaryOp::Cast:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, functors::UOP::Cast<InT, OutT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Cast<InT, OutT>());
                     break;
                 case UnaryOp::ReLU:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, functors::UOP::ReLU<InT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::ReLU<InT>());
                     break;
                 case UnaryOp::Exp:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, functors::UOP::Exp<InT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Exp<InT>());
                     break;
                 case UnaryOp::Log:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, functors::UOP::Log<InT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Log<InT>());
                     break;
                 default:
                     throw std::runtime_error("Unsupported CUDA UOP");
@@ -358,19 +358,19 @@ namespace gradc {
 
         switch (op) {
             case UnaryOp::Identity:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, functors::UOP::Identity<InT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Identity<InT>());
                 break;
             case UnaryOp::Cast:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, functors::UOP::Cast<InT, OutT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Cast<InT, OutT>());
                 break;
             case UnaryOp::ReLU:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, functors::UOP::ReLU<InT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::ReLU<InT>());
                 break;
             case UnaryOp::Exp:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, functors::UOP::Exp<InT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Exp<InT>());
                 break;
             case UnaryOp::Log:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, functors::UOP::Log<InT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Log<InT>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA UOP");
@@ -431,13 +431,13 @@ namespace gradc {
         if (source.is_contiguous()) {
             switch (op) {
                 case UnaryOpInPlace::ReLU:
-                    unary_in_place_kernel<<<blocks, threads>>>(p_source, source.m_offset, total_elems, functors::UIP::ReLU<T>());
+                    unary_in_place_kernel_fast<<<blocks, threads>>>(p_source, source.m_offset, total_elems, cuda_functors::UIP::ReLU<T>());
                     break;
                 case UnaryOpInPlace::Exp:
-                    unary_in_place_kernel<<<blocks, threads>>>(p_source, source.m_offset, total_elems, functors::UIP::Exp<T>());
+                    unary_in_place_kernel_fast<<<blocks, threads>>>(p_source, source.m_offset, total_elems, cuda_functors::UIP::Exp<T>());
                     break;
                 case UnaryOpInPlace::Log:
-                    unary_in_place_kernel<<<blocks, threads>>>(p_source, source.m_offset, total_elems, functors::UIP::Log<T>());
+                    unary_in_place_kernel_fast<<<blocks, threads>>>(p_source, source.m_offset, total_elems, cuda_functors::UIP::Log<T>());
                     break;
                 default:
                     throw std::runtime_error("Unsupported CUDA UIP");
@@ -454,13 +454,13 @@ namespace gradc {
 
         switch (op) {
             case UnaryOpInPlace::ReLU:
-                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, functors::UIP::ReLU<T>());
+                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, cuda_functors::UIP::ReLU<T>());
                 break;
             case UnaryOpInPlace::Exp:
-                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, functors::UIP::Exp<T>());
+                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, cuda_functors::UIP::Exp<T>());
                 break;
             case UnaryOpInPlace::Log:
-                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, functors::UIP::Log<T>());
+                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, cuda_functors::UIP::Log<T>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA UIP");
@@ -532,7 +532,7 @@ namespace gradc {
     }
 
     template <typename T>
-    static void apply_reduction_operation(Tensor<T>& out, const Tensor<T>& source, const ReductionMetadata& reduction_metadata, T init_value, ReduceOp op) {
+    void CUDAMath::apply_reduction_operation(Tensor<T>& out, const Tensor<T>& source, const ReductionMetadata& reduction_metadata, T init_value, ReduceOp op) {
         int64_t total_elems = source.volume();
         int64_t threads = 256;
         int64_t blocks = (total_elems + threads - 1) / threads;
@@ -543,13 +543,13 @@ namespace gradc {
         if (out.volume() == 1 && source.is_contiguous()) {
             switch (op) {
                 case ReduceOp::Sum:
-                    reduction_kernel_whole<<<blocks, threads>>>(p_out, p_source, source.m_offset, init_value, total_elems, functors::RED::Sum<T>());
+                    reduction_kernel_whole<<<blocks, threads>>>(p_out, p_source, source.m_offset, init_value, total_elems, cuda_functors::RED::Sum<T>());
                     break;
                 case ReduceOp::Max:
-                    reduction_kernel_whole<<<blocks, threads>>>(p_out, p_source, source.m_offset, init_value, total_elems, functors::RED::Max<T>());
+                    reduction_kernel_whole<<<blocks, threads>>>(p_out, p_source, source.m_offset, init_value, total_elems, cuda_functors::RED::Max<T>());
                     break;
                 case ReduceOp::Min:
-                    reduction_kernel_whole<<<blocks, threads>>>(p_out, p_source, source.m_offset, init_value, total_elems, functors::RED::Min<T>());
+                    reduction_kernel_whole<<<blocks, threads>>>(p_out, p_source, source.m_offset, init_value, total_elems, cuda_functors::RED::Min<T>());
                     break;
                 default:
                     throw std::runtime_error("Unsupported CUDA ReduceOp");  
@@ -565,13 +565,13 @@ namespace gradc {
 
         switch (op) {
             case ReduceOp::Sum:
-                reduction_kernel<<<blocks, threads>>>(p_out, p_source, shared_shape, out_strides, source_strides, source.m_offset, total_elems, functors::RED::Sum<T>());
+                reduction_kernel<<<blocks, threads>>>(p_out, p_source, shared_shape, out_strides, source_strides, source.m_offset, total_elems, cuda_functors::RED::Sum<T>());
                 break;
             case ReduceOp::Max:
-                reduction_kernel<<<blocks, threads>>>(p_out, p_source, shared_shape, out_strides, source_strides, source.m_offset, total_elems, functors::RED::Max<T>());
+                reduction_kernel<<<blocks, threads>>>(p_out, p_source, shared_shape, out_strides, source_strides, source.m_offset, total_elems, cuda_functors::RED::Max<T>());
                 break;
             case ReduceOp::Min:
-                reduction_kernel<<<blocks, threads>>>(p_out, p_source, shared_shape, out_strides, source_strides, source.m_offset, total_elems, functors::RED::Min<T>());
+                reduction_kernel<<<blocks, threads>>>(p_out, p_source, shared_shape, out_strides, source_strides, source.m_offset, total_elems, cuda_functors::RED::Min<T>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA ReduceOp");
@@ -580,4 +580,32 @@ namespace gradc {
 
     #pragma endregion REDUCTIONS
 
+    #pragma region TEMPLATING
+
+    #define INSTANTIATE_CUDA_MATH_SINGLE(T) \
+        template void CUDAMath::apply_binary_out_of_place<T>(Tensor<T>&, const Tensor<T>&, const Tensor<T>&, BinaryOp); \
+        template void CUDAMath::apply_binary_in_place<T>(Tensor<T>&, const Tensor<T>&, BinaryOpInPlace); \
+        template void CUDAMath::apply_unary_in_place<T>(Tensor<T>&, UnaryOpInPlace); \
+        template void CUDAMath::apply_reduction_operation<T>(Tensor<T>&, const Tensor<T>&, const ReductionMetadata&, T, ReduceOp);
+
+    #define INSTANTIATE_CUDA_MATH_UOP(OutT, InT) \
+        template void CUDAMath::apply_unary_out_of_place<OutT, InT>(Tensor<OutT>&, const Tensor<InT>&, UnaryOp);
+
+    #define INSTANTIATE_CUDA_UOP_ALL_OUTS(InT) \
+        INSTANTIATE_CUDA_MATH_UOP(float, InT) \
+        INSTANTIATE_CUDA_MATH_UOP(double, InT) \
+        INSTANTIATE_CUDA_MATH_UOP(int32_t, InT) \
+        INSTANTIATE_CUDA_MATH_UOP(int64_t, InT) 
+
+    INSTANTIATE_CUDA_MATH_SINGLE(float)
+    INSTANTIATE_CUDA_MATH_SINGLE(double)
+    INSTANTIATE_CUDA_MATH_SINGLE(int32_t)
+    INSTANTIATE_CUDA_MATH_SINGLE(int64_t)
+
+    INSTANTIATE_CUDA_UOP_ALL_OUTS(float)
+    INSTANTIATE_CUDA_UOP_ALL_OUTS(double)
+    INSTANTIATE_CUDA_UOP_ALL_OUTS(int32_t)
+    INSTANTIATE_CUDA_UOP_ALL_OUTS(int64_t)
+
+    #pragma endregion TEMPLATING
 }

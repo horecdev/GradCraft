@@ -45,11 +45,13 @@ DONE Apply for scalars / fast paths on the GPU (scalars fall into the fast path)
 DONE Write correct reduction kernels for CUDA (both fast and slow) + integrate them into cpu wrapper (with switch)
 DONE Fast path for reduction with all axes on the CPU
 - Template instantiate all
-DONE Integrate CUDA into dispatchers
+DONE Integrate CUDA into 
+DONE Make CPU functors and GPU functors + integrate CPU ones
 - Compile the code
-- Write a Max, ArgMax, (for CPU)
+- Write a MaxNode, ArgMaxNode, (for CPU) (add check for ReduceOp::Max etc)
 - Write Max, Argmax for CUDA
 - Write alternative ctors for ones, zeros, normal, uniform etc.
 - Link up BLAS and cuBLAS
+- add multithreading with OpenMP (no writing mutexes and shit)
 - Write STACK node
 - Add ton of bloated nodes so the engine is actually usable

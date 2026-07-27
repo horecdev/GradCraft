@@ -104,8 +104,6 @@ namespace gradc {
 
             DType dtype() const {return type_to_dtype<T>();}
 
-            const auto get_realize_op_ptr_type() const;
-
             int64_t volume() const {
                 int64_t vol = 1;
                 for (int64_t dim : m_shape) {
@@ -148,7 +146,7 @@ namespace gradc {
             
             // BACKEND
             friend CPUBackend;
-            friend CUDAMath;
+            friend CUDAUtils;
             friend CUDAMath;
 
             template <typename U, typename W> friend auto operator+(Tensor<U> left, Tensor<W> right); // we befriend whole family of functions named operator+. 
@@ -215,22 +213,16 @@ namespace gradc { // here is what dereferences m_state, since before its created
     }
 
     template <typename T>
-    const auto Tensor<T>::get_realize_op_ptr_type() const {
-        if (m_state->m_creation_op == nullptr) {
-            return "nullptr";
-        }
-        return typeid(*m_state->m_creation_op).name();
-    }
-
-    template <typename T>
     void Tensor<T>::set_data(std::initializer_list<T> data) {
-        if (std::ssize(data) != volume()) {
-            throw std::runtime_error("set)data size mismatch.");
+        if (std::ssize(data) != this->_get_storage()->size()) {
+            throw std::runtime_error("set_data must set data for the entire underlying storage.");
         }
 
+        int64_t i = 0;
         T* raw_ptr = m_state->m_storage->data();
-        for (int64_t i = 0; i < std::ssize(data); ++i) {
-            raw_ptr[i] = data[i];
+        for (const T& val : data) {
+            raw_ptr[i] = val;\
+            i++;
         }
     }
 }

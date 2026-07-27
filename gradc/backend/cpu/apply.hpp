@@ -85,7 +85,7 @@ namespace gradc {
         template <typename T, typename Func> // two types so you can cast one to another in lambda
         static void apply_binary_in_place(Tensor<T>& left, const Tensor<T>& right, Func op) { 
             if (left.m_shape.empty() && right.m_shape.empty()) {
-                op(left.m_state->m_storage->m_data[left.m_offset], right.m_state->m_storage->m_data[right.m_offset]);
+                op((left.m_state->m_storage->m_data)[left.m_offset], (right.m_state->m_storage->m_data)[right.m_offset]);
                 return;
             }
 
@@ -237,7 +237,7 @@ namespace gradc {
 
             if (out.volume() == 1 && source.is_contiguous()) {
                 const T* p_source = source._get_storage()->data() + source.m_offset;
-                T* p_out = out._get_storage->data();
+                T* p_out = out._get_storage()->data();
 
                 T result = init_value;
                 int64_t total_elems = source.volume();

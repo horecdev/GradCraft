@@ -21,7 +21,6 @@ namespace gradc {
     
     template void CUDAUtils::fill<float>(float* ptr, float val, int64_t size, Device device);
     template void CUDAUtils::fill<double>(double* ptr, double val, int64_t size, Device device);
-    template void CUDAUtils::fill<int16_t>(int16_t* ptr, int16_t val, int64_t size, Device device);
     template void CUDAUtils::fill<int32_t>(int32_t* ptr, int32_t val, int64_t size, Device device);
     template void CUDAUtils::fill<int64_t>(int64_t* ptr, int64_t val, int64_t size, Device device);
 

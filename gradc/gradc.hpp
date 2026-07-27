@@ -13,3 +13,10 @@
 #include "frontend/tensor_shape.hpp" // IWYU pragma: keep
 
 #include "graph/autograd_engine.hpp" // IWYU pragma: keep
+
+namespace gradc {
+    template class Tensor<float>;
+    template class Tensor<double>;
+    template class Tensor<int32_t>;
+    template class Tensor<int64_t>;
+}

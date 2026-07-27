@@ -157,7 +157,7 @@ namespace gradc {
                 const T* src_ptr = m_parent._get_storage()->m_data + m_parent.offset();
                 T* dst_ptr = result._get_storage()->m_data; // offset for dst is 0 since its freshly made contiguous
 
-                auto& [set_device, kind] = infer_cuda_memcpy_device_kind(m_parent.device(), m_target_device);
+                auto [set_device, kind] = infer_cuda_memcpy_device_kind(m_parent.device(), m_target_device);
                 cudaSetDevice(set_device.index);
                 cudaError_t err = cudaMemcpy(dst_ptr, src_ptr, bytes_to_copy, kind);
                 if (err != cudaSuccess) {
@@ -167,14 +167,14 @@ namespace gradc {
                 return result;
             }
 
-            void backward(Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad) override {
                 if (m_parent.requires_grad()) {
                     Tensor<T> to_grad = Tensor<T>(out_grad.shape(), m_parent.device(), uninitialized);
                     int64_t bytes_to_copy = out_grad.volume() * sizeof(T);
                     const T* src_ptr = out_grad._get_storage()->m_data; // always contiguous (no offset needed)
                     T* dst_ptr = to_grad._get_storage()->m_data;
 
-                    auto& [set_device, kind] = infer_cuda_memcpy_device_kind(m_target_device, m_parent.device());
+                    auto [set_device, kind] = infer_cuda_memcpy_device_kind(m_target_device, m_parent.device());
                     cudaSetDevice(set_device.index);
                     cudaError_t err = cudaMemcpy(dst_ptr, src_ptr, bytes_to_copy, kind);
                     if (err != cudaSuccess) {

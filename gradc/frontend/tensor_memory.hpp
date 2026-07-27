@@ -83,7 +83,7 @@ namespace gradc {
         }
         else {
             Tensor<T> result = Tensor<T>(m_shape, m_requires_grad, lazy, device);
-            result.m_state->m_creation_op = std::make_unique<ToNode<T>>(this, device);
+            result.m_state->m_creation_op = std::make_unique<ToNode<T>>(*this, device);
             return result;
         }
         

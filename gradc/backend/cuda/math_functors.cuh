@@ -2,7 +2,7 @@
 
 #include <cuda_runtime.h>
 
-namespace gradc::functors {
+namespace gradc::cuda_functors {
     namespace BOOP {
         template <typename T>
         struct Add {
@@ -43,28 +43,28 @@ namespace gradc::functors {
     namespace BIP {
         template <typename T>
         struct Add {
-            __device__ T operator()(T& a, T b) const {
+            __device__ void operator()(T& a, T b) const {
                 a += b;
             }
         };
 
         template <typename T>
         struct Sub {
-            __device__ T operator()(T& a, T b) const {
+            __device__ void operator()(T& a, T b) const {
                 a -= b;
             }
         };
 
         template <typename T>
         struct Mul {
-            __device__ T operator()(T& a, T b) const {
+            __device__ void operator()(T& a, T b) const {
                 a *= b;
             }
         };
 
         template <typename T>
         struct Div {
-            __device__ T operator()(T& a, T b) const {
+            __device__ void operator()(T& a, T b) const {
                 a /= b;
             }
         };
@@ -88,14 +88,26 @@ namespace gradc::functors {
         template <typename T>
         struct Exp {
             __device__ T operator()(T a) const {
-                return exp(a);
+                if constexpr (std::is_floating_point_v<T>) {
+                    return exp(a);
+                }
+                else {
+                    __trap(); // this shit should never be invoked (exponentiating a tensor of int type into int type)
+                    return 0;
+                }
             }
         };
 
         template <typename T>
         struct Log {
             __device__ T operator()(T a) const {
-                return log(a);
+                if constexpr (std::is_floating_point_v<T>) {
+                    return log(a);
+                }
+                else {
+                    __trap();
+                    return 0;
+                }
             }
         };
 
@@ -110,22 +122,33 @@ namespace gradc::functors {
     namespace UIP {
         template <typename T>
         struct ReLU {
-            __device__ T operator()(T& a) const {
+            __device__ void operator()(T& a) const {
                 a = a > 0 ? a : 0;
             }
         };
 
         template <typename T>
         struct Log {
-            __device__ T operator()(T& a) const {
-                a = log(a);
+            __device__ void operator()(T& a) const {
+                if constexpr (std::is_floating_point_v<T>) {
+                    a = log(a);
+                }
+                else {
+                    __trap();
+                }
+                
             }
         };
 
         template <typename T>
         struct Exp {
-            __device__ T operator()(T& a) const {
-                a = exp(a);
+            __device__ void operator()(T& a) const {
+                if constexpr (std::is_floating_point_v<T>) {
+                    a = exp(a);
+                }
+                else {
+                    __trap();
+                }
             }
         };
     }
@@ -138,7 +161,12 @@ namespace gradc::functors {
             }
 
             __device__ void atomic(T* adress, T val) const {
-                atomicAdd(adress, val);
+                if constexpr (std::is_same_v<T, int64_t>) {
+                    atomicAdd((unsigned long long int*)adress, val);
+                }
+                else {
+                    atomicAdd(adress, val);
+                }  
             }
         };
 
@@ -173,17 +201,17 @@ namespace gradc::functors {
                 }
 
                 else if constexpr (std::is_same_v<T, double>) {
-                    unsigned long long int* adress_as_ull = (unsigned long long int*)adress;
+                    unsigned long long int* adress_as_ull = (unsigned long long int*)adress; // unsigned so we take raw bytes
                     unsigned long long int old = *adress_as_ull; // old is smth like 13 quintillion because leftmost bit is signed. But CAS only compares bytes (same or not?)
                     unsigned long long int assumed;
 
                     do {
                         assumed = old;
-                        if (__longlong_as_double(assumed) >= val) { // compare doubles, not integers
+                        if (__longlong_as_double(assumed) >= val) { // compare doubles, not long long
                             break;
                         }
 
-                        old = atomicCAS(adress_as_ull, assumed, __double_as_int(val));
+                        old = atomicCAS(adress_as_ull, assumed, __double_as_longlong(val));
 
                     } while (assumed != old);
                 }
@@ -229,12 +257,12 @@ namespace gradc::functors {
                             break;
                         }
 
-                        old = atomicCAS(adress_as_ull, assumed, __double_as_int(val));
+                        old = atomicCAS(adress_as_ull, assumed, __double_as_longlong(val));
 
                     } while (assumed != old);
                 }
             }
         };
     }
-    
 }
+

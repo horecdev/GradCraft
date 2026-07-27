@@ -1,12 +1,12 @@
 #pragma once
 
-#include "op_types.hpp"
+#include "gradc/backend/op_types.hpp"
+#include "gradc/backend/cpu/math_functors.hpp"
 #include "cpu/apply.hpp"
 #include "gradc/backend/cuda/cuda_math.hpp"
 #include "../core/tensor.hpp"
 #include "../core/types.hpp"
 
-#include <cmath>
 #include <cstdint>
 #include <stdexcept>
 #include <vector>
@@ -43,23 +43,23 @@ namespace gradc {
         if (device.is_cpu()) {
             switch (op) {
                 case BinaryOp::Add:
-                    CPUBackend::apply_binary_out_of_place(out, left, right, [](T a, T b){return a + b;});
+                    CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::Add<T>());
                     break;
 
                 case BinaryOp::Sub:
-                    CPUBackend::apply_binary_out_of_place(out, left, right, [](T a, T b){return a - b;});
+                    CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::Sub<T>());
                     break;
 
                 case BinaryOp::Mul:
-                    CPUBackend::apply_binary_out_of_place(out, left, right, [](T a, T b){return a * b;});
+                    CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::Mul<T>());
                     break;
 
                 case BinaryOp::Div:
-                    CPUBackend::apply_binary_out_of_place(out, left, right, [](T a, T b){return a / b;});
+                    CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::Div<T>());
                     break;
 
                 case BinaryOp::ReLUBackward:
-                    CPUBackend::apply_binary_out_of_place(out, left, right, [](T grad, T value){return value > 0 ? grad : 0;});
+                    CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::ReLUBackward<T>());
                     break;
 
                 default:
@@ -77,19 +77,19 @@ namespace gradc {
         if (device.is_cpu()) {
             switch (op) {
                 case BinaryOpInPlace::Add:
-                    CPUBackend::apply_binary_in_place(left, right, [](T& a, T b){a += b;});
+                    CPUBackend::apply_binary_in_place(left, right, cpu_functors::BIP::Add<T>());
                     break;
 
                 case BinaryOpInPlace::Sub:
-                    CPUBackend::apply_binary_in_place(left, right, [](T& a, T b){a -= b;});
+                    CPUBackend::apply_binary_in_place(left, right, cpu_functors::BIP::Sub<T>());
                     break;
 
                 case BinaryOpInPlace::Mul:
-                    CPUBackend::apply_binary_in_place(left, right, [](T& a, T b){a *= b;});
+                    CPUBackend::apply_binary_in_place(left, right, cpu_functors::BIP::Mul<T>());
                     break;
 
                 case BinaryOpInPlace::Div:
-                    CPUBackend::apply_binary_in_place(left, right, [](T& a, T b){a /= b;});
+                    CPUBackend::apply_binary_in_place(left, right, cpu_functors::BIP::Div<T>());
                     break;
 
                 default:
@@ -107,19 +107,19 @@ namespace gradc {
         if (device.is_cpu()) {
             switch (op) {
                 case UnaryOp::Identity:
-                    CPUBackend::apply_unary_out_of_place(out, in, [](T a){return a;});
+                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOP::Identity<T>());
                     break;
 
                 case UnaryOp::Exp:
-                    CPUBackend::apply_unary_out_of_place(out, in, [](T a){return std::exp(a);});
+                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOP::Exp<T>());
                     break;
 
                 case UnaryOp::Log:
-                    CPUBackend::apply_unary_out_of_place(out, in, [](T a){return std::log(a);});
+                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOP::Log<T>());
                     break;
 
                 case UnaryOp::ReLU:
-                    CPUBackend::apply_unary_out_of_place(out, in, [](T a){return a > 0 ? a : 0;});
+                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOP::ReLU<T>());
                     break;
 
                 default:
@@ -137,15 +137,15 @@ namespace gradc {
         if (device.is_cpu()) {
             switch (op) {
                 case UnaryOpInPlace::Exp:
-                    CPUBackend::apply_unary_in_place(in, [](T& a){a = std::exp(a);});
+                    CPUBackend::apply_unary_in_place(in, cpu_functors::UIP::Exp<T>());
                     break;
 
                 case UnaryOpInPlace::Log:
-                    CPUBackend::apply_unary_in_place(in, [](T& a){a = std::log(a);});
+                    CPUBackend::apply_unary_in_place(in, cpu_functors::UIP::Log<T>());
                     break;
 
                 case UnaryOpInPlace::ReLU:
-                    CPUBackend::apply_unary_in_place(in, [](T& a){a = a > 0 ? a : 0;});
+                    CPUBackend::apply_unary_in_place(in, cpu_functors::UIP::ReLU<T>());
                     break;
 
                 default:
@@ -163,12 +163,12 @@ namespace gradc {
         if (device.is_cpu()) {
             switch (op) {
                 case ReduceOp::Sum:
-                    CPUBackend::apply_reduction_operation(out, in, reduction_metadata, T(0), [](T a, T b){return a + b;});
+                    CPUBackend::apply_reduction_operation(out, in, reduction_metadata, T(0), cpu_functors::RED::Sum<T>());
                     break;
 
                 case ReduceOp::Mean:
-                    CPUBackend::apply_reduction_operation(out, in, reduction_metadata, T(0), [](T a, T b){return a + b;});
-                    CPUBackend::apply_binary_in_place(out, Tensor<T>(static_cast<T>(reduction_metadata.reduced_vol), out.device()), [](T& a, T b){a /= b;});
+                    CPUBackend::apply_reduction_operation(out, in, reduction_metadata, T(0), cpu_functors::RED::Sum<T>());
+                    CPUBackend::apply_binary_in_place(out, Tensor<T>(static_cast<T>(reduction_metadata.reduced_vol), out.device()), cpu_functors::BIP::Div<T>());
                     break;
 
                 default:
@@ -183,8 +183,8 @@ namespace gradc {
                     break;
 
                 case ReduceOp::Mean:
-                    CPUBackend::apply_reduction_operation(out, in, reduction_metadata, T(0), ReduceOp::Sum);
-                    CPUBackend::apply_binary_in_place(out, Tensor<T>(static_cast<T>(reduction_metadata.reduced_vol), out.device()), BinaryOpInPlace::Div);
+                    CUDAMath::apply_reduction_operation(out, in, reduction_metadata, T(0), ReduceOp::Sum);
+                    CUDAMath::apply_binary_in_place(out, Tensor<T>(static_cast<T>(reduction_metadata.reduced_vol), out.device()), BinaryOpInPlace::Div);
                     break;
 
 
@@ -197,7 +197,7 @@ namespace gradc {
     template <typename OutT, typename InT>
     inline void dispatch_cast(Device device, Tensor<OutT>& out, const Tensor<InT>& in) {
         if (device.is_cpu()) {
-            CPUBackend::apply_unary_out_of_place(out, in, [](InT a){return static_cast<OutT>(a);});
+            CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOP::Cast<InT, OutT>());
         }
         else if (device.is_cuda()) {
             CUDAMath::apply_unary_out_of_place(out, in, UnaryOp::Cast);
