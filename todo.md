@@ -44,10 +44,10 @@ DONE Write cuda kernels for UOP, UIP, BIP, REDUCTIONS, BOOP
 DONE Apply for scalars / fast paths on the GPU (scalars fall into the fast path) (all 4 main op types) (add swtiches to invoke with right functor the fast version)
 DONE Write correct reduction kernels for CUDA (both fast and slow) + integrate them into cpu wrapper (with switch)
 DONE Fast path for reduction with all axes on the CPU
-- Template instantiate all
+DONE Template instantiate all
 DONE Integrate CUDA into 
 DONE Make CPU functors and GPU functors + integrate CPU ones
-- Compile the code
+DONE Compile the code
 - Write a MaxNode, ArgMaxNode, (for CPU) (add check for ReduceOp::Max etc)
 - Write Max, Argmax for CUDA
 - Write alternative ctors for ones, zeros, normal, uniform etc.

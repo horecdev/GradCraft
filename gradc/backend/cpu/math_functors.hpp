@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace gradc::cpu_functors {
     namespace BOOP {
@@ -89,14 +90,24 @@ namespace gradc::cpu_functors {
         template <typename T>
         struct Exp {
             T operator()(T a) const {
-                return std::exp(a);
+                if constexpr (std::is_floating_point_v<T>) {
+                    return static_cast<T>(std::exp(a));
+                }
+                else {
+                    throw std::runtime_error("Exp CPU functor running on non-floating.");
+                }
             }
         };
 
         template <typename T>
         struct Log {
             T operator()(T a) const {
-                return std::log(a);
+                if constexpr (std::is_floating_point_v<T>) {
+                    return static_cast<T>(std::log(a));
+                }
+                else {
+                    throw std::runtime_error("Log CPU functor running on non-floating.");
+                }
             }
         };
 
@@ -117,16 +128,26 @@ namespace gradc::cpu_functors {
         };
 
         template <typename T>
-        struct Log {
+        struct Exp {
             void operator()(T& a) const {
-                a = std::log(a);
+                if constexpr (std::is_floating_point_v<T>) {
+                    a = static_cast<T>(std::exp(a));
+                }
+                else {
+                    throw std::runtime_error("UIP Exp CPU functor running on non-floating.");
+                }
             }
         };
 
         template <typename T>
-        struct Exp {
+        struct Log {
             void operator()(T& a) const {
-                a = std::exp(a);
+                if constexpr (std::is_floating_point_v<T>) {
+                    a = static_cast<T>(std::log(a));
+                }
+                else {
+                    throw std::runtime_error("UIP Log CPU functor running on non-floating.");
+                }
             }
         };
     }
