@@ -199,7 +199,9 @@ namespace gradc {
         if (device.is_cpu()) {
             CPUBackend::apply_unary_out_of_place(out, in, [](InT a){return static_cast<OutT>(a);});
         }
-        else if (device.is_cuda()) {}
+        else if (device.is_cuda()) {
+            CUDAMath::apply_unary_out_of_place(out, in, UnaryOp::Cast);
+        }
     }
 
 }

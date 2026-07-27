@@ -42,12 +42,11 @@ DONE Compile with dim fusing + get right results
 DONE Write all functors in Functor::BIP::etc
 DONE Write cuda kernels for UOP, UIP, BIP, REDUCTIONS, BOOP
 DONE Apply for scalars / fast paths on the GPU (scalars fall into the fast path) (all 4 main op types) (add swtiches to invoke with right functor the fast version)
-- Write correct reduction kernels for CUDA (both fast and slow) + integrate them into cpu wrapper (with switch)
+DONE Write correct reduction kernels for CUDA (both fast and slow) + integrate them into cpu wrapper (with switch)
 DONE Fast path for reduction with all axes on the CPU
 - Template instantiate all
-- Integrate them into dispatchers
+DONE Integrate CUDA into dispatchers
 - Compile the code
-- Write MinNode for the CPU (with a backward pass)
 - Write a Max, ArgMax, (for CPU)
 - Write Max, Argmax for CUDA
 - Write alternative ctors for ones, zeros, normal, uniform etc.
