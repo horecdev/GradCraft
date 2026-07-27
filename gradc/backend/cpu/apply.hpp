@@ -235,8 +235,23 @@ namespace gradc {
                 throw std::runtime_error("Tried reducing a 0-Dimensional Tensor.");
             }
 
+            if (out.volume() == 1 && source.is_contiguous()) {
+                const T* p_source = source._get_storage()->data() + source.m_offset;
+                T* p_out = out._get_storage->data();
+
+                T result = init_value;
+                int64_t total_elems = source.volume();
+                for (int64_t i = 0; i < total_elems; ++i) {
+                    result = op(result, p_source[i]);
+                }
+
+                *p_out = result;
+                return;
+            }
+
             std::shared_ptr<Storage<T>> storage = out._get_storage();
-            std::fill(storage->data(), storage->data() + storage->size(), init_value); // initialize garbage memory
+            T* p_out = out._get_storage()->data();
+            std::fill(p_out, p_out + out.volume(), init_value); // initialize garbage memory
 
             std::vector<int64_t> odometer(n_dim, 0);
             while (odometer[0] < source.m_shape[0]) {

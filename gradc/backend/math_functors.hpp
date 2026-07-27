@@ -78,13 +78,6 @@ namespace gradc::functors {
             }
         };
 
-        template <typename InT, typename OutT>
-        struct Cast {
-            __device__ OutT operator()(InT a) const {
-                return static_cast<OutT>(a);
-            }
-        };
-
         template <typename T>
         struct ReLU {
             __device__ T operator()(T a) const {
@@ -103,6 +96,13 @@ namespace gradc::functors {
         struct Log {
             __device__ T operator()(T a) const {
                 return log(a);
+            }
+        };
+
+        template <typename InT, typename OutT>
+        struct Cast {
+            __device__ OutT operator()(InT a) const {
+                return static_cast<OutT>(a);
             }
         };
     }
