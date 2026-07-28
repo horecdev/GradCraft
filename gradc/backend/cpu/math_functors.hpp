@@ -40,6 +40,13 @@ namespace gradc::cpu_functors {
                 return value > 0 ? grad : 0;
             }
         };
+
+        template <typename T>
+        struct EqMask {
+            T operator()(T a, T b) const {
+                return static_cast<T>(a == b);
+            }
+        };
     }
 
     namespace BIP {
@@ -171,6 +178,20 @@ namespace gradc::cpu_functors {
         struct Min {
             T operator()(T a, T b) const {
                 return std::min(a, b);
+            }
+        };
+
+        template <typename T>
+        struct ArgMax {
+            bool operator()(T new_val, T current_max) {
+                return new_val > current_max;
+            }
+        };
+
+        template <typename T>
+        struct ArgMin {
+            bool operator()(T new_val, T current_min) {
+                return new_val < current_min;
             }
         };
     }

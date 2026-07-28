@@ -38,6 +38,13 @@ namespace gradc::cuda_functors {
                 return value > 0 ? grad : 0;
             }
         };
+
+        template <typename T>
+        struct EqMask {
+            __device__ T operator()(T a, T b) const {
+                return static_cast<T>(a == b);
+            }
+        };
     }
 
     namespace BIP {

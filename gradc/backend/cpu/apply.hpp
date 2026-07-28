@@ -273,6 +273,55 @@ namespace gradc {
                 }
             }
         }
+
+        template <typename T, typename Func>
+        static void apply_arg_extr_operation(Tensor<int64_t>& out, const Tensor<T>& source, int64_t dim, const ReductionMetadata& reduction_metadata, T init_value, Func op) {
+            const int64_t n_dim = std::ssize(source.m_shape);
+            if (n_dim == 0) {
+                throw std::runtime_error("Tried reducing a 0-Dimensional Tensor.");
+            }
+
+            if (out.volume() == 1 && source.is_contiguous()) { // reducing 1D to 0D (or all other dims are 1)
+                const T* p_source = source._get_storage()->data() + source.m_offset;
+                T* p_out = out._get_storage()->data();
+
+                T result_idx = T(-1);
+                T current_extr = init_value;
+                int64_t total_elems = source.volume();
+                for (int64_t i = 0; i < total_elems; ++i) {
+                    if (op(p_source[i], current_extr)) {
+                        current_extr = p_source[i];
+                        result_idx = i;
+                    }
+                }
+
+                *p_out = result_idx;
+            }
+
+            std::shared_ptr<Storage<T>> storage = out._get_storage();
+            T* p_out = out._get_storage()->data();
+            std::fill(p_out, p_out + out.volume(), init_value); // initialize garbage memory
+
+            std::vector<int64_t> odometer(n_dim, 0);
+            while (odometer[0] < source.m_shape[0]) {
+                int64_t in_strided_idx = source.m_offset; 
+                int64_t out_strided_idx = 0;
+
+                for (int64_t i = 0; i < n_dim; ++i) {
+                    in_strided_idx += odometer[i] * source.m_strides[i];
+                    out_strided_idx += odometer[i] * reduction_metadata.temp_strides[i];
+                }
+
+                (out.m_state->m_storage->m_data)[out_strided_idx] = op((out.m_state->m_storage->m_data)[out_strided_idx], (source.m_state->m_storage->m_data)[in_strided_idx]);
+                ++odometer[n_dim - 1];
+                int64_t i = n_dim - 1;
+                while ((odometer[i] == source.m_shape[i]) && i > 0) {
+                    odometer[i] = 0;
+                    ++odometer[i - 1];
+                    --i;
+                }
+            }
+        }
     };
 
 }

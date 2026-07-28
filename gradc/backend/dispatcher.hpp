@@ -62,6 +62,10 @@ namespace gradc {
                     CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::ReLUBackward<T>());
                     break;
 
+                case BinaryOp::EqMask:
+                    CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::EqMask<T>());
+                    break;
+
                 default:
                     throw std::runtime_error("Unsupported BinaryOp in CPU Dispatcher.");
             }
@@ -170,6 +174,14 @@ namespace gradc {
                     CPUBackend::apply_reduction_operation(out, in, reduction_metadata, T(0), cpu_functors::RED::Sum<T>());
                     CPUBackend::apply_binary_in_place(out, Tensor<T>(static_cast<T>(reduction_metadata.reduced_vol), out.device()), cpu_functors::BIP::Div<T>());
                     break;
+                
+                case ReduceOp::Max:
+                    CPUBackend::apply_reduction_operation(out, in, reduction_metadata, std::numeric_limits<T>::lowest(), cpu_functors::RED::Max<T>());
+                    break;
+
+                case ReduceOp::Min:
+                    CPUBackend::apply_reduction_operation(out, in, reduction_metadata, std::numeric_limits<T>::max(), cpu_functors::RED::Min<T>());
+                    break;
 
                 default:
                     throw std::runtime_error("Unsupported ReduceOp in CPU Dispatcher.");
@@ -185,6 +197,14 @@ namespace gradc {
                 case ReduceOp::Mean:
                     CUDAMath::apply_reduction_operation(out, in, reduction_metadata, T(0), ReduceOp::Sum);
                     CUDAMath::apply_binary_in_place(out, Tensor<T>(static_cast<T>(reduction_metadata.reduced_vol), out.device()), BinaryOpInPlace::Div);
+                    break;
+
+                case ReduceOp::Max:
+                    CUDAMath::apply_reduction_operation(out, in, reduction_metadata, std::numeric_limits<T>::lowest(), cpu_functors::RED::Max<T>());
+                    break;
+
+                case ReduceOp::Min:
+                    CUDAMath::apply_reduction_operation(out, in, reduction_metadata, std::numeric_limits<T>::max(), cpu_functors::RED::Min<T>());
                     break;
 
 

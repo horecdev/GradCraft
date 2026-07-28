@@ -69,15 +69,41 @@ namespace gradc {
     class MaxNode : public Node<T> {
         private:
             Tensor<T> m_parent;
-            Tensor<T> max_args;
+            Tensor<T> m_result;
             ReductionMetadata m_reduction_metadata;
         public:
             MaxNode(Tensor<T> parent, ReductionMetadata reduction_metadata) : m_parent(parent), m_reduction_metadata(reduction_metadata) {}
             
             Tensor<T> realize() override {
                 m_parent.realize();
-                Tensor<T> collapsed = Tensor<T>(m_reduction_metadata.result_shape, m_parent.device(), uninitialized);
-                dispatch();
+                m_result = Tensor<T>(m_reduction_metadata.result_shape, m_parent.device(), uninitialized);
+                dispatch(m_parent.device(), ReduceOp::Max, m_reduction_metadata, m_result, m_parent);
+                return m_result;
+            }
+
+            void backward(const Tensor<T>& out_grad) override {
+                if (m_parent.requires_grad()) {
+                    Tensor<T> broadcast_result = lobotomized_broadcast_view(m_result, m_parent.shape());
+                    Tensor<T> broadcast_grad = lobotomized_broadcast_view(out_grad, m_parent.shape());
+                    
+                    Tensor<T> mask = Tensor<T>(m_parent.shape(), out_grad.device(), uninitialized);
+                    dispatch(out_grad.device(), BinaryOp::EqMask, mask, m_parent, broadcast_result);
+                    Tensor<T> grad_input = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
+                    dispatch(m_parent.device(), BinaryOp::Mul, grad_input, mask, broadcast_grad);
+                    m_parent.accumulate_grad(grad_input);
+                }
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_parent._get_state_base()};
             }
     };
+
+    template <typename T>
+    class ArgMaxNode : public Node<T> {
+        private:
+            Tensor<T> m_parent;
+
+
+    }
 }
