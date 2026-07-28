@@ -82,7 +82,7 @@ namespace gradc {
             }
         }
 
-        template <typename T, typename Func> // two types so you can cast one to another in lambda
+        template <typename T, typename Func>
         static void apply_binary_in_place(Tensor<T>& left, const Tensor<T>& right, Func op) { 
             if (left.m_shape.empty() && right.m_shape.empty()) {
                 op((left.m_state->m_storage->m_data)[left.m_offset], (right.m_state->m_storage->m_data)[right.m_offset]);
@@ -275,7 +275,7 @@ namespace gradc {
         }
 
         template <typename T, typename Func>
-        static void apply_arg_extr_operation(Tensor<int64_t>& out, const Tensor<T>& source, int64_t dim, const ReductionMetadata& reduction_metadata, T init_value, Func op) {
+        static void apply_arg_extr_operation(Tensor<int64_t>& out, const Tensor<T>& source, int64_t dim, T init_value, Func op) {
             const int64_t n_dim = std::ssize(source.m_shape);
             if (n_dim == 0) {
                 throw std::runtime_error("Tried reducing a 0-Dimensional Tensor.");
@@ -283,9 +283,9 @@ namespace gradc {
 
             if (out.volume() == 1 && source.is_contiguous()) { // reducing 1D to 0D (or all other dims are 1)
                 const T* p_source = source._get_storage()->data() + source.m_offset;
-                T* p_out = out._get_storage()->data();
+                int64_t* p_out = out._get_storage()->data();
 
-                T result_idx = T(-1);
+                int64_t result_idx = -1;
                 T current_extr = init_value;
                 int64_t total_elems = source.volume();
                 for (int64_t i = 0; i < total_elems; ++i) {
@@ -298,28 +298,44 @@ namespace gradc {
                 *p_out = result_idx;
             }
 
-            std::shared_ptr<Storage<T>> storage = out._get_storage();
-            T* p_out = out._get_storage()->data();
-            std::fill(p_out, p_out + out.volume(), init_value); // initialize garbage memory
+            int64_t* p_out = out._get_storage()->data();
+            const int64_t* p_source = source._get_storage()->data();
 
-            std::vector<int64_t> odometer(n_dim, 0);
-            while (odometer[0] < source.m_shape[0]) {
-                int64_t in_strided_idx = source.m_offset; 
-                int64_t out_strided_idx = 0;
+            int64_t total_out_elems = out.volume();
+            int64_t dim_size = source.m_shape[dim];
+            int64_t dim_stride = source.m_strides[dim];
 
-                for (int64_t i = 0; i < n_dim; ++i) {
-                    in_strided_idx += odometer[i] * source.m_strides[i];
-                    out_strided_idx += odometer[i] * reduction_metadata.temp_strides[i];
+            for (int64_t out_idx = 0; out_idx < total_out_elems; ++out_idx) {
+                int64_t source_idx = source.m_offset;
+                int64_t temp_idx = out_idx;
+
+                for (int64_t i = n_dim - 1; i >= 0; --i) {
+                    if (i == dim) {continue;}
+                    
+                    int64_t coord = temp_idx % source.m_shape[i];
+                    temp_idx /= source.m_shape[i];
+
+                    source_idx += coord * source.m_strides[i];
+                }
+                // Shortly: Go over contiguous out memory. Treat source as same shape as out. Figure out where in source (or out since treated as same shape) we are.
+                // Say its a (10, 4, 4). Youre at (2, 3) in out which is shape(4, 4). By unrolling you are pointing to the start of the column BESIDES reduced dim.
+                // By going by reduced_stride * i you get in the next elements in the row being reduced.
+
+                // after loop above the source idx is complete EXCEPT the dimension we are reducing along
+                // every element in out_index corresponds to dim_size elements in source (one dim reduction)
+
+                T current_extr = init_value;
+                int64_t result_idx = 0;
+
+                for (int64_t i = 0; i < dim_size; ++i) {
+                    T source_value = p_source[source_idx + i * dim_size];
+                    if (op(p_source[source_value + i * dim_stride], current_extr)) {
+                        current_extr = source_value;
+                        result_idx = i;
+                    }
                 }
 
-                (out.m_state->m_storage->m_data)[out_strided_idx] = op((out.m_state->m_storage->m_data)[out_strided_idx], (source.m_state->m_storage->m_data)[in_strided_idx]);
-                ++odometer[n_dim - 1];
-                int64_t i = n_dim - 1;
-                while ((odometer[i] == source.m_shape[i]) && i > 0) {
-                    odometer[i] = 0;
-                    ++odometer[i - 1];
-                    --i;
-                }
+                p_out[out_idx] = result_idx;
             }
         }
     };

@@ -48,8 +48,9 @@ DONE Template instantiate all
 DONE Integrate CUDA into 
 DONE Make CPU functors and GPU functors + integrate CPU ones
 DONE Compile the code
-- Write a MaxNode, ArgMaxNode, (for CPU) (add check for ReduceOp::Max etc)
+- Write a MaxNode, ArgMaxNode, (for CPU) (add check for ReduceOp::Max etc) + frontend
 - Write Max, Argmax for CUDA
+- Compile
 - Correct init_value (not INFINITY but std::lowest etc)
 - Swap out current CPU testpark for CUDA testpark. Compile.
 - Write alternative ctors for ones, zeros, normal, uniform etc.

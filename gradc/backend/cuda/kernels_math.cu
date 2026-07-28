@@ -537,6 +537,41 @@ namespace gradc {
         }
     }
 
+    // START OFF HERE
+    template <typename T, typename Func>
+    __global__ void extr_kernel_whole(
+        int64_t* p_out, const T* p_source, 
+        int64_t source_offset, T init_value,
+        const int64_t total_elements, const Func op) {
+
+        __shared__ T shared_maximums[256];
+        __shared__ int64_t shared_indices[256];
+
+        int64_t t_idx = threadIdx.x;
+        int64_t  global_idx = blockIdx.x * blockDim.x + threadIdx.x;
+        
+        if (global_idx < total_elements) {
+            shared_maximums[t_idx] = p_source[source_offset + global_idx];
+            shared_indices[t_idx] = -1;
+        }
+        else {
+            shared_maximums[t_idx] = init_value;
+            shared_indices[t_idx] = -1;
+        }
+        __syncthreads();
+
+        for (int stride = blockDim.x / 2; stride > 0; stride /= 2) {
+            if (t_idx < stride) {
+                shared_maximums[t_idx] = op(shared_data[t_idx], shared_data[t_idx + stride]);
+            } 
+            __syncthreads(); // wait till halving is done
+        }
+
+        if (t_idx == 0) {
+            op.atomic(&p_out[0], shared_data[0]);
+        }
+    }
+
     template <typename T>
     void CUDAMath::apply_reduction_operation(Tensor<T>& out, const Tensor<T>& source, const ReductionMetadata& reduction_metadata, T init_value, ReduceOp op) {
         int64_t total_elems = source.volume();
@@ -578,6 +613,10 @@ namespace gradc {
                 break;
             case ReduceOp::Min:
                 reduction_kernel<<<blocks, threads>>>(p_out, p_source, shared_shape, out_strides, source_strides, source.m_offset, total_elems, cuda_functors::RED::Min<T>());
+                break;
+            case ReduceOp::ArgMax:
+                break;
+            case ReduceOp::ArgMin:
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA ReduceOp");

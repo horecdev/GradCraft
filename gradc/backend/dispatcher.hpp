@@ -183,6 +183,14 @@ namespace gradc {
                     CPUBackend::apply_reduction_operation(out, in, reduction_metadata, std::numeric_limits<T>::max(), cpu_functors::RED::Min<T>());
                     break;
 
+                case ReduceOp::ArgMax:
+
+                    break;
+
+                case ReduceOp::ArgMin:
+
+                    break;
+
                 default:
                     throw std::runtime_error("Unsupported ReduceOp in CPU Dispatcher.");
             }
