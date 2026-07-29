@@ -26,10 +26,10 @@ namespace gradc {
     template <typename T, typename Func>
     __global__ void binary_out_of_place_kernel(
         T* p_out, const T* p_left, const T* p_right, 
-        const CUDAMeta shared_shape, 
-        const CUDAMeta out_strides, const CUDAMeta left_strides, const CUDAMeta right_strides,
-        const int64_t out_offset, const int64_t left_offset, const int64_t right_offset,
-        const int64_t total_elements, const Func op) {
+        CUDAMeta shared_shape, 
+        CUDAMeta out_strides, CUDAMeta left_strides, CUDAMeta right_strides,
+        int64_t out_offset, int64_t left_offset, int64_t right_offset,
+        int64_t total_elements, Func op) {
 
         int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -57,8 +57,8 @@ namespace gradc {
     template <typename T, typename Func>
     __global__ void binary_out_of_place_kernel_fast(
         T* p_out, const T* p_left, const T* p_right, 
-        const int64_t out_offset, const int64_t left_offset, const int64_t right_offset,
-        const int64_t total_elements, const Func op) {
+        int64_t out_offset, int64_t left_offset, int64_t right_offset,
+        int64_t total_elements, Func op) {
 
         int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -163,8 +163,8 @@ namespace gradc {
     template <typename T, typename Func>
     __global__ void binary_in_place_kernel_fast(
         T* p_left, const T* p_right, 
-        const int64_t left_offset, const int64_t right_offset,
-        const int64_t total_elements, const Func op) {
+        int64_t left_offset, int64_t right_offset,
+        int64_t total_elements, Func op) {
 
         int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -176,10 +176,10 @@ namespace gradc {
     template <typename T, typename Func>
     __global__ void binary_in_place_kernel(
         T* p_left, const T* p_right, 
-        const CUDAMeta shared_shape, 
-        const CUDAMeta left_strides, const CUDAMeta right_strides,
-        const int64_t left_offset, const int64_t right_offset,
-        const int64_t total_elements, const Func op) {
+        CUDAMeta shared_shape, 
+        CUDAMeta left_strides, CUDAMeta right_strides,
+        int64_t left_offset, int64_t right_offset,
+        int64_t total_elements, Func op) {
 
         int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -281,10 +281,10 @@ namespace gradc {
     template <typename OutT, typename InT, typename Func>
     __global__ void unary_out_of_place_kernel(
         OutT* p_out, const InT* p_source, 
-        const CUDAMeta shared_shape, 
-        const CUDAMeta out_strides, const CUDAMeta source_strides,
-        const int64_t out_offset, const int64_t source_offset,
-        const int64_t total_elements, const Func op) {
+        CUDAMeta shared_shape, 
+        CUDAMeta out_strides, CUDAMeta source_strides,
+        int64_t out_offset, int64_t source_offset,
+        int64_t total_elements, Func op) {
 
         int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -310,8 +310,8 @@ namespace gradc {
     template <typename OutT, typename InT, typename Func>
     __global__ void unary_out_of_place_kernel_fast(
         OutT* p_out, const InT* p_source, 
-        const int64_t out_offset, const int64_t source_offset,
-        const int64_t total_elements, const Func op) {
+        int64_t out_offset, int64_t source_offset,
+        int64_t total_elements, Func op) {
 
         int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -389,10 +389,10 @@ namespace gradc {
     template <typename T, typename Func>
     __global__ void unary_in_place_kernel(
         T* p_source, 
-        const CUDAMeta shared_shape, 
-        const CUDAMeta source_strides,
-        const int64_t source_offset,
-        const int64_t total_elements, const Func op) {
+        CUDAMeta shared_shape, 
+        CUDAMeta source_strides,
+        int64_t source_offset,
+        int64_t total_elements, Func op) {
 
         int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -416,8 +416,8 @@ namespace gradc {
     template <typename T, typename Func>
     __global__ void unary_in_place_kernel_fast(
         T* p_source, 
-        const int64_t source_offset,
-        const int64_t total_elements, const Func op) {
+        int64_t source_offset,
+        int64_t total_elements, Func op) {
 
         int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -480,10 +480,10 @@ namespace gradc {
     template <typename T, typename Func>
     __global__ void reduction_kernel(
         T* p_out, const T* p_source, 
-        const CUDAMeta shared_shape, 
-        const CUDAMeta out_strides, const CUDAMeta source_strides,
-        const int64_t source_offset,
-        const int64_t total_elements, const Func op) {
+        CUDAMeta source_shape, 
+        CUDAMeta out_strides, CUDAMeta source_strides,
+        int64_t source_offset,
+        int64_t total_elements, Func op) {
 
         int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -494,9 +494,9 @@ namespace gradc {
             int64_t out_strided_idx = 0;
             int64_t source_strided_idx = source_offset;
 
-            for (int64_t i = shared_shape.size - 1; i >= 0; --i) {
-                int64_t coord = temp_idx % shared_shape.data[i];
-                temp_idx /= shared_shape.data[i];
+            for (int64_t i = source_shape.size - 1; i >= 0; --i) {
+                int64_t coord = temp_idx % source_shape.data[i];
+                temp_idx /= source_shape.data[i];
 
                 out_strided_idx += coord * out_strides.data[i];
                 source_strided_idx += coord * source_strides.data[i];
@@ -506,11 +506,11 @@ namespace gradc {
         }
     }
 
-    template <typename T, typename Func>
+    template <typename T, typename Func> 
     __global__ void reduction_kernel_whole(
         T* p_out, const T* p_source, 
         int64_t source_offset, T init_value,
-        const int64_t total_elements, const Func op) {
+        int64_t total_elements, Func op) {
         
         __shared__ T shared_data[256];
 
@@ -528,41 +528,6 @@ namespace gradc {
         for (int stride = blockDim.x / 2; stride > 0; stride /= 2) {
             if (t_idx < stride) {
                 shared_data[t_idx] = op(shared_data[t_idx], shared_data[t_idx + stride]); // not atomic since its thread safe
-            } 
-            __syncthreads(); // wait till halving is done
-        }
-
-        if (t_idx == 0) {
-            op.atomic(&p_out[0], shared_data[0]);
-        }
-    }
-
-    // START OFF HERE
-    template <typename T, typename Func>
-    __global__ void extr_kernel_whole(
-        int64_t* p_out, const T* p_source, 
-        int64_t source_offset, T init_value,
-        const int64_t total_elements, const Func op) {
-
-        __shared__ T shared_maximums[256];
-        __shared__ int64_t shared_indices[256];
-
-        int64_t t_idx = threadIdx.x;
-        int64_t  global_idx = blockIdx.x * blockDim.x + threadIdx.x;
-        
-        if (global_idx < total_elements) {
-            shared_maximums[t_idx] = p_source[source_offset + global_idx];
-            shared_indices[t_idx] = -1;
-        }
-        else {
-            shared_maximums[t_idx] = init_value;
-            shared_indices[t_idx] = -1;
-        }
-        __syncthreads();
-
-        for (int stride = blockDim.x / 2; stride > 0; stride /= 2) {
-            if (t_idx < stride) {
-                shared_maximums[t_idx] = op(shared_data[t_idx], shared_data[t_idx + stride]);
             } 
             __syncthreads(); // wait till halving is done
         }
@@ -598,7 +563,7 @@ namespace gradc {
             return;
         }
 
-        CUDAMeta shared_shape = to_cuda_meta(source.m_shape);
+        CUDAMeta source_shape = to_cuda_meta(source.m_shape);
         CUDAMeta out_strides = to_cuda_meta(reduction_metadata.temp_strides);
         CUDAMeta source_strides = to_cuda_meta(source.m_strides);
 
@@ -606,20 +571,134 @@ namespace gradc {
 
         switch (op) {
             case ReduceOp::Sum:
-                reduction_kernel<<<blocks, threads>>>(p_out, p_source, shared_shape, out_strides, source_strides, source.m_offset, total_elems, cuda_functors::RED::Sum<T>());
+                reduction_kernel<<<blocks, threads>>>(p_out, p_source, source_shape, out_strides, source_strides, source.m_offset, total_elems, cuda_functors::RED::Sum<T>());
                 break;
             case ReduceOp::Max:
-                reduction_kernel<<<blocks, threads>>>(p_out, p_source, shared_shape, out_strides, source_strides, source.m_offset, total_elems, cuda_functors::RED::Max<T>());
+                reduction_kernel<<<blocks, threads>>>(p_out, p_source, source_shape, out_strides, source_strides, source.m_offset, total_elems, cuda_functors::RED::Max<T>());
                 break;
             case ReduceOp::Min:
-                reduction_kernel<<<blocks, threads>>>(p_out, p_source, shared_shape, out_strides, source_strides, source.m_offset, total_elems, cuda_functors::RED::Min<T>());
-                break;
-            case ReduceOp::ArgMax:
-                break;
-            case ReduceOp::ArgMin:
+                reduction_kernel<<<blocks, threads>>>(p_out, p_source, source_shape, out_strides, source_strides, source.m_offset, total_elems, cuda_functors::RED::Min<T>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA ReduceOp");
+        }
+    }
+
+    template <typename T, typename Func>
+    __global__ void argextr_kernel_whole(
+        int64_t* p_out, const T* p_source, 
+        int64_t source_offset, T init_value,
+        int64_t total_elements, Func op) {
+
+        __shared__ T shared_vals[1024];
+        __shared__ int64_t shared_idxs[1024];
+
+        int64_t t_idx = threadIdx.x;
+        // no global idx because we are launching one block
+        
+        T thread_best_val = init_value;
+        int64_t thread_best_idx = 0;
+
+        int64_t current_idx = t_idx;
+
+        while (current_idx < total_elements) {
+            T val = p_source[source_offset + current_idx];
+
+            if (op(val, thread_best_val)) { // op takes: new val, old val
+                thread_best_val = val;
+                thread_best_idx = current_idx;
+            }
+            current_idx += blockDim.x; // += 1024
+        }
+
+        shared_vals[t_idx] = thread_best_val;
+        shared_idxs[t_idx] = thread_best_idx;
+        __syncthreads();
+
+        for (int stride = blockDim.x; stride > 0; stride /= 2) {
+            if (t_idx < stride) {
+                if (op(shared_vals[t_idx + stride], shared_vals[t_idx])) {
+                    shared_vals[t_idx] = shared_vals[t_idx + stride];
+                    shared_idxs[t_idx] = shared_idxs[t_idx + stride];
+                }
+            }
+            __syncthreads();
+        }
+
+        if (t_idx == 0) {
+            p_out[0] = shared_idxs[0];
+        }
+    }
+
+    template <typename T, typename Func>
+    __global__ void argextr_kernel(
+        int64_t* p_out, const T* p_source, 
+        CUDAMeta source_shape, CUDAMeta source_strides,
+        int64_t source_offset, int64_t dim, T init_value,
+        int64_t out_elems, Func op) {
+
+        int64_t out_idx = blockIdx.x * blockDim.x + threadIdx.x; // each out element gets its own thread
+
+        if (out_idx < out_elems) {
+            int64_t source_idx = source_offset;
+            int64_t temp_idx = out_idx;
+
+            // figure out where in out we are
+            for (int64_t i = source_shape.size; i >= 0; --i) {
+                if (i == dim) {continue;}
+                int64_t coord = temp_idx % source_shape.data[i];
+                temp_idx /= source_shape.data[i];
+
+                source_idx += coord * source_strides.data[i];
+            }
+
+            int64_t dim_size = source_shape.data[dim];
+            int64_t dim_stride = source_strides.data[dim];
+
+            T best_val = init_value;
+            T best_idx = 0;
+            // find best along the dimension
+            for (int64_t i = 0; i < dim_size; ++i) {
+                if (op(p_source[source_idx + (i * dim_stride)], best_val)) {
+                    best_val = p_source[source_idx];
+                    best_idx = i;
+                }
+            }
+            p_out[out_idx] = best_idx;
+        }
+    }
+    
+    
+
+   template <typename T>
+    void CUDAMath::apply_arg_extr_operation(Tensor<int64_t>& out, const Tensor<T>& source, int64_t dim, T init_value, ArgExtrOp op) {
+        int64_t total_elems = source.volume();
+        int64_t* p_out = out._get_storage()->data();
+        T* p_source = source._get_storage()->data();
+
+        if (out.volume() == 1 && source.is_contiguous()) {
+            switch (op) {
+                case ArgExtrOp::ArgMax:
+                    argextr_kernel_whole<<<1, 1024>>>(p_out, p_source, source.m_offset, init_value, total_elems, cuda_functors::ARGEXTR::ArgMax<T>());
+                    break;
+                case ArgExtrOp::ArgMin:
+                    argextr_kernel_whole<<<1, 1024>>>(p_out, p_source, source.m_offset, init_value, total_elems, cuda_functors::ARGEXTR::ArgMin<T>());
+                    break;
+            }
+        }
+
+        int64_t out_elems = out.volume();
+        int64_t threads = 256;
+        int64_t blocks = (out_elems + threads - 1) / threads;
+
+        CUDAMeta source_shape = to_cuda_meta(source.m_shape);
+        CUDAMeta source_strides = to_cuda_meta(source.m_strides);
+
+        switch (op) {
+            case ArgExtrOp::ArgMax:
+                argextr_kernel<<<blocks, threads>>>(p_out, p_source, source_shape, source_strides, source.m_offset, dim, init_value, out_elems, cuda_functors::ARGEXTR::ArgMax<T>());
+            case ArgExtrOp::ArgMin:
+                argextr_kernel<<<blocks, threads>>>(p_out, p_source, source_shape, source_strides, source.m_offset, dim, init_value, out_elems, cuda_functors::ARGEXTR::ArgMin<T>());
         }
     }
 
@@ -631,7 +710,8 @@ namespace gradc {
         template void CUDAMath::apply_binary_out_of_place<T>(Tensor<T>&, const Tensor<T>&, const Tensor<T>&, BinaryOp); \
         template void CUDAMath::apply_binary_in_place<T>(Tensor<T>&, const Tensor<T>&, BinaryOpInPlace); \
         template void CUDAMath::apply_unary_in_place<T>(Tensor<T>&, UnaryOpInPlace); \
-        template void CUDAMath::apply_reduction_operation<T>(Tensor<T>&, const Tensor<T>&, const ReductionMetadata&, T, ReduceOp);
+        template void CUDAMath::apply_reduction_operation<T>(Tensor<T>&, const Tensor<T>&, const ReductionMetadata&, T, ReduceOp); \
+        template void CUDAMath::apply_arg_extr_operation<T>(Tensor<int64_t>&, const Tensor<T>&, int64_t, T, ArgExtrOp);
 
     #define INSTANTIATE_CUDA_MATH_UOP(OutT, InT) \
         template void CUDAMath::apply_unary_out_of_place<OutT, InT>(Tensor<OutT>&, const Tensor<InT>&, UnaryOp);

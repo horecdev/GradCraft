@@ -24,3 +24,5 @@ SHORTLY: Created lazily/view of Tensor<T> has the same device as member variable
 Why does it work? Because think about what dim 1 does. Goes 10 times, increments strided idx by 6. Total 60. When it finished its loop, dim 0 increments by 60. Then starts increasing by 6 again. 
 If you have two tensors of the same shape, same strides but partially contiguous, you can instead of running strided loop just squash two dims into one, update strides.  
 Less odometer strain.
+14) The only reason fast paths dont blow up with __restrict is that we use apply_BIP smartly. If you BIP 2 contiguous tensors with the same storage (say slices that are contig)
+they fall right into 

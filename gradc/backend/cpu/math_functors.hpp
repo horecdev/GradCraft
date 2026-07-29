@@ -180,7 +180,9 @@ namespace gradc::cpu_functors {
                 return std::min(a, b);
             }
         };
+    }
 
+    namespace ARGEXTR {
         template <typename T>
         struct ArgMax {
             bool operator()(T new_val, T current_max) {

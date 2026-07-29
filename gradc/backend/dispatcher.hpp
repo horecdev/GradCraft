@@ -183,14 +183,6 @@ namespace gradc {
                     CPUBackend::apply_reduction_operation(out, in, reduction_metadata, std::numeric_limits<T>::max(), cpu_functors::RED::Min<T>());
                     break;
 
-                case ReduceOp::ArgMax:
-
-                    break;
-
-                case ReduceOp::ArgMin:
-
-                    break;
-
                 default:
                     throw std::runtime_error("Unsupported ReduceOp in CPU Dispatcher.");
             }
@@ -208,16 +200,39 @@ namespace gradc {
                     break;
 
                 case ReduceOp::Max:
-                    CUDAMath::apply_reduction_operation(out, in, reduction_metadata, std::numeric_limits<T>::lowest(), cpu_functors::RED::Max<T>());
+                    CUDAMath::apply_reduction_operation(out, in, reduction_metadata, std::numeric_limits<T>::lowest(), ReduceOp::Max);
                     break;
 
                 case ReduceOp::Min:
-                    CUDAMath::apply_reduction_operation(out, in, reduction_metadata, std::numeric_limits<T>::max(), cpu_functors::RED::Min<T>());
+                    CUDAMath::apply_reduction_operation(out, in, reduction_metadata, std::numeric_limits<T>::max(), ReduceOp::Min);
                     break;
-
 
                 default:
                     throw std::runtime_error("Unsupported ReduceOp in CPU Dispatcher.");
+            }
+        }
+    }
+
+    template <typename T>
+    inline void dispatch(Device device, ArgExtrOp op, int64_t dim, Tensor<int64_t>& out, const Tensor<T>& in) {
+        if (device.is_cpu()) {
+            switch (op) {
+                case ArgExtrOp::ArgMax:
+                    CPUBackend::apply_arg_extr_operation(out, in, dim, std::numeric_limits<T>::lowest(), cpu_functors::ARGEXTR::ArgMax<T>());
+                    break;
+                case ArgExtrOp::ArgMin:
+                    CPUBackend::apply_arg_extr_operation(out, in, dim, std::numeric_limits<T>::lowest(), cpu_functors::ARGEXTR::ArgMin<T>());
+                    break;
+            }
+        }
+        else if (device.is_cuda()) {
+            switch (op) {
+                case ArgExtrOp::ArgMax:
+                    CUDAMath::apply_arg_extr_operation(out, in, dim, std::numeric_limits<T>::lowest(), ArgExtrOp::ArgMax);
+                    break;
+                case ArgExtrOp::ArgMin:
+                    CUDAMath::apply_arg_extr_operation(out, in, dim, std::numeric_limits<T>::lowest(), ArgExtrOp::ArgMin);
+                    break;
             }
         }
     }

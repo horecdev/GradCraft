@@ -270,6 +270,24 @@ namespace gradc::cuda_functors {
                 }
             }
         };
+
+        
+    }
+
+    namespace ARGEXTR {
+        template <typename T>
+        struct ArgMax {
+            __device__ bool operator()(T new_val, T current_max) {
+                return new_val > current_max;
+            }
+        };
+
+        template <typename T>
+        struct ArgMin {
+            __device__ bool operator()(T new_val, T current_min) {
+                return new_val < current_min;
+            }
+        };
     }
 }
 
