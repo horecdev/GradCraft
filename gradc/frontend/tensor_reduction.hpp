@@ -28,4 +28,23 @@ namespace gradc {
 
         return result;
     }
+
+    template <typename T>
+    Tensor<T> Tensor<T>::max(const std::vector<int64_t>& red_axes, bool keepdims) const {
+        ReductionMetadata reduction_metadata = infer_reduction_metadata(m_shape, red_axes, keepdims);
+        Tensor<T> result = Tensor<T>(reduction_metadata.result_shape, m_requires_grad, lazy, this->device());
+        result.m_state->m_creation_op = std::make_unique<MaxNode<T>>(*this, reduction_metadata);
+
+        return result;
+    }
+
+    template <typename T>
+    Tensor<int64_t> Tensor<T>::argmax(int64_t dim, bool keepdims) {
+        this->realize(); // eager function, call realize
+        std::vector<int64_t> red_axes = std::vector<int64_t>({dim});
+        ReductionMetadata reduction_metadata = infer_reduction_metadata(m_shape, red_axes, keepdims);
+        Tensor<int64_t> result = Tensor<int64_t>(reduction_metadata.result_shape, this->device(), uninitialized);
+        dispatch(this->device(), ArgExtrOp::ArgMax, dim, result, *this);
+        return result;
+    }
 }

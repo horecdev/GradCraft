@@ -296,10 +296,11 @@ namespace gradc {
                 }
 
                 *p_out = result_idx;
+                return;
             }
 
             int64_t* p_out = out._get_storage()->data();
-            const int64_t* p_source = source._get_storage()->data();
+            const T* p_source = source._get_storage()->data();
 
             int64_t total_out_elems = out.volume();
             int64_t dim_size = source.m_shape[dim];
@@ -328,8 +329,8 @@ namespace gradc {
                 int64_t result_idx = 0;
 
                 for (int64_t i = 0; i < dim_size; ++i) {
-                    T source_value = p_source[source_idx + i * dim_size];
-                    if (op(p_source[source_value + i * dim_stride], current_extr)) {
+                    T source_value = p_source[source_idx + i * dim_stride];
+                    if (op(source_value, current_extr)) {
                         current_extr = source_value;
                         result_idx = i;
                     }
