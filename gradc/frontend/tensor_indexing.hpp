@@ -43,7 +43,7 @@ namespace gradc {
             else if (this->device().is_cuda()) {
                 T host_val;
                 cudaSetDevice(this->device().index);
-                cudaError_t err = cudaMemcpy(&host_val, this->_get_storage().data(), sizeof(T), cudaMemcpyDeviceToHost);
+                cudaError_t err = cudaMemcpy(&host_val, this->_get_storage()->data(), sizeof(T), cudaMemcpyDeviceToHost);
                 if (err != cudaSuccess) {
                     throw std::runtime_error("CUDA memcpy failed on .item()");
                 }
