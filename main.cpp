@@ -14,7 +14,7 @@ int main() {
     Tensor<float> b({2}, 1.5f, Device(DeviceType::CPU, 0));
     b.set_requires_grad(true);
 
-    std::cout << "Created Tensors on CUDA:0" << std::endl;
+    std::cout << "Created Tensors on CPU" << std::endl;
 
     auto y = (w * x) + w; 
     auto y_max = y.max({1}, false); // <--- Integrated MaxNode here!
@@ -40,9 +40,7 @@ int main() {
     print_tensor(std::cout, y_argmax);
 
 
-    std::cout << "Actual ArgMax: BS DETECT";
     loss.accumulate_grad(Tensor<float>(1.0f, Device(DeviceType::CPU, 0))); 
-    std::cout << "Actual ArgMax: BS DETECT2";
     loss.backward();
     
     std::cout << "\n--- Gradients ---\n";
