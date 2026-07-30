@@ -33,8 +33,8 @@ namespace gradc {
     template <typename T>
     T Tensor<T>::item() const {
         if (std::ssize(m_shape) == 0) {
-            if (m_state->m_storage->size() == 0) {
-                throw std::runtime_error("Called .item() on an empty tensor buffer.");
+            if (m_state->m_storage->data() == nullptr) {
+                throw std::runtime_error("Called .item() on an empty tensor buffer. (call .realize first)");
             }
             
             if (this->device().is_cpu()) {
@@ -49,7 +49,6 @@ namespace gradc {
                 }
                 return host_val;
             }
-            
         }
         else {
             throw std::runtime_error(".item() can be called only on 0-dimensional tensors.");

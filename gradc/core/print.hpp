@@ -35,13 +35,15 @@ namespace gradc {
             if (source.m_shape[current_dim] > 2 * opts.edge_items) {
                 // print edge_items first, edge_items last
                 for (int64_t i = 0; i < opts.edge_items; ++i) {
-                    stream << source.m_state->m_storage->m_data[base_offset + i * source.m_strides[current_dim]];
+                    int64_t target_idx = base_offset + i * source.m_strides[current_dim];
+                    stream << read_element(source, target_idx);
                     stream << ", ";
                 }
                 stream << "..., ";
 
                 for (int64_t i = source.m_shape[current_dim] - opts.edge_items; i < source.m_shape[current_dim]; ++i) {
-                    stream << source.m_state->m_storage->m_data[base_offset + i * source.m_strides[current_dim]];
+                    int64_t target_idx = base_offset + i * source.m_strides[current_dim];
+                    stream << read_element(source, target_idx);
                     if (i != source.m_shape[current_dim] - 1) {
                         stream << ", ";
                     }
@@ -51,7 +53,8 @@ namespace gradc {
             else {
                 // print everything
                 for (int64_t i = 0; i < source.m_shape[current_dim]; ++i) {
-                    stream << source.m_state->m_storage->m_data[base_offset + i * source.m_strides[current_dim]];
+                    int64_t target_idx = base_offset + i * source.m_strides[current_dim];
+                    stream << read_element(source, target_idx);
                     if (i != source.m_shape[current_dim] - 1) {
                          stream << ", ";
                     }
@@ -107,32 +110,38 @@ namespace gradc {
 
     template <typename T>
     std::ostream& print_tensor(std::ostream& stream, const Tensor<T>& source, const PrintOptions opts = {}) { // = {} means use initializer list if nothing is provided (but empty so default construct)
+        if (source._get_storage()->data() == nullptr) {
+            stream << "Attempted printing tensor without data: aborting (call .realize() first)" << std::endl;
+            return stream;
+        }
         if (std::ssize(source.m_shape) == 0) {
             if (opts.show_metadata) {
-                stream << "Grad: " << source.m_requires_grad << std::endl;
+                stream << "requires_grad: " << static_cast<std::string>(source.m_requires_grad) << std::endl;
             }
-            if (source.m_state->m_storage->data() != nullptr) {
-                stream << "Tensor(" << source.item() << ")" << std::endl;
-                return stream;
-            }
-            else {
-                stream << "Attempted printing tensor without data: aborting (call .realize() first)" << std::endl;
-                return stream;
-            }
+            stream << "Tensor(" << source.item() << ")" << std::endl;
+            return stream;
         }
         
         else {
             if (opts.show_metadata) {
-                std::cout << "Shape: " << source.m_shape << " | Strides: " << source.m_strides << " | Grad: " << source.m_requires_grad << std::endl;
+                std::cout << "Shape: " << source.m_shape << " | Strides: " << source.m_strides << " | Grad: " << static_cast<std::string>(source.m_requires_grad) << std::endl;
             }
-            if (source.m_state->m_storage->data() != nullptr) {
-                print_dim(stream, source, opts, 0, source.m_offset, true);
-                return stream;
-            }
-            else {
-                stream << "Attempted printing tensor without data: aborting (call .realize() first)" << std::endl;
-                return stream;
-            }
+            if (source.device().is_cuda()) {cudaSetDevice(source.device().index);}
+            
+            print_dim(stream, source, opts, 0, source.m_offset, true);
+            return stream;
+        }
+    }
+
+    template <typename T>
+    T read_element(const Tensor<T>& source, int64_t mem_idx) {
+        const T* ptr = source._get_storage()->data();
+        if (source.device().is_cpu()) {
+            return ptr[mem_idx];
+        }
+        else if (source.device().is_cuda()) {
+            T val;
+            cudaMemcpy(&val, ptr, sizeof(T), cudaMemcpyDeviceToHost);
         }
     }
 }

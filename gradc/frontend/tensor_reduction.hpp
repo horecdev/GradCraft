@@ -40,7 +40,9 @@ namespace gradc {
 
     template <typename T>
     Tensor<int64_t> Tensor<T>::argmax(int64_t dim, bool keepdims) {
-        this->realize(); // eager function, call realize
+        if (this->_get_storage()->data() == nullptr) {
+            throw std::runtime_error("Tried invoking an eager function (argmax) on an unrealized tensor. Call .realize() first.");
+        }
         std::vector<int64_t> red_axes = std::vector<int64_t>({dim});
         ReductionMetadata reduction_metadata = infer_reduction_metadata(m_shape, red_axes, keepdims);
         Tensor<int64_t> result = Tensor<int64_t>(reduction_metadata.result_shape, this->device(), uninitialized);
