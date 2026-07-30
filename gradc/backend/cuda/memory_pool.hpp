@@ -33,7 +33,6 @@ namespace gradc {
                 throw std::runtime_error(error_msg);
             }
             cudaSetDevice(device.index);
-            std::cout << std::ssize(m_free_blocks);
             std::vector<void*>& blocks = m_free_blocks[device.index][bytes];
             if (!blocks.empty()) {
                 void* ptr = blocks.back();

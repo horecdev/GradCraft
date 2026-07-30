@@ -247,16 +247,13 @@ namespace gradc {
         }
 
         FusedView fused = fuse_dimensions(left.m_shape, {&left.m_strides, right_strides});
-        std::vector<int64_t>* left_strides = &fused.strides[0];
-        right_strides = &fused.strides[1];
-
 
         CUDAMeta gpu_shape = to_cuda_meta(fused.shared_shape);
         CUDAMeta gpu_left_strides = to_cuda_meta(fused.strides[0]);
         CUDAMeta gpu_right_strides = to_cuda_meta(fused.strides[1]);
 
         cudaSetDevice(left.device().index);
-
+        
         switch (op) {
             case BinaryOpInPlace::Add:
                 binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, cuda_functors::BIP::Add<T>());
@@ -644,7 +641,7 @@ namespace gradc {
             int64_t temp_idx = out_idx;
 
             // figure out where in out we are
-            for (int64_t i = source_shape.size; i >= 0; --i) {
+            for (int64_t i = source_shape.size - 1; i >= 0; --i) {
                 if (i == dim) {continue;}
                 int64_t coord = temp_idx % source_shape.data[i];
                 temp_idx /= source_shape.data[i];
@@ -656,10 +653,11 @@ namespace gradc {
             int64_t dim_stride = source_strides.data[dim];
 
             T best_val = init_value;
-            T best_idx = 0;
+            int64_t best_idx = 0;
             // find best along the dimension
             for (int64_t i = 0; i < dim_size; ++i) {
-                if (op(p_source[source_idx + (i * dim_stride)], best_val)) {
+                T new_val = p_source[source_idx + (i * dim_stride)];
+                if (op(new_val, best_val)) {
                     best_val = p_source[source_idx];
                     best_idx = i;
                 }

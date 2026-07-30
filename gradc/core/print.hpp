@@ -116,7 +116,7 @@ namespace gradc {
         }
         if (std::ssize(source.m_shape) == 0) {
             if (opts.show_metadata) {
-                stream << "requires_grad: " << static_cast<std::string>(source.m_requires_grad) << std::endl;
+                stream << "requires_grad: " << source.m_requires_grad << std::endl;
             }
             stream << "Tensor(" << source.item() << ")" << std::endl;
             return stream;
@@ -124,10 +124,10 @@ namespace gradc {
         
         else {
             if (opts.show_metadata) {
-                std::cout << "Shape: " << source.m_shape << " | Strides: " << source.m_strides << " | Grad: " << static_cast<std::string>(source.m_requires_grad) << std::endl;
+                std::cout << "Shape: " << source.m_shape << " | Strides: " << source.m_strides << " | Grad: " << source.m_requires_grad << std::endl;
             }
             if (source.device().is_cuda()) {cudaSetDevice(source.device().index);}
-            
+
             print_dim(stream, source, opts, 0, source.m_offset, true);
             return stream;
         }
@@ -135,13 +135,17 @@ namespace gradc {
 
     template <typename T>
     T read_element(const Tensor<T>& source, int64_t mem_idx) {
-        const T* ptr = source._get_storage()->data();
+        const T* ptr = source._get_storage()->data() + mem_idx;
         if (source.device().is_cpu()) {
-            return ptr[mem_idx];
+            return *ptr;
         }
         else if (source.device().is_cuda()) {
             T val;
             cudaMemcpy(&val, ptr, sizeof(T), cudaMemcpyDeviceToHost);
+            return val;
+        }
+        else {
+            throw std::runtime_error("Invalid device");
         }
     }
 }

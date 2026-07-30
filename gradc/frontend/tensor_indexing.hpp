@@ -37,17 +37,21 @@ namespace gradc {
                 throw std::runtime_error("Called .item() on an empty tensor buffer. (call .realize first)");
             }
             
+            T* ptr = this->_get_storage()->data() + m_offset;
             if (this->device().is_cpu()) {
-                return (m_state->m_storage->m_data)[m_offset];
+                return *ptr;
             }
             else if (this->device().is_cuda()) {
                 T host_val;
                 cudaSetDevice(this->device().index);
-                cudaError_t err = cudaMemcpy(&host_val, this->_get_storage()->data(), sizeof(T), cudaMemcpyDeviceToHost);
+                cudaError_t err = cudaMemcpy(&host_val, ptr, sizeof(T), cudaMemcpyDeviceToHost);
                 if (err != cudaSuccess) {
                     throw std::runtime_error("CUDA memcpy failed on .item()");
                 }
                 return host_val;
+            }
+            else {
+                throw std::runtime_error("Unknown device");
             }
         }
         else {

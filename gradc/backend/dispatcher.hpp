@@ -33,7 +33,6 @@ namespace gradc {
                 throw std::runtime_error("Operation failed: all (2+) Tensors must be on the same device.");
             }
         }
-
         return target_device;
     }
 

@@ -76,18 +76,27 @@ namespace gradc {
             
             Tensor<T> realize() override {
                 m_parent.realize();
-                m_result = Tensor<T>(m_reduction_metadata.result_shape, m_parent.device(), uninitialized);
+                Tensor<T> result = Tensor<T>(m_reduction_metadata.result_shape, m_parent.device(), uninitialized);
                 dispatch(m_parent.device(), ReduceOp::Max, m_reduction_metadata, m_result, m_parent);
-                return m_result;
+
+                if (m_parent.requires_grad()) {
+                    m_result = Tensor<T>(m_reduction_metadata.result_shape, m_parent.device(), uninitialized); // create a deep copy of result
+                    dispatch(m_parent.device(), UnaryOp::Identity, m_result, result);
+                }
+                return result;
             }
 
             void backward(const Tensor<T>& out_grad) override {
                 if (m_parent.requires_grad()) {
-                    Tensor<T> broadcast_result = lobotomized_broadcast_view(m_result, m_parent.shape());
+                    Tensor<T> reshaped_result = lobotomized_reshape_view(m_result, m_reduction_metadata.temp_shape);
+                    Tensor<T> broadcast_result = lobotomized_broadcast_view(reshaped_result, m_parent.shape());
+
+                    Tensor<T> reshaped_grad = lobotomized_reshape_view(out_grad, m_reduction_metadata.temp_shape);
                     Tensor<T> broadcast_grad = lobotomized_broadcast_view(out_grad, m_parent.shape());
                     
                     Tensor<T> mask = Tensor<T>(m_parent.shape(), out_grad.device(), uninitialized);
                     dispatch(out_grad.device(), BinaryOp::EqMask, mask, m_parent, broadcast_result);
+                    
                     Tensor<T> grad_input = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
                     dispatch(m_parent.device(), BinaryOp::Mul, grad_input, mask, broadcast_grad);
                     m_parent.accumulate_grad(grad_input);

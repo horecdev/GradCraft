@@ -50,8 +50,8 @@ DONE Make CPU functors and GPU functors + integrate CPU ones
 DONE Compile the code
 DONE Write Max, Argmax kernels (CUDA) and apply (CPU)
 DONE Integrate into dispatcher + frontend
-- Printing for CUDA + item() for cuda
-- Compile
+DONE Printing for CUDA + item() for cuda
+- Compile + test MaxNode + ArgMax
 - Swap out current CPU testpark for CUDA testpark. Compile.
 - Write alternative ctors for ones, zeros, normal, uniform etc.
 - Link up BLAS and cuBLAS
