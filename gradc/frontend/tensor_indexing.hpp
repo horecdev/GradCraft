@@ -33,10 +33,23 @@ namespace gradc {
     template <typename T>
     T Tensor<T>::item() const {
         if (std::ssize(m_shape) == 0) {
-            if (m_state->m_storage->data() == nullptr) {
+            if (m_state->m_storage->size() == 0) {
                 throw std::runtime_error("Called .item() on an empty tensor buffer.");
             }
-            return (m_state->m_storage->m_data)[m_offset];
+            
+            if (this->device().is_cpu()) {
+                return (m_state->m_storage->m_data)[m_offset];
+            }
+            else if (this->device().is_cuda()) {
+                T host_val;
+                cudaSetDevice(this->device().index);
+                cudaError_t err = cudaMemcpy(&host_val, this->_get_storage().data(), sizeof(T), cudaMemcpyDeviceToHost);
+                if (err != cudaSuccess) {
+                    throw std::runtime_error("CUDA memcpy failed on .item()");
+                }
+                return host_val;
+            }
+            
         }
         else {
             throw std::runtime_error(".item() can be called only on 0-dimensional tensors.");

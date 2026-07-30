@@ -5,14 +5,15 @@
 using namespace gradc;
 
 int main() {
-    Tensor<float> w({3, 3}, 2.0f);
+    Tensor<float> w({3, 3}, 2.0f, Device(DeviceType::CUDA, 0));
     w.set_requires_grad(true);
 
-    Tensor<float> x({1, 3}, 4.0f); 
+    Tensor<float> x({1, 3}, 4.0f, Device(DeviceType::CUDA, 0)); 
     x.set_requires_grad(true);
 
-    Tensor<float> b({6}, 1.5f);
+    Tensor<float> b({6}, 1.5f, Device(DeviceType::CUDA, 0));
     b.set_requires_grad(true);
+    std::cout << "Created tensors" << std::endl;
 
     auto y = (w * x) + w; 
     auto y_slice = y[Slice(0, 2), _]; 

@@ -16,7 +16,7 @@ namespace gradc {
         std::vector<std::unordered_map<int64_t, std::vector<void*>>> m_free_blocks;
         CUDAMemPool() {
             cudaGetDeviceCount(&m_device_count);
-            m_free_blocks.reserve(m_device_count);
+            m_free_blocks.resize(m_device_count);
         }
     public:
         CUDAMemPool(const CUDAMemPool&) = delete;
@@ -33,6 +33,7 @@ namespace gradc {
                 throw std::runtime_error(error_msg);
             }
             cudaSetDevice(device.index);
+            std::cout << std::ssize(m_free_blocks);
             std::vector<void*>& blocks = m_free_blocks[device.index][bytes];
             if (!blocks.empty()) {
                 void* ptr = blocks.back();

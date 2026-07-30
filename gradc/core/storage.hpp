@@ -24,23 +24,23 @@ namespace gradc {
 
         Storage(int64_t size, T init_val = T(0), Device device = Device(DeviceType::CPU), bool allocate = true, bool fill = true) : m_size(size), m_device(device) {
             int64_t bytes = size * sizeof(T);
-                if (allocate) {
-                    if (m_device.is_cpu()) {
-                        int64_t aligned_bytes = ((bytes + 31) / 32) * 32; // must be 32 multiple
-                        // by default _aligned_malloc returns void* (pointer to very first byte) so u cast it to T*
-                        m_data = static_cast<T*>(CPUMemPool::get().allocate(aligned_bytes));
-                        if (fill) {
-                            std::fill(m_data, m_data + m_size, init_val); // m_data + m_size does pointer arithmetic (applies for sizeof)
-                        }
-                    }
-                    
-                    else if (m_device.is_cuda()) {
-                        m_data = static_cast<T*>(CUDAMemPool::get().allocate(bytes, device));
-                        if (fill) {
-                            CUDAUtils::fill(m_data, init_val, size, device);
-                        }
+            if (allocate) {
+                if (m_device.is_cpu()) {
+                    int64_t aligned_bytes = ((bytes + 31) / 32) * 32; // must be 32 multiple
+                    // by default _aligned_malloc returns void* (pointer to very first byte) so u cast it to T*
+                    m_data = static_cast<T*>(CPUMemPool::get().allocate(aligned_bytes));
+                    if (fill) {
+                        std::fill(m_data, m_data + m_size, init_val); // m_data + m_size does pointer arithmetic (applies for sizeof)
                     }
                 }
+                
+                else if (m_device.is_cuda()) {
+                    m_data = static_cast<T*>(CUDAMemPool::get().allocate(bytes, device));
+                    if (fill) {
+                        CUDAUtils::fill(m_data, init_val, size, device);
+                    }
+                }
+            }
         }
 
         Storage(std::initializer_list<T> data, Device device = Device(DeviceType::CPU)) : m_size(std::ssize(data)), m_device(device) {
