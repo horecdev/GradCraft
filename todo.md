@@ -51,10 +51,23 @@ DONE Compile the code
 DONE Write Max, Argmax kernels (CUDA) and apply (CPU)
 DONE Integrate into dispatcher + frontend
 DONE Printing for CUDA + item() for cuda
-- Compile + test MaxNode + ArgMax
-- Swap out current CPU testpark for CUDA testpark. Compile.
-- Write alternative ctors for ones, zeros, normal, uniform etc.
-- Link up BLAS and cuBLAS
+DONE Compile + test MaxNode + ArgMax
+DONE Swap out current CPU testpark for CUDA testpark. Compile.
+- Write alternative ctors for: ones, zeros, full, arange, randn, rand
+- Make it multi gpu.
+- Link up BLAS and cuBLAS + MatMulNode
+- SoftMaxNode
+- LayerNorm Node
+- GELUNode, SiLUNode
+- EmbeddingNode?
+- CrossEntropyLossNode
+- Conv2DNode
+- MaxPool2DNode, AvgPool2DNode
+- UpsampleNode
+- BatchNorm2DNode
+- StackNode, SqueezeNode, UnsqueezeNode
+- PadNode
+- SigmoidNode / TanhNode
 - add multithreading with OpenMP (no writing mutexes and shit)
 - Write STACK node
 - Add ton of bloated nodes so the engine is actually usable
