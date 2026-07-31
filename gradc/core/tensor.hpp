@@ -70,6 +70,38 @@ namespace gradc {
             Tensor(Tensor&& source);
             Tensor& operator=(const Tensor& source);
             Tensor& operator=(Tensor&& source);
+
+            static Tensor zeros(std::vector<int64_t> shape, Device device = Device(DeviceType::CPU));
+            static Tensor ones(std::vector<int64_t> shape, Device device = Device(DeviceType::CPU));
+            static Tensor full(std::vector<int64_t> shape, T fill_val, Device device = Device(DeviceType::CPU));
+            static Tensor arange(T start, T stop, T step, Device device = Device(DeviceType::CPU));
+
+            
+            template <typename U = T> // requires keyword evaluates when function is instantiated, but our function is class method using class T and not its own T
+            // so it doesnt have a template to check against
+            requires std::is_floating_point_v<U>
+            static Tensor normal(std::vector<int64_t> shape, T mean = T(0), T std = T(1), Device device = Device(DeviceType::CPU));
+
+            template <typename U = T>
+            requires std::is_floating_point_v<U>
+            static Tensor uniform(std::vector<int64_t> shape, T low, T high, Device device = Device(DeviceType::CPU));
+
+            template <typename U = T>
+            requires std::is_floating_point_v<U>
+            static Tensor xavier_uniform(std::vector<int64_t> shape, int64_t fan_in, int64_t fan_out, Device device);
+
+            template <typename U = T>
+            requires std::is_floating_point_v<U>
+            static Tensor xavier_normal(std::vector<int64_t> shape, int64_t fan_in, int64_t fan_out, Device device);
+
+            template <typename U = T>
+            requires std::is_floating_point_v<U>
+            static Tensor kaiming_uniform(std::vector<int64_t> shape, int64_t fan_in, T a, Device device);
+
+            template <typename U = T>
+            requires std::is_floating_point_v<U>
+            static Tensor kaiming_normal(std::vector<int64_t> shape, int64_t fan_in, T a, Device device);
+            
             Tensor clone() const;
 
             // INDEXING

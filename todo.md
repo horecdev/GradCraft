@@ -54,7 +54,7 @@ DONE Printing for CUDA + item() for cuda
 DONE Compile + test MaxNode + ArgMax
 DONE Swap out current CPU testpark for CUDA testpark. Compile.
 - Write alternative ctors for: ones, zeros, full, arange, randn, rand
-- Make it multi gpu.
+- Make it multi gpu. (ring ReduceAllNode and stuff)
 - Link up BLAS and cuBLAS + MatMulNode
 - SoftMaxNode
 - LayerNorm Node
