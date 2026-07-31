@@ -54,7 +54,10 @@ DONE Printing for CUDA + item() for cuda
 DONE Compile + test MaxNode + ArgMax
 DONE Swap out current CPU testpark for CUDA testpark. Compile.
 DONE Write alternative ctors for: ones, zeros, full, arange, randn, rand, weight inits
-- Make it multi gpu. (ring ReduceAllNode and stuff)
+DONE Set up Async CUDA so GPUs dont lock each other
+DONE .detach() method (breaks the link)
+- SigmoidNode / TanhNode
+- DivNode, SubNode, NegNode
 - Link up BLAS and cuBLAS + MatMulNode
 - SoftMaxNode
 - LayerNorm Node
@@ -67,7 +70,6 @@ DONE Write alternative ctors for: ones, zeros, full, arange, randn, rand, weight
 - BatchNorm2DNode
 - StackNode, SqueezeNode, UnsqueezeNode
 - PadNode
-- SigmoidNode / TanhNode
 - add multithreading with OpenMP (no writing mutexes and shit)
 - Write STACK node
 - Add ton of bloated nodes so the engine is actually usable

@@ -53,6 +53,8 @@ namespace gradc {
             void zero_grad();
 
             bool is_exclusive();
+
+            Tensor detach();
             
 
             // LIFECYCLE 
@@ -258,6 +260,12 @@ namespace gradc { // here is what dereferences m_state, since before its created
             raw_ptr[i] = val;\
             i++;
         }
+    }
+
+    template <typename T>
+    Tensor<T> Tensor<T>::detach() {
+        Tensor<T> result = Tensor<T>(m_shape, m_strides, m_offset, this->_get_storage(), false); // no grad, no creation_op. Lobotomized.
+        return result;
     }
 }
 
