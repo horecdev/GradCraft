@@ -41,12 +41,12 @@ namespace gradc {
             }
             else {
                 void* ptr = nullptr;
-                cudaError_t err = cudaMalloc(&ptr, bytes);
+                cudaError_t err = cudaMallocAsync(&ptr, bytes, 0);
 
                 if (err != cudaSuccess) {
                     clear(device);
                     ptr = nullptr;
-                    err = cudaMalloc(&ptr, bytes);
+                    err = cudaMallocAsync(&ptr, bytes, 0);
                     if (err != cudaSuccess) {
                         throw std::runtime_error("CUDA Error: " + std::string(cudaGetErrorString(err)));
                     }
@@ -80,7 +80,7 @@ namespace gradc {
             auto& device_blocks = m_free_blocks[device.index];
             for (auto& [size, available_blocks] : device_blocks) {
                 for (void* ptr : available_blocks) {
-                    cudaFree(ptr);
+                    cudaFreeAsync(ptr, 0);
                 }
             }
             m_free_blocks[device.index].clear();

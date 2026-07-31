@@ -53,7 +53,7 @@ DONE Integrate into dispatcher + frontend
 DONE Printing for CUDA + item() for cuda
 DONE Compile + test MaxNode + ArgMax
 DONE Swap out current CPU testpark for CUDA testpark. Compile.
-- Write alternative ctors for: ones, zeros, full, arange, randn, rand
+DONE Write alternative ctors for: ones, zeros, full, arange, randn, rand, weight inits
 - Make it multi gpu. (ring ReduceAllNode and stuff)
 - Link up BLAS and cuBLAS + MatMulNode
 - SoftMaxNode
