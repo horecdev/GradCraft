@@ -73,6 +73,14 @@ namespace gradc {
                     CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::BTanH<T>());
                     break;
 
+                case BinaryOp::BSiLU:
+                    CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::BSiLU<T>());
+                    break;
+
+                case BinaryOp::BGeLU:
+                    CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::BGeLU<T>());
+                    break;
+
                 default:
                     throw std::runtime_error("Unsupported BinaryOp in CPU Dispatcher.");
             }

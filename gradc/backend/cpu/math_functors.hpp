@@ -50,19 +50,42 @@ namespace gradc::cpu_functors {
 
         template <typename T>
         struct BSigmoid {
-            T operator()(T grad, T sig_val) const {
+            T operator()(T grad, T x) const {
+                T sig_val = static_cast<T>(1.0) / (static_cast<T>(1.0) + std::exp(-x));
                 return grad * (sig_val) * (static_cast<T>(1.0) - sig_val);
             }
         };
 
         template <typename T>
         struct BTanH {
-            T operator()(T grad, T tanh_val) const {
+            T operator()(T grad, T x) const {
+                T tanh_val = std::tanh(x);
                 return grad * (static_cast<T>(1.0) - tanh_val * tanh_val);
             }
         };
-
         
+        template <typename T>
+        struct BSiLU {
+            T operator()(T grad, T x) const {
+                T sig_val = static_cast<T>(1.0) / (static_cast<T>(1.0) + std::exp(-x));
+                return grad * (sig_val + x * sig_val * (1 - sig_val));
+            }
+        };  
+
+        template <typename T>
+        struct BGeLU {
+            T operator()(T grad, T x) const {
+                T alpha = 0.7978845608;
+                T beta = 0.044715;
+                T x_sq = x * x;
+                T x_cu = x_sq * x;
+                T u = alpha * (x + beta * x_cu);
+                T t = std::tanh(u);
+                T u_prime = alpha * (static_cast<T>(1.0) + static_cast<T>(3.0) * beta * x_sq);
+                T local_grad = static_cast<T>(0.5) * (static_cast<T>(1.0) + t) + static_cast<T>(0.5) * x * (static_cast<T>(1.0) - t * t) * u_prime;
+                return grad * local_grad;
+            }
+        };  
     }
 
     namespace BIP {
@@ -112,30 +135,30 @@ namespace gradc::cpu_functors {
     namespace UOOP {
         template <typename T>
         struct Identity {
-            T operator()(T a) const {
-                return a;
+            T operator()(T x) const {
+                return x;
             }
         };
 
         template <typename T>
         struct Neg {
-            T operator()(T a) const {
-                return -a;
+            T operator()(T x) const {
+                return -x;
             }
         };
 
         template <typename T>
         struct ReLU {
-            T operator()(T a) const {
-                return a > 0 ? a : 0;
+            T operator()(T x) const {
+                return x > 0 ? x : 0;
             }
         };
 
         template <typename T>
         struct Exp {
-            T operator()(T a) const {
+            T operator()(T x) const {
                 if constexpr (std::is_floating_point_v<T>) {
-                    return static_cast<T>(std::exp(a));
+                    return static_cast<T>(std::exp(x));
                 }
                 else {
                     throw std::runtime_error("Exp CPU UOOP functor running on non-floating.");
@@ -145,9 +168,9 @@ namespace gradc::cpu_functors {
 
         template <typename T>
         struct Log {
-            T operator()(T a) const {
+            T operator()(T x) const {
                 if constexpr (std::is_floating_point_v<T>) {
-                    return static_cast<T>(std::log(a));
+                    return static_cast<T>(std::log(x));
                 }
                 else {
                     throw std::runtime_error("Log CPU UOOP functor running on non-floating.");
@@ -157,9 +180,9 @@ namespace gradc::cpu_functors {
 
         template <typename T>
         struct Sigmoid {
-            T operator()(T a) const {
+            T operator()(T x) const {
                 if constexpr (std::is_floating_point_v<T>) {
-                    return static_cast<T>(1.0) / (static_cast<T>(1.0) + std::exp(-a));
+                    return static_cast<T>(1.0) / (static_cast<T>(1.0) + std::exp(-x));
                 }
                 else {
                     throw std::runtime_error("Sigmoid CPU UOOP functor running on non-floating.");
@@ -169,9 +192,9 @@ namespace gradc::cpu_functors {
 
         template <typename T>
         struct TanH {
-            T operator()(T a) const {
+            T operator()(T x) const {
                 if constexpr (std::is_floating_point_v<T>) {
-                    return static_cast<T>(std::log(a));
+                    return static_cast<T>(std::tanh(x));
                 }
                 else {
                     throw std::runtime_error("tanh CPU UOOP functor running on non-floating.");
@@ -179,10 +202,36 @@ namespace gradc::cpu_functors {
             }
         };
 
+        template <typename T>
+        struct SiLU {
+            T operator()(T x) const {
+                if constexpr (std::is_floating_point_v<T>) {
+                    return x * (static_cast<T>(1.0) / (static_cast<T>(1.0) + std::exp(-x)));
+                }
+                else {
+                    throw std::runtime_error("SiLU CPU UOOP functor running on non-floating.");
+                }
+            }
+        };
+
+        template <typename T>
+        struct GeLU {
+            T operator()(T x) const {
+                if constexpr (std::is_floating_point_v<T>) {
+                    T alpha = static_cast<T>(0.7978845608);
+                    T beta = static_cast<T>(0.044715);
+                    return x * static_cast<T>(0.5) * (static_cast<T>(1.0) + std::tanh(alpha * (x + beta * x * x * x)));
+                }
+                else {
+                    throw std::runtime_error("GeLU CPU UOOP functor running on non-floating.");
+                }
+            }
+        };
+
         template <typename InT, typename OutT>
         struct Cast {
-            OutT operator()(InT a) const {
-                return static_cast<OutT>(a);
+            OutT operator()(InT x) const {
+                return static_cast<OutT>(x);
             }
         };
     }
@@ -190,23 +239,23 @@ namespace gradc::cpu_functors {
     namespace UIP {
         template <typename T>
         struct Neg {
-            void operator()(T& a) const {
-                a = -a;
+            void operator()(T& x) const {
+                x = -x;
             }
         };
 
         template <typename T>
         struct ReLU {
-            void operator()(T& a) const {
-                a = a > 0 ? a : 0;
+            void operator()(T& x) const {
+                x = x > 0 ? x : 0;
             }
         };
 
         template <typename T>
         struct Exp {
-            void operator()(T& a) const {
+            void operator()(T& x) const {
                 if constexpr (std::is_floating_point_v<T>) {
-                    a = static_cast<T>(std::exp(a));
+                    x = static_cast<T>(std::exp(x));
                 }
                 else {
                     throw std::runtime_error("UIP Exp CPU functor running on non-floating.");
@@ -216,9 +265,9 @@ namespace gradc::cpu_functors {
 
         template <typename T>
         struct Log {
-            void operator()(T& a) const {
+            void operator()(T& x) const {
                 if constexpr (std::is_floating_point_v<T>) {
-                    a = static_cast<T>(std::log(a));
+                    x = static_cast<T>(std::log(x));
                 }
                 else {
                     throw std::runtime_error("UIP Log CPU functor running on non-floating.");
@@ -228,9 +277,9 @@ namespace gradc::cpu_functors {
 
         template <typename T>
         struct Sigmoid {
-            void operator()(T& a) const {
+            void operator()(T& x) const {
                 if constexpr (std::is_floating_point_v<T>) {
-                    a = static_cast<T>(1.0) / (static_cast<T>(1.0) + std::exp(-a));
+                    x = static_cast<T>(1.0) / (static_cast<T>(1.0) + std::exp(-x));
                 }
                 else {
                     throw std::runtime_error("UIP Sigmoid CPU functor running on non-floating.");
@@ -240,12 +289,38 @@ namespace gradc::cpu_functors {
 
         template <typename T>
         struct TanH {
-            void operator()(T& a) const {
+            void operator()(T& x) const {
                 if constexpr (std::is_floating_point_v<T>) {
-                    a = static_cast<T>(std::tanh(a));
+                    x = static_cast<T>(std::tanh(x));
                 }
                 else {
                     throw std::runtime_error("UIP tanh CPU functor running on non-floating.");
+                }
+            }
+        };
+
+        template <typename T>
+        struct SiLU {
+            T operator()(T& x) const {
+                if constexpr (std::is_floating_point_v<T>) {
+                    x = x * (static_cast<T>(1.0) / (static_cast<T>(1.0) + std::exp(-x)));
+                }
+                else {
+                    throw std::runtime_error("SiLU CPU UIP functor running on non-floating.");
+                }
+            }
+        };
+
+        template <typename T>
+        struct GeLU {
+            T operator()(T& x) const {
+                if constexpr (std::is_floating_point_v<T>) {
+                    T alpha = static_cast<T>(0.7978845608);
+                    T beta = static_cast<T>(0.044715);
+                    x = x * static_cast<T>(0.5) * (static_cast<T>(1.0) + std::tanh(alpha * (x + beta * x * x * x)));
+                }
+                else {
+                    throw std::runtime_error("GeLU CPU UIP functor running on non-floating.");
                 }
             }
         };

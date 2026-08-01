@@ -103,6 +103,12 @@ namespace gradc {
                 case BinaryOp::BTanH:
                     binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::BTanH<T>());
                     break;
+                case BinaryOp::BSiLU:
+                    binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::BSiLU<T>());
+                    break;
+                case BinaryOp::BGeLU:
+                    binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::BGeLU<T>());
+                    break;
                 default:
                     throw std::runtime_error("Unsupported CUDA BOOP FAST");
             }
@@ -163,6 +169,12 @@ namespace gradc {
                 break;
             case BinaryOp::BTanH:
                 binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::BTanH<T>());
+                break;
+            case BinaryOp::BSiLU:
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::BSiLU<T>());
+                break;
+            case BinaryOp::BGeLU:
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::BGeLU<T>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA BOOP SLOW");
@@ -367,6 +379,18 @@ namespace gradc {
                 case UnaryOp::Log:
                     unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Log<InT>());
                     break;
+                case UnaryOp::Sigmoid:
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Sigmoid<InT>());
+                    break;
+                case UnaryOp::TanH:
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::TanH<InT>());
+                    break;
+                case UnaryOp::SiLU:
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::SiLU<InT>());
+                    break;
+                case UnaryOp::GeLU:
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::GeLU<InT>());
+                    break;
                 default:
                     throw std::runtime_error("Unsupported CUDA UOOP");
             }
@@ -398,6 +422,18 @@ namespace gradc {
                 break;
             case UnaryOp::Log:
                 unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Log<InT>());
+                break;
+            case UnaryOp::Sigmoid:
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Sigmoid<InT>());
+                break;
+            case UnaryOp::TanH:
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::TanH<InT>());
+                break;
+            case UnaryOp::SiLU:
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::SiLU<InT>());
+                break;
+            case UnaryOp::GeLU:
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::GeLU<InT>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA UOOP");
@@ -466,6 +502,18 @@ namespace gradc {
                 case UnaryOpInPlace::Log:
                     unary_in_place_kernel_fast<<<blocks, threads>>>(p_source, source.m_offset, total_elems, cuda_functors::UIP::Log<T>());
                     break;
+                case UnaryOpInPlace::Sigmoid:
+                    unary_in_place_kernel_fast<<<blocks, threads>>>(p_source, source.m_offset, total_elems, cuda_functors::UIP::Sigmoid<T>());
+                    break;
+                case UnaryOpInPlace::TanH:
+                    unary_in_place_kernel_fast<<<blocks, threads>>>(p_source, source.m_offset, total_elems, cuda_functors::UIP::TanH<T>());
+                    break;
+                case UnaryOpInPlace::SiLU:
+                    unary_in_place_kernel_fast<<<blocks, threads>>>(p_source, source.m_offset, total_elems, cuda_functors::UIP::SiLU<T>());
+                    break;
+                case UnaryOpInPlace::GeLU:
+                    unary_in_place_kernel_fast<<<blocks, threads>>>(p_source, source.m_offset, total_elems, cuda_functors::UIP::GeLU<T>());
+                    break;
                 default:
                     throw std::runtime_error("Unsupported CUDA UIP");
             }
@@ -488,6 +536,18 @@ namespace gradc {
                 break;
             case UnaryOpInPlace::Log:
                 unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, cuda_functors::UIP::Log<T>());
+                break;
+            case UnaryOpInPlace::Sigmoid:
+                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, cuda_functors::UIP::Sigmoid<T>());
+                break;
+            case UnaryOpInPlace::TanH:
+                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, cuda_functors::UIP::TanH<T>());
+                break;
+            case UnaryOpInPlace::SiLU:
+                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, cuda_functors::UIP::SiLU<T>());
+                break;
+            case UnaryOpInPlace::GeLU:
+                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, cuda_functors::UIP::GeLU<T>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA UIP");
