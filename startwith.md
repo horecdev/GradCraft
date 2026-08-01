@@ -1,1 +1,1 @@
-Start with the backward pass optimization scratchpad for DivNode
+If you link up BLAS + cuBLAS tomorrow its a giant W.

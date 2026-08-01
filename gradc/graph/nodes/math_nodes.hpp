@@ -308,4 +308,26 @@ namespace gradc {
                 return {m_parent._get_state_base()};
             }
     };
+
+    template <typename T>
+    class MatMulNode : public Node<T> {
+        private:
+            Tensor<T> m_left;
+            Tensor<T> m_right;
+            std::vector<int64_t> m_target_shape;
+        public:
+            MatMulNode<T>(Tensor<T> left, Tensor<T> right, std::vector<int64_t> target_shape) : m_left(std::move(left)), m_right(std::move(right)), m_target_shape(std::move(target_shape)) {}
+            
+            Tensor<T> realize() override {
+                m_left.realize();
+                m_right.realize();
+            }
+
+            void backward(const Tensor<T>& out_grad) override { // CPU child can only have CPU parents (enforced outside of graph nodes)
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_left._get_state_base(), m_right._get_state_base()};
+            }
+    };
 } 

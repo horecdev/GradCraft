@@ -65,16 +65,16 @@ DONE Frontend for these 7 (Sub, Div, Neg, TanH, Sigmoid, SiLU, GeLU)
 DONE Add InPlaceOp for Sub, Div
 DONE ExpNode, LogNode + frontend
 DONE Take care of types (requires) for stuff like Exp, Log, Tanh, Sigmoid, LUs
-- Link up BLAS and cuBLAS + MatMulNode
+- Link up BLAS and cuBLAS + MatMulNode (if you do this its a giant W)
+- StackNode, SqueezeNode, UnsqueezeNode
 - SoftMaxNode
 - LayerNorm Node
 - EmbeddingNode?
-- CrossEntropyLossNode
+- SoftMaxCrossEntropyLossNode
 - Conv2DNode
 - MaxPool2DNode, AvgPool2DNode
 - UpsampleNode
 - BatchNorm2DNode
-- StackNode, SqueezeNode, UnsqueezeNode
 - PadNode
 - add multithreading with OpenMP (no writing mutexes and shit)
 - Write STACK node
