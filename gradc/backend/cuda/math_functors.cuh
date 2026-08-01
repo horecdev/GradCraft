@@ -33,7 +33,7 @@ namespace gradc::cuda_functors {
         };
 
         template <typename T>
-        struct ReLUBackward {
+        struct BReLU {
             __device__ T operator()(T grad, T value) const {
                 return value > 0 ? grad : 0;
             }
@@ -43,6 +43,20 @@ namespace gradc::cuda_functors {
         struct EqMask {
             __device__ T operator()(T a, T b) const {
                 return static_cast<T>(a == b);
+            }
+        };
+
+        template <typename T>
+        struct BSigmoid {
+            __device__ T operator()(T grad, T sig_val) const {
+                return grad * (sig_val) * (static_cast<T>(1.0) - sig_val);
+            }
+        };
+
+        template <typename T>
+        struct BTanH {
+            __device__ T operator()(T grad, T tanh_val) const {
+                return grad * (static_cast<T>(1.0) - tanh_val * tanh_val);
             }
         };
     }
@@ -152,7 +166,7 @@ namespace gradc::cuda_functors {
                     return 1.0f / (1.0f + expf(-a));
                 }
                 else if constexpr (std::is_same_v<T, double>) {
-                    return 1.0f / (1.0f + exp(-a));
+                    return 1.0 / (1.0 + exp(-a));
                 }
                 else {
                     __trap();

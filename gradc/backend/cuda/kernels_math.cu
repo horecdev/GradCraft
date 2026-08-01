@@ -91,11 +91,17 @@ namespace gradc {
                 case BinaryOp::Div:
                     binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::Div<T>());
                     break;
-                case BinaryOp::ReLUBackward:
-                    binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::ReLUBackward<T>());
-                    break;
                 case BinaryOp::EqMask:
                     binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::EqMask<T>());
+                    break;
+                case BinaryOp::BReLU:
+                    binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::BReLU<T>());
+                    break;
+                case BinaryOp::BSigmoid:
+                    binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::BSigmoid<T>());
+                    break;
+                case BinaryOp::BTanH:
+                    binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::BTanH<T>());
                     break;
                 default:
                     throw std::runtime_error("Unsupported CUDA BOOP FAST");
@@ -146,11 +152,17 @@ namespace gradc {
             case BinaryOp::Div:
                 binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::Div<T>());
                 break;   
-            case BinaryOp::ReLUBackward:
-                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::ReLUBackward<T>());
-                break;
             case BinaryOp::EqMask:
                 binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::EqMask<T>());
+                break;
+            case BinaryOp::BReLU:
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::BReLU<T>());
+                break;
+            case BinaryOp::BSigmoid:
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::BSigmoid<T>());
+                break;
+            case BinaryOp::BTanH:
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::BTanH<T>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA BOOP SLOW");

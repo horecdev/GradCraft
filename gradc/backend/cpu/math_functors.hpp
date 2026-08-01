@@ -35,18 +35,34 @@ namespace gradc::cpu_functors {
         };
 
         template <typename T>
-        struct ReLUBackward {
+        struct EqMask {
+            T operator()(T a, T b) const {
+                return static_cast<T>(a == b);
+            }
+        };
+
+        template <typename T>
+        struct BReLU {
             T operator()(T grad, T value) const {
                 return value > 0 ? grad : 0;
             }
         };
 
         template <typename T>
-        struct EqMask {
-            T operator()(T a, T b) const {
-                return static_cast<T>(a == b);
+        struct BSigmoid {
+            T operator()(T grad, T sig_val) const {
+                return grad * (sig_val) * (static_cast<T>(1.0) - sig_val);
             }
         };
+
+        template <typename T>
+        struct BTanH {
+            T operator()(T grad, T tanh_val) const {
+                return grad * (static_cast<T>(1.0) - tanh_val * tanh_val);
+            }
+        };
+
+        
     }
 
     namespace BIP {
