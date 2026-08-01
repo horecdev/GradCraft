@@ -42,6 +42,20 @@ namespace gradc::cpu_functors {
         };
 
         template <typename T>
+        struct BExp {
+            T operator()(T grad, T x) const {
+                return grad * std::exp(x);
+            }
+        };
+
+        template <typename T>
+        struct BLog {
+            T operator()(T grad, T x) const {
+                return grad * (static_cast<T>(1.0) / x);
+            }
+        };
+
+        template <typename T>
         struct BReLU {
             T operator()(T grad, T value) const {
                 return value > 0 ? grad : 0;

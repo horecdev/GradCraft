@@ -33,16 +33,40 @@ namespace gradc::cuda_functors {
         };
 
         template <typename T>
-        struct BReLU {
-            __device__ T operator()(T grad, T value) const {
-                return value > 0 ? grad : 0;
+        struct EqMask {
+            __device__ T operator()(T a, T b) const {
+                return static_cast<T>(a == b);
             }
         };
 
         template <typename T>
-        struct EqMask {
-            __device__ T operator()(T a, T b) const {
-                return static_cast<T>(a == b);
+        struct BExp {
+            __device__ T operator()(T grad, T x) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    return grad * expf(x);
+                }
+                else if constexpr (std::is_same_v<T, float>)  {
+                    return grad * exp(x);
+                }
+                else {
+                    __trap();
+                    return T(0);
+                }
+                
+            }
+        };
+
+        template <typename T>
+        struct BLog {
+            __device__ T operator()(T grad, T x) const {
+                return grad * (static_cast<T>(1.0) / x);
+            }
+        };
+
+        template <typename T>
+        struct BReLU {
+            __device__ T operator()(T grad, T value) const {
+                return value > 0 ? grad : 0;
             }
         };
 

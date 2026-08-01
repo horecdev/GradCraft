@@ -186,7 +186,12 @@ namespace gradc {
             friend CUDAUtils;
             friend CUDAMath;
 
+            // MATH 
             Tensor operator-() const;
+            template <typename U = T>
+            Tensor exp() const requires std::is_floating_point_v<U>;
+            template <typename U = T>
+            Tensor log() const requires std::is_floating_point_v<U>;
 
             template <typename U, typename W> friend auto operator+(Tensor<U> left, Tensor<W> right); // we befriend whole family of functions named operator+. 
             template <typename U, typename W> friend auto operator-(Tensor<U> left, Tensor<W> right);

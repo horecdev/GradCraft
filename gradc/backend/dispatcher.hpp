@@ -61,6 +61,14 @@ namespace gradc {
                     CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::EqMask<T>());
                     break;
 
+                case BinaryOp::BExp:
+                    CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::BExp<T>());
+                    break;
+
+                case BinaryOp::BLog:
+                    CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::BLog<T>());
+                    break;
+
                 case BinaryOp::BReLU:
                     CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::BReLU<T>());
                     break;

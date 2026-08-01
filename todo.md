@@ -61,9 +61,10 @@ DONE SigmoidNode / TanhNode
 DONE DivNode, SubNode, NegNode
 DONE Optimize Div and Mul to use less memory + one grad equation in the other for Div
 DONE GELUNode, SiLUNode
-- Frontend for these 7 (Sub, Div, Neg, TanH, Sigmoid, SiLU, GeLU)
+DONE Frontend for these 7 (Sub, Div, Neg, TanH, Sigmoid, SiLU, GeLU)
 DONE Add InPlaceOp for Sub, Div
-- Take care of types (requires) for stuff like Exp, Log, Tanh, Sigmoid, Linear Unit functions
+DONE ExpNode, LogNode + frontend
+DONE Take care of types (requires) for stuff like Exp, Log, Tanh, Sigmoid, LUs
 - Link up BLAS and cuBLAS + MatMulNode
 - SoftMaxNode
 - LayerNorm Node
