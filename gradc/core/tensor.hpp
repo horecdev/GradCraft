@@ -48,7 +48,7 @@ namespace gradc {
 
             void backward();
 
-            void accumulate_grad(const Tensor<T>& incoming_grad);
+            void accumulate_grad(const Tensor<T>& incoming_grad, bool is_sub = false);
 
             void zero_grad();
 

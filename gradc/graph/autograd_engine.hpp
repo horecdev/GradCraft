@@ -44,18 +44,20 @@ namespace gradc {
 
     
     template <typename T>
-    void Tensor<T>::accumulate_grad(const Tensor<T>& incoming_grad) {
+    void Tensor<T>::accumulate_grad(const Tensor<T>& incoming_grad, bool is_sub) {
         Device target_device = infer_assert_device(*this, incoming_grad); // guard if a shitshow happened (but probably redundant)
 
         if (!m_requires_grad) {return;}
 
+        BinaryOpInPlace op = !is_sub ? BinaryOpInPlace::Add : BinaryOpInPlace::Sub;
+
         if (!m_state->m_grad.has_value()) {
             Tensor<T> local_grad = Tensor<T>(m_shape, T(0), target_device);
-            dispatch(target_device, BinaryOpInPlace::Add, local_grad, incoming_grad);
+            dispatch(target_device, op, local_grad, incoming_grad);
             m_state->m_grad = std::move(local_grad);
         }
         else {
-            dispatch(target_device, BinaryOpInPlace::Add, m_state->m_grad.value(), incoming_grad);
+            dispatch(target_device, op, m_state->m_grad.value(), incoming_grad);
         }
     }
 

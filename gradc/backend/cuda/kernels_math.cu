@@ -145,7 +145,7 @@ namespace gradc {
                 break;
             case BinaryOp::Div:
                 binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::Div<T>());
-                break;
+                break;   
             case BinaryOp::ReLUBackward:
                 binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::ReLUBackward<T>());
                 break;
@@ -219,11 +219,17 @@ namespace gradc {
             case BinaryOpInPlace::Sub:
                 binary_in_place_kernel_fast<<<blocks, threads>>>(p_left, p_right, left.m_offset, right.m_offset, total_elems, cuda_functors::BIP::Sub<T>());
                 break;
+            case BinaryOpInPlace::ISub: // left is to_be_subbed. right is main
+                binary_in_place_kernel_fast<<<blocks, threads>>>(p_left, p_right, left.m_offset, right.m_offset, total_elems, cuda_functors::BIP::ISub<T>());
+                break;
             case BinaryOpInPlace::Mul:
                 binary_in_place_kernel_fast<<<blocks, threads>>>(p_left, p_right, left.m_offset, right.m_offset, total_elems, cuda_functors::BIP::Mul<T>());
                 break;
             case BinaryOpInPlace::Div:
                 binary_in_place_kernel_fast<<<blocks, threads>>>(p_left, p_right, left.m_offset, right.m_offset, total_elems, cuda_functors::BIP::Div<T>());
+                break;
+            case BinaryOpInPlace::IDiv: // left is divisor. right is main
+                binary_in_place_kernel_fast<<<blocks, threads>>>(p_left, p_right, left.m_offset, right.m_offset, total_elems, cuda_functors::BIP::IDiv<T>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA BIP FAST");
@@ -261,11 +267,17 @@ namespace gradc {
             case BinaryOpInPlace::Sub:
                 binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, cuda_functors::BIP::Sub<T>());
                 break;
+            case BinaryOpInPlace::ISub:
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, cuda_functors::BIP::ISub<T>());
+                break;
             case BinaryOpInPlace::Mul:
                 binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, cuda_functors::BIP::Mul<T>());
                 break;
             case BinaryOpInPlace::Div:
                 binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, cuda_functors::BIP::Div<T>());
+                break;
+            case BinaryOpInPlace::IDiv:
+                binary_in_place_kernel<<<blocks, threads>>>(p_left, p_right, gpu_shape, gpu_left_strides, gpu_right_strides, left.m_offset, right_offset, total_elems, cuda_functors::BIP::IDiv<T>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA BIP SLOW");

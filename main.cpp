@@ -40,7 +40,7 @@ int main() {
     print_tensor(std::cout, y_argmax);
 
 
-    loss.accumulate_grad(Tensor<float>(1.0f, Device(DeviceType::CPU, 0))); 
+    loss.accumulate_grad(Tensor<float>(1.0f, Device(DeviceType::CPU, 0)), false); 
     loss.backward();
     
     std::cout << "\n--- Gradients ---\n";

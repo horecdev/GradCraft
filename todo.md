@@ -59,10 +59,15 @@ DONE .detach() method (breaks the link)
 DONE Go through all current nodes. Check where during realize() exclusivity = mem saving (bin out of place, un out of place)
 - SigmoidNode / TanhNode
 - DivNode, SubNode, NegNode
+- GELUNode, SiLUNode
+- Frontend for these 7
+- Optimize Div and Mul to use less memory + one grad equation in the other for Div
+- Add InPlaceOp for Sub, Div 
+- Take care of types for Sub, Div
+- Take care of types (requires) for stuff like Exp, Log, Tanh, Sigmoid, Linear Unit functions
 - Link up BLAS and cuBLAS + MatMulNode
 - SoftMaxNode
 - LayerNorm Node
-- GELUNode, SiLUNode
 - EmbeddingNode?
 - CrossEntropyLossNode
 - Conv2DNode

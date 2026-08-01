@@ -87,12 +87,20 @@ namespace gradc {
                     CPUBackend::apply_binary_in_place(left, right, cpu_functors::BIP::Sub<T>());
                     break;
 
+                case BinaryOpInPlace::ISub: // left: to_be_subbed. right: main
+                    CPUBackend::apply_binary_in_place(left, right, cpu_functors::BIP::ISub<T>());
+                    break;
+
                 case BinaryOpInPlace::Mul:
                     CPUBackend::apply_binary_in_place(left, right, cpu_functors::BIP::Mul<T>());
                     break;
 
                 case BinaryOpInPlace::Div:
                     CPUBackend::apply_binary_in_place(left, right, cpu_functors::BIP::Div<T>());
+                    break;
+
+                case BinaryOpInPlace::IDiv:
+                    CPUBackend::apply_binary_in_place(left, right, cpu_functors::BIP::IDiv<T>());
                     break;
 
                 default:

@@ -63,6 +63,13 @@ namespace gradc::cuda_functors {
         };
 
         template <typename T>
+        struct ISub {
+            __device__ void operator()(T& to_be_subbed, T main) const {
+                to_be_subbed = -to_be_subbed + main;
+            }
+        };
+
+        template <typename T>
         struct Mul {
             __device__ void operator()(T& a, T b) const {
                 a *= b;
@@ -73,6 +80,13 @@ namespace gradc::cuda_functors {
         struct Div {
             __device__ void operator()(T& a, T b) const {
                 a /= b;
+            }
+        };
+
+        template <typename T>
+        struct IDiv {
+            __device__ void operator()(T& divisor, T main) const {
+                divisor = main / divisor;
             }
         };
     }
@@ -86,6 +100,13 @@ namespace gradc::cuda_functors {
         };
 
         template <typename T>
+        struct Neg {
+            __device__ T operator()(T a) const {
+                return -a;
+            }
+        };
+
+        template <typename T>
         struct ReLU {
             __device__ T operator()(T a) const {
                 return a > 0 ? a : 0;
@@ -95,12 +116,15 @@ namespace gradc::cuda_functors {
         template <typename T>
         struct Exp {
             __device__ T operator()(T a) const {
-                if constexpr (std::is_floating_point_v<T>) {
+                if constexpr (std::is_same_v<T, float>) {
+                    return expf(a);
+                }
+                else if constexpr (std::is_same_v<T, double>) {
                     return exp(a);
                 }
                 else {
                     __trap(); // this shit should never be invoked (exponentiating a tensor of int type into int type)
-                    return 0;
+                    return T(0);
                 }
             }
         };
@@ -108,12 +132,47 @@ namespace gradc::cuda_functors {
         template <typename T>
         struct Log {
             __device__ T operator()(T a) const {
-                if constexpr (std::is_floating_point_v<T>) {
+                if constexpr (std::is_same_v<T, float>) {
+                    return logf(a);
+                }
+                else if constexpr (std::is_same_v<T, double>) {
                     return log(a);
                 }
                 else {
                     __trap();
-                    return 0;
+                    return T(0);
+                }
+            }
+        };
+
+        template <typename T>
+        struct Sigmoid {
+            __device__ T operator()(T a) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    return 1.0f / (1.0f + expf(-a));
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    return 1.0f / (1.0f + exp(-a));
+                }
+                else {
+                    __trap();
+                    return T(0);
+                }
+            }
+        };
+
+        template <typename T>
+        struct TanH {
+            __device__ T operator()(T a) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    return tanhf(a);
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    return tanh(a);
+                }
+                else {
+                    __trap();
+                    return T(0);
                 }
             }
         };
@@ -128,6 +187,13 @@ namespace gradc::cuda_functors {
 
     namespace UIP {
         template <typename T>
+        struct Neg {
+            __device__ void operator()(T& a) const {
+                a = -a;
+            }
+        };
+
+        template <typename T>
         struct ReLU {
             __device__ void operator()(T& a) const {
                 a = a > 0 ? a : 0;
@@ -135,26 +201,65 @@ namespace gradc::cuda_functors {
         };
 
         template <typename T>
-        struct Log {
-            __device__ void operator()(T& a) const {
-                if constexpr (std::is_floating_point_v<T>) {
-                    a = log(a);
-                }
-                else {
-                    __trap();
-                }
-                
-            }
-        };
-
-        template <typename T>
         struct Exp {
             __device__ void operator()(T& a) const {
-                if constexpr (std::is_floating_point_v<T>) {
+                if constexpr (std::is_same_v<T, float>) {
+                    a = expf(a);
+                }
+                else if constexpr (std::is_same_v<T, double>) {
                     a = exp(a);
                 }
                 else {
                     __trap();
+                    return T(0);
+                }
+            }
+        };
+
+        template <typename T>
+        struct Log {
+            __device__ void operator()(T& a) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    a = logf(a);
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    a = log(a);
+                }
+                else {
+                    __trap();
+                    return T(0);
+                }
+            }
+        };
+
+        template <typename T>
+        struct Sigmoid {
+            __device__ void operator()(T& a) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    a = 1.0f / (1.0f + expf(-a));
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    a = 1.0 / (1.0 + exp(-a));
+                }
+                else {
+                    __trap();
+                    return T(0);
+                }
+            }
+        };
+
+        template <typename T>
+        struct TanH {
+            __device__ void operator()(T& a) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    a = tanhf(a);
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    a = tanh(a);
+                }
+                else {
+                    __trap();
+                    return T(0);
                 }
             }
         };
