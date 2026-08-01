@@ -318,4 +318,16 @@ namespace gradc {
     }
 
     #pragma endregion IN PLACE
+
+    #pragma region NEGATION
+
+    template <typename T>
+    Tensor<T> Tensor<T>::operator-() const {
+        Tensor<T> result = Tensor<T>(m_shape, m_requires_grad, lazy, this->device());
+        result.m_state->m_creation_op = std::make_unique<NegNode<T>>(*this);
+        return result;
+    }
+
+
+    #pragma endregion NEGATION
 }
