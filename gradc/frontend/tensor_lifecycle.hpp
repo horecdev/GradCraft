@@ -97,7 +97,7 @@ namespace gradc {
 
     template <typename T>
     Tensor<T> Tensor<T>::arange(T start, T stop, T step, Device device) {
-        int64_t n_elems = (stop - start) / step;
+        int64_t n_elems = static_cast<int64_t>((stop - start) / step);
         if (n_elems == 0) {
             throw std::runtime_error("n_elems in .arange() is 0.");
         }
