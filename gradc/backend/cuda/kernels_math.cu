@@ -329,22 +329,22 @@ namespace gradc {
         if (out.is_contiguous() && source.is_contiguous() && out.m_shape == source.m_shape) {
             switch (op) {
                 case UnaryOp::Identity:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Identity<InT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Identity<InT>());
                     break;
                 case UnaryOp::Cast:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Cast<InT, OutT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Cast<InT, OutT>());
                     break;
                 case UnaryOp::ReLU:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::ReLU<InT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::ReLU<InT>());
                     break;
                 case UnaryOp::Exp:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Exp<InT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Exp<InT>());
                     break;
                 case UnaryOp::Log:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Log<InT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Log<InT>());
                     break;
                 default:
-                    throw std::runtime_error("Unsupported CUDA UOP");
+                    throw std::runtime_error("Unsupported CUDA UOOP");
             }
             return;
         }
@@ -361,22 +361,22 @@ namespace gradc {
 
         switch (op) {
             case UnaryOp::Identity:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Identity<InT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Identity<InT>());
                 break;
             case UnaryOp::Cast:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Cast<InT, OutT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Cast<InT, OutT>());
                 break;
             case UnaryOp::ReLU:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::ReLU<InT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::ReLU<InT>());
                 break;
             case UnaryOp::Exp:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Exp<InT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Exp<InT>());
                 break;
             case UnaryOp::Log:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOP::Log<InT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Log<InT>());
                 break;
             default:
-                throw std::runtime_error("Unsupported CUDA UOP");
+                throw std::runtime_error("Unsupported CUDA UOOP");
         }
     }
 
@@ -711,24 +711,24 @@ namespace gradc {
         template void CUDAMath::apply_reduction_operation<T>(Tensor<T>&, const Tensor<T>&, const ReductionMetadata&, T, ReduceOp); \
         template void CUDAMath::apply_arg_extr_operation<T>(Tensor<int64_t>&, const Tensor<T>&, int64_t, T, ArgExtrOp);
 
-    #define INSTANTIATE_CUDA_MATH_UOP(OutT, InT) \
+    #define INSTANTIATE_CUDA_MATH_UOOP(OutT, InT) \
         template void CUDAMath::apply_unary_out_of_place<OutT, InT>(Tensor<OutT>&, const Tensor<InT>&, UnaryOp);
 
-    #define INSTANTIATE_CUDA_UOP_ALL_OUTS(InT) \
-        INSTANTIATE_CUDA_MATH_UOP(float, InT) \
-        INSTANTIATE_CUDA_MATH_UOP(double, InT) \
-        INSTANTIATE_CUDA_MATH_UOP(int32_t, InT) \
-        INSTANTIATE_CUDA_MATH_UOP(int64_t, InT) 
+    #define INSTANTIATE_CUDA_UOOP_ALL_OUTS(InT) \
+        INSTANTIATE_CUDA_MATH_UOOP(float, InT) \
+        INSTANTIATE_CUDA_MATH_UOOP(double, InT) \
+        INSTANTIATE_CUDA_MATH_UOOP(int32_t, InT) \
+        INSTANTIATE_CUDA_MATH_UOOP(int64_t, InT) 
 
     INSTANTIATE_CUDA_MATH_SINGLE(float)
     INSTANTIATE_CUDA_MATH_SINGLE(double)
     INSTANTIATE_CUDA_MATH_SINGLE(int32_t)
     INSTANTIATE_CUDA_MATH_SINGLE(int64_t)
 
-    INSTANTIATE_CUDA_UOP_ALL_OUTS(float)
-    INSTANTIATE_CUDA_UOP_ALL_OUTS(double)
-    INSTANTIATE_CUDA_UOP_ALL_OUTS(int32_t)
-    INSTANTIATE_CUDA_UOP_ALL_OUTS(int64_t)
+    INSTANTIATE_CUDA_UOOP_ALL_OUTS(float)
+    INSTANTIATE_CUDA_UOOP_ALL_OUTS(double)
+    INSTANTIATE_CUDA_UOOP_ALL_OUTS(int32_t)
+    INSTANTIATE_CUDA_UOOP_ALL_OUTS(int64_t)
 
     #pragma endregion TEMPLATING
 }

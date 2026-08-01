@@ -77,7 +77,7 @@ namespace gradc::cuda_functors {
         };
     }
 
-    namespace UOP {
+    namespace UOOP {
         template <typename T>
         struct Identity {
             __device__ T operator()(T a) const {

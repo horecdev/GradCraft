@@ -40,7 +40,7 @@ DONE DIM COALESCING ALGO HELPER
 DONE INTEGRATE DIM FUSING post-broadcast
 DONE Compile with dim fusing + get right results
 DONE Write all functors in Functor::BIP::etc
-DONE Write cuda kernels for UOP, UIP, BIP, REDUCTIONS, BOOP
+DONE Write cuda kernels for UOOP, UIP, BIP, REDUCTIONS, BOOP
 DONE Apply for scalars / fast paths on the GPU (scalars fall into the fast path) (all 4 main op types) (add swtiches to invoke with right functor the fast version)
 DONE Write correct reduction kernels for CUDA (both fast and slow) + integrate them into cpu wrapper (with switch)
 DONE Fast path for reduction with all axes on the CPU
@@ -56,6 +56,7 @@ DONE Swap out current CPU testpark for CUDA testpark. Compile.
 DONE Write alternative ctors for: ones, zeros, full, arange, randn, rand, weight inits
 DONE Set up Async CUDA so GPUs dont lock each other
 DONE .detach() method (breaks the link)
+DONE Go through all current nodes. Check where during realize() exclusivity = mem saving (bin out of place, un out of place)
 - SigmoidNode / TanhNode
 - DivNode, SubNode, NegNode
 - Link up BLAS and cuBLAS + MatMulNode

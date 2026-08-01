@@ -15,6 +15,11 @@ namespace gradc {
 
             Tensor<T> realize() override {
                 m_parent.realize();
+                if (!m_parent.requires_grad() && m_parent.is_exclusive()) {
+                    dispatch(m_parent.device(), UnaryOpInPlace::ReLU, m_parent);
+                    return m_parent;
+                }
+                
                 Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
                 dispatch(m_parent.device(), UnaryOp::ReLU, result, m_parent);
                 return result;

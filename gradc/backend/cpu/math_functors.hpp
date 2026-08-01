@@ -79,7 +79,7 @@ namespace gradc::cpu_functors {
         };
     }
 
-    namespace UOP {
+    namespace UOOP {
         template <typename T>
         struct Identity {
             T operator()(T a) const {

@@ -110,19 +110,19 @@ namespace gradc {
         if (device.is_cpu()) {
             switch (op) {
                 case UnaryOp::Identity:
-                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOP::Identity<T>());
+                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOOP::Identity<T>());
                     break;
 
                 case UnaryOp::Exp:
-                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOP::Exp<T>());
+                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOOP::Exp<T>());
                     break;
 
                 case UnaryOp::Log:
-                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOP::Log<T>());
+                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOOP::Log<T>());
                     break;
 
                 case UnaryOp::ReLU:
-                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOP::ReLU<T>());
+                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOOP::ReLU<T>());
                     break;
 
                 default:
@@ -239,7 +239,7 @@ namespace gradc {
     template <typename OutT, typename InT>
     inline void dispatch_cast(Device device, Tensor<OutT>& out, const Tensor<InT>& in) {
         if (device.is_cpu()) {
-            CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOP::Cast<InT, OutT>());
+            CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOOP::Cast<InT, OutT>());
         }
         else if (device.is_cuda()) {
             CUDAMath::apply_unary_out_of_place(out, in, UnaryOp::Cast);
