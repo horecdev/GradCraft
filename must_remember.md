@@ -29,6 +29,7 @@ they fall right into
 15) You could add further optimization in backward: because flow is Tensor.backward()->state.backward()->node.backward() and iterating over a list, then out_grad is destroyed
 is destroyed as soon as node backward ends (every tensor state has a grad, and only one node). You COULD add checks like "Left & right both need out_grad to get calculated.
 If left is already done and right needs grad, then ill reuse the out_grad buffer instead of allocating a new one". BUT: watch out if youre not modifying out_grad using out_grad.
-This is where bugs slip (modifying storage with the same storage, __restrict and so on). Cannot modify storage using storage. Dont do this please.
+This is where bugs slip (modifying storage with the same storage, __restrict and so on). Cannot modify storage using storage. 
+But if its just out_grad * m_left? sure. Then unbroadcast and accumulate it after editing.
 16) Another optimization: if BOOP both need grad, you allocate grad for one, then reuse it in the other as the buffer.
 17) Look for places in BOOP where one grad relies on the other. You save calculations.

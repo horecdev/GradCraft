@@ -58,7 +58,7 @@ DONE Set up Async CUDA so GPUs dont lock each other
 DONE .detach() method (breaks the link)
 DONE Go through all current nodes. Check where during realize() exclusivity = mem saving (bin out of place, un out of place)
 - SigmoidNode / TanhNode
-- DivNode, SubNode, NegNode
+DONE DivNode, SubNode, NegNode
 - GELUNode, SiLUNode
 - Frontend for these 7
 - Optimize Div and Mul to use less memory + one grad equation in the other for Div

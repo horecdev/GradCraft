@@ -171,8 +171,8 @@ namespace gradc {
                     m_left.accumulate_grad(unbroadcast_grad(scratchpad, m_left.shape())); 
                 }
                 if (m_right.requires_grad()) {
-                    dispatch(target_device, BinaryOp::Mul, scratchpad, out_grad, m_left);
-                    m_right.accumulate_grad(unbroadcast_grad(scratchpad, m_right.shape())); // OOP dont gaf about what was there before
+                    dispatch(target_device, BinaryOp::Mul, scratchpad, out_grad, m_left); // OOP dont gaf about what was there before. Right result.
+                    m_right.accumulate_grad(unbroadcast_grad(scratchpad, m_right.shape())); 
                 }
             }
 
@@ -219,14 +219,22 @@ namespace gradc {
                 }
 
                 if (m_left.requires_grad()) {
-                    Tensor<T> raw_left_grad = Tensor<T>(out_grad.shape(), target_device, uninitialized);
-                    dispatch(target_device, BinaryOp::Mul, raw_left_grad, out_grad, m_right);
-                    m_left.accumulate_grad(unbroadcast_grad(raw_left_grad, m_left.shape()));
+                    dispatch(target_device, BinaryOp::Div, scratchpad, out_grad, m_right);
+                    m_left.accumulate_grad(unbroadcast_grad(scratchpad, m_left.shape()));
                 }
+
                 if (m_right.requires_grad()) {
-                    Tensor<T> raw_right_grad = Tensor<T>(out_grad.shape(), target_device, uninitialized);
-                    dispatch(target_device, BinaryOp::Mul, raw_right_grad, out_grad, m_left);
-                    m_right.accumulate_grad(unbroadcast_grad(raw_right_grad, m_right.shape()));
+                    if (m_left.requires_grad()) { // means that the scratchpad was just populated ----> do * (-a/b)
+                        dispatch(target_device, BinaryOpInPlace::Mul, scratchpad, m_left);
+                        dispatch(target_device, BinaryOpInPlace::Div, scratchpad, m_right);
+                        m_right.accumulate_grad(unbroadcast_grad(scratchpad, m_right.shape()), true);
+                    }
+                    else { // scratchpad was allocated but is uninitialized
+                        dispatch(target_device, BinaryOp::Mul, scratchpad, out_grad, m_left);
+                        dispatch(target_device, BinaryOpInPlace::Div, scratchpad, m_right);
+                        dispatch(target_device, BinaryOpInPlace::Div, scratchpad, m_right);
+                        m_right.accumulate_grad(unbroadcast_grad(scratchpad, m_right.shape()), true);
+                    }
                 }
             }
 
