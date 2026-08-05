@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 #include <iostream>
+#include <cblas.h>
 
 namespace gradc {
     // CORE DTYPES
@@ -105,10 +106,22 @@ namespace gradc {
         std::vector<std::vector<int64_t>> strides;
     };
 
-    struct BLASMatMulMeta {
+    struct BLASGEMMMeta {
         std::vector<int64_t> result_shape;
-        std::vector<int64_t> left_batch_shape;
-        std::vector<int64_t> left_batch_strides;
+
+        float alpha;
+        float beta;
+
+        float M;
+        float K;
+        float N;
+        
+        CBLAS_TRANSPOSE left_is_transposed;
+        CBLAS_TRANSPOSE right_is_transposed;
+
+        int64_t lda;
+        int64_t ldb;
+        int64_t ldc;
     };
 
     // SETTINGS

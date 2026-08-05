@@ -82,4 +82,93 @@ namespace gradc {
             case cudaMemcpyDefault: {throw std::runtime_error("Default cudamemcpy failed.");}
         }
     }
+
+    template <typename T>
+    inline BLASGEMMMeta infer_blas_meta(Tensor<T> left, Tensor<T> right, bool accumulate) { // takes left, right by value. 
+        if (std::ssize(right.shape()) != 2) {
+            throw std::runtime_error("B in A @ B must be 2 dimensional.");
+        }
+        if (left.shape().back() != right.shape().front()) {
+            throw std::runtime_error("Wrong dimensions for matmul: left.back() != right.front()");
+        }
+        
+        int64_t n_dim = std::ssize(left.shape());
+        BLASGEMMMeta blas_meta;
+        if (accumulate) {
+            blas_meta.alpha = 1.0;
+            blas_meta.beta = 1.0;
+        }
+        else {
+            blas_meta.alpha = 1.0;
+            blas_meta.beta = 0.0;
+        }
+
+        std::vector<int64_t> left_shape_except_rightmost = std::vector<int64_t>(left.shape().begin(), left.shape().end() - 1);
+        std::vector<int64_t> left_strides_except_rightmost = std::vector<int64_t>(left.strides().begin(), left.strides().end() - 1);
+        FusedView initial_fuse_result = fuse_dimensions(left_shape_except_rightmost, {left_strides_except_rightmost});
+
+        Tensor<T> left_locally_contig;
+        if (std::ssize(initial_fuse_result.shared_shape) != 1) {
+            left_locally_contig = left.contiguous();
+            std::vector<int64_t> left_locally_contig_shape_except_rightmost(left_locally_contig.shape().begin(), left_locally_contig.shape().end() - 1);
+            std::vector<int64_t> left_locally_contig_strides_except_rightmost(left_locally_contig.strides().begin(), left_locally_contig.strides().end() - 1);
+            FusedView locally_contig_fuse = fuse_dimensions(left_locally_contig_shape_except_rightmost, {left_locally_contig_strides_except_rightmost});
+            left_locally_contig.m_shape = locally_contig_fuse.shared_shape;
+            left_locally_contig.m_strides = locally_contig_fuse.strides[0];
+            left_locally_contig.m_shape.push_back(left.shape().back());
+            left_locally_contig.m_strides.push_back(left.strides().back());
+        }
+        else {
+            left_locally_contig = left;
+            left_locally_contig.m_shape = initial_fuse_result.shared_shape;
+            left_locally_contig.m_strides = initial_fuse_result.strides[0];
+            left_locally_contig.m_shape.push_back(left.shape().back());
+            left_locally_contig.m_strides.push_back(left.strides().back());
+        }
+        // after this step we know for SURE that left is 2 dimensional (B * T, C) and right is (C, H)
+
+        // Now it has to be either transposed or not transposed. If none of the dimensions are 1, force contiguity (on both)
+
+        std::vector<int64_t> result_shape = left.shape();
+        result_shape[n_dim - 1] = right.shape()[1];
+
+        blas_meta.result_shape = result_shape;
+        blas_meta.M = left_locally_contig.shape()[0];
+        blas_meta.K = right.shape()[0];
+        blas_meta.N = right.shape()[1];
+
+        if (left_locally_contig.strides()[1] == 1 && left_locally_contig.strides()[0] > 0) { // blas does not accept negative leading dims
+            blas_meta.lda = left_locally_contig.strides()[0];
+            blas_meta.left_is_transposed = CblasNoTrans;
+        }
+        else if (left_locally_contig.strides()[0] == 1 && left_locally_contig.strides()[1] > 0) { // transposed
+            blas_meta.lda = left.strides()[1];
+            blas_meta.left_is_transposed = CblasTrans;
+        }
+        else {
+            left_locally_contig = left_locally_contig.contiguous();
+            blas_meta.lda = left_locally_contig.strides()[0];
+            blas_meta.left_is_transposed = CblasNoTrans;
+        }
+        // left_locally_contig has whole graph of left
+
+        Tensor<T> safe_right = right; // has whole story of right
+        if (right.strides()[1] == 1 && right.strides()[0] > 0) { // blas does not accept negative leading dims
+            blas_meta.ldb = right.strides()[0];
+            blas_meta.right_is_transposed = CblasNoTrans;
+        }
+        else if (right.strides()[0] == 1 && right.strides()[1] > 0) { // transposed
+            blas_meta.ldb = left.strides()[1];
+            blas_meta.right_is_transposed = CblasTrans;
+        }
+        else {
+            safe_right = right.contiguous();
+            blas_meta.ldb = right.strides()[0];
+            blas_meta.right_is_transposed = CblasNoTrans;
+        }
+
+        blas_meta.ldc = blas_meta.N;
+
+        return std::make_pair(std::make_pair(std::move(left_locally_contig), std::move(safe_right)), blas_meta);
+    }
 }

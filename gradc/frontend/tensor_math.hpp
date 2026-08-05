@@ -344,51 +344,22 @@ namespace gradc {
         return result;
     }
 
-    template <typename T>
-    inline Tensor<T> matmul(const Tensor<T>& left, const Tensor<T>& right) requires std::is_floating_point_v<T> {
-        if (std::ssize(right.shape()) != 2) {
-            throw std::runtime_error("B in A @ B must be 2 dimensional.");
-        }
-        if (left.shape().back() != right.shape().front()) {
-            throw std::runtime_error("Wrong dimensions for matmul: left.back() != right.front()");
-        }
-        bool requires_grad = left.requires_grad() || right.requires_grad();
-        std::vector<int64_t> left_shape_except_rightmost = std::vector<int64_t>(left.shape().begin(), left.shape().end() - 1);
-        std::vector<int64_t> left_strides_except_rightmost = std::vector<int64_t>(left.strides().begin(), left.strides().end() - 1);
-        FusedView initial_fuse_result = fuse_dimensions(left_shape_except_rightmost, {left_strides_except_rightmost});
-
-        Tensor<T> left_locally_contig;
-        if (std::ssize(initial_fuse_result.shared_shape) != 1) {
-            left_locally_contig = left.contiguous();
-            std::vector<int64_t> left_locally_contig_shape_except_rightmost(left_locally_contig.shape().begin(), left_locally_contig.shape().end() - 1);
-            std::vector<int64_t> left_locally_contig_strides_except_rightmost(left_locally_contig.strides().begin(), left_locally_contig.strides().end() - 1);
-            FusedView locally_contig_fuse = fuse_dimensions(left_locally_contig_shape_except_rightmost, {left_locally_contig_strides_except_rightmost});
-            left_locally_contig.m_shape = locally_contig_fuse.shared_shape;
-            left_locally_contig.m_strides = locally_contig_fuse.strides[0];
-            left_locally_contig.m_shape.push_back(left.shape().back());
-            left_locally_contig.m_strides.push_back(left.strides().back());
-        }
-        else {
-            left_locally_contig = left;
-            left_locally_contig.m_shape = initial_fuse_result.shared_shape;
-            left_locally_contig.m_strides = initial_fuse_result.strides[0];
-            left_locally_contig.m_shape.push_back(left.shape().back());
-            left_locally_contig.m_strides.push_back(left.strides().back());
-        }
-        // after this step we know for SURE that left is 2 dimensional (B * T, C) and right is (C, H)
-
-        // Now it has to be either transposed or not transposed. If none of the dimensions are 1, force contiguity (on both)
-
-        // NEXT UP: CALCULATE REAL SHAPE. CALCULATE BLASMETA. SPLIT PATHS IF CUDA OR CPU?? ALLOCATE LAZY TENSOR
-
-
+    template <typename T, typename U>
+    inline Tensor<T> matmul(Tensor<T> left, Tensor<U> right) requires std::is_floating_point_v<T> {
+        Device target_device = infer_assert_device(left, right);
         
+        using PromotedT = std::common_type_t<T, U>;
+        auto [p_left, p_right] = promote_to_common(std::move(left), std::move(right));
 
-        
+        bool requires_grad = p_left.requires_grad() || p_left.requires_grad();
 
-        
-        Tensor<T> result = Tensor<T>(left.shape(), left.requires_grad(), lazy, this->device());
-        result.m_state->m_creation_op = std::make_unique<LogNode<T>>(*this);
+        std::pair<std::pair<Tensor<T>, Tensor<T>>, BLASGEMMMeta> gemm_prep = infer_blas_meta(std::move(p_left), std::move(p_right), false);
+        BLASGEMMMeta blas_meta = gemm_prep.second;
+        Tensor<T> safe_left = std::move(gemm_prep.first.first);
+        Tensor<T> safe_right = std::move(gemm_prep.first.second);
+
+        Tensor<PromotedT> result = Tensor<PromotedT>(blas_meta.result_shape, requires_grad, lazy, target_device);
+        result.m_state->m_creation_op = std::make_unique<MatMulNode<PromotedT>>(std::move(safe_left), std::move(safe_right), blas_meta);
         return result;
     }
 
