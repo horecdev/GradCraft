@@ -6,7 +6,6 @@
 #include <utility>
 #include <vector>
 #include <iostream>
-#include <cblas.h>
 
 namespace gradc {
     // CORE DTYPES
@@ -106,6 +105,11 @@ namespace gradc {
         std::vector<std::vector<int64_t>> strides;
     };
 
+    enum MatrixTensorOp {
+        Normal,
+        Transposed
+    };
+
     struct BLASGEMMMeta {
         std::vector<int64_t> result_shape;
 
@@ -116,8 +120,8 @@ namespace gradc {
         float K;
         float N;
         
-        CBLAS_TRANSPOSE left_is_transposed;
-        CBLAS_TRANSPOSE right_is_transposed;
+        MatrixTensorOp left_is_transposed;
+        MatrixTensorOp right_is_transposed;
 
         int64_t lda;
         int64_t ldb;

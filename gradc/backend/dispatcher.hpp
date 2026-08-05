@@ -278,4 +278,14 @@ namespace gradc {
         }
     }
 
+    template <typename T>
+    inline void dispatch_batched_gemm(Device device, Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const BLASGEMMMeta& blas_meta) {
+        if (device.is_cpu()) {
+            CPUBackend::apply_batched_gemm(out, left, right, blas_meta);
+        }
+        else if (device.is_cuda()) {
+            CUDAMath::apply_batched_gemm();
+        }
+    }
+
 }

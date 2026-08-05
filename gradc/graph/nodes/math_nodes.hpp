@@ -314,25 +314,25 @@ namespace gradc {
         private:
             Tensor<T> m_left;
             Tensor<T> m_right;
-            std::vector<int64_t> m_result_shape;
-            float alpha;
-            float beta;
-            int64_t M;
-            int64_t K;
-            int64_t N;
-            int64_t lda;
-            int64_t ldb;
-            int64_t ldc;
+            BLASGEMMMeta m_blas_meta;
 
         public:
-            MatMulNode<T>(Tensor<T> left, Tensor<T> right, std::vector<int64_t> target_shape) : m_left(std::move(left)), m_right(std::move(right)), m_target_shape(std::move(target_shape)) {}
+            MatMulNode<T>(Tensor<T> left, Tensor<T> right, BLASGEMMMeta blas_meta) : m_left(std::move(left)), m_right(std::move(right)), m_blas_meta(std::move(blas_meta)) {}
             
             Tensor<T> realize() override {
+                Device target_device = m_left.device(); 
+
                 m_left.realize();
                 m_right.realize();
+
+                Tensor<T> result = Tensor<T>(m_blas_meta.result_shape, target_device, uninitialized);
+                dispatch(target_device, BinaryOp::MatMul, result, m_left, m_right, m_blas_meta);
+
+                return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override { // CPU child can only have CPU parents (enforced outside of graph nodes)
+            void backward(const Tensor<T>& out_grad) override {
+
             }
 
             std::vector<TensorStateBase*> get_input_states() override {
