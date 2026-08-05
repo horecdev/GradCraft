@@ -339,6 +339,12 @@ namespace gradc {
                 p_out[out_idx] = result_idx;
             }
         }
+        
+        template <typename T>
+        static void apply_batched_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right) {
+            
+        }
+        
     };
 
 }

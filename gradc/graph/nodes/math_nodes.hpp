@@ -314,7 +314,16 @@ namespace gradc {
         private:
             Tensor<T> m_left;
             Tensor<T> m_right;
-            std::vector<int64_t> m_target_shape;
+            std::vector<int64_t> m_result_shape;
+            float alpha;
+            float beta;
+            int64_t M;
+            int64_t K;
+            int64_t N;
+            int64_t lda;
+            int64_t ldb;
+            int64_t ldc;
+
         public:
             MatMulNode<T>(Tensor<T> left, Tensor<T> right, std::vector<int64_t> target_shape) : m_left(std::move(left)), m_right(std::move(right)), m_target_shape(std::move(target_shape)) {}
             

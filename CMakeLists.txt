@@ -22,9 +22,13 @@ add_executable(tensor
 
 # Find the CUDA toolkit installation
 find_package(CUDAToolkit REQUIRED)
+find_package(OpenBLAS REQUIRED)
 
 # Link the CUDA runtime so .cpp and .hpp files can see <cuda_runtime.h>
-target_link_libraries(tensor PRIVATE CUDA::cudart)
+target_link_libraries(tensor PRIVATE 
+    CUDA::cudart
+    OpenBLAS::OpenBLAS
+)
 
 # Tell the compiler to look in the root directory, so "gradc/..." paths work
 target_include_directories(tensor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

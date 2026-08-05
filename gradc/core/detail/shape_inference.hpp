@@ -250,4 +250,5 @@ namespace gradc {
         return FusedView({std::move(fused_shape), std::move(fused_strides)});
     }
 
+    inline BLASMatMulMeta get_blas_matmul_meta(std::vector<int64_t>& a, std::vector)
 }

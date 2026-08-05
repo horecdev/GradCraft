@@ -105,6 +105,12 @@ namespace gradc {
         std::vector<std::vector<int64_t>> strides;
     };
 
+    struct BLASMatMulMeta {
+        std::vector<int64_t> result_shape;
+        std::vector<int64_t> left_batch_shape;
+        std::vector<int64_t> left_batch_strides;
+    };
+
     // SETTINGS
     struct PrintOptions {
         int64_t edge_items = 5;
