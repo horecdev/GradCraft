@@ -335,7 +335,7 @@ namespace gradc::cuda_functors {
                 }
                 else {
                     __trap();
-                    return T(0);
+                    x = T(0);
                 }
             }
         };
@@ -351,7 +351,7 @@ namespace gradc::cuda_functors {
                 }
                 else {
                     __trap();
-                    return T(0);
+                    x = T(0);
                 }
             }
         };
@@ -367,7 +367,7 @@ namespace gradc::cuda_functors {
                 }
                 else {
                     __trap();
-                    return T(0);
+                    x = T(0);
                 }
             }
         };

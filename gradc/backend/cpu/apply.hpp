@@ -200,7 +200,7 @@ namespace gradc {
                 // fast path
                 int64_t total_size = source.volume();
 
-                const T* __restrict p_source = source._get_storage()->data() + source.m_offset;
+                T* __restrict p_source = source._get_storage()->data() + source.m_offset;
                 
                 for (int64_t i = 0; i < total_size; ++i) {
                     op(p_source[i]);
@@ -351,11 +351,19 @@ namespace gradc {
             const T* p_left = out._get_storage()->data() + left.m_offset;
             const T* p_right = out._get_storage()->data() + right.m_offset;
 
+            blasint blas_M = static_cast<blasint>(blas_meta.M);
+            blasint blas_N = static_cast<blasint>(blas_meta.N);
+            blasint blas_K = static_cast<blasint>(blas_meta.K);
+
+            blasint blas_lda = static_cast<blasint>(blas_meta.lda);
+            blasint blas_ldb = static_cast<blasint>(blas_meta.ldb);
+            blasint blas_ldc = static_cast<blasint>(blas_meta.ldc);
+
             if constexpr (std::is_same_v<T, float>) {
-                cblas_sgemm(CblasRowMajor, op_left, op_right, blas_meta.M, blas_meta.N, blas_meta.K, blas_meta.alpha, p_left, blas_meta.lda, p_right, blas_meta.ldb, blas_meta.beta, p_out, blas_meta.ldc);
+                cblas_sgemm(CblasRowMajor, op_left, op_right, blas_M, blas_N, blas_K, blas_meta.alpha, p_left, blas_lda, p_right, blas_ldb, blas_meta.beta, p_out, blas_ldc);
             }
             else if constexpr (std::is_same_v<T, double>) {
-                cblas_dgemm(CblasRowMajor, op_left, op_right, blas_meta.M, blas_meta.N, blas_meta.K, blas_meta.alpha, p_left, blas_meta.lda, p_right, blas_meta.ldb, blas_meta.beta, p_out, blas_meta.ldc);
+                cblas_dgemm(CblasRowMajor, op_left, op_right, blas_M, blas_N, blas_K, blas_meta.alpha, p_left, blas_lda, p_right, blas_ldb, blas_meta.beta, p_out, blas_ldc);
             }
         }
         

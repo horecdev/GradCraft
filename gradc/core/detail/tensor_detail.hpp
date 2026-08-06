@@ -84,7 +84,7 @@ namespace gradc {
     }
 
     template <typename T>
-    inline BLASGEMMMeta infer_blas_meta(Tensor<T> left, Tensor<T> right, bool accumulate) { // takes left, right by value. 
+    inline auto infer_blas_meta(Tensor<T> left, Tensor<T> right, bool accumulate) { // takes left, right by value. 
         if (std::ssize(right.shape()) != 2) {
             throw std::runtime_error("B in A @ B must be 2 dimensional.");
         }

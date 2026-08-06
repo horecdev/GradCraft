@@ -204,6 +204,10 @@ namespace gradc {
             template <typename U, typename W> friend Tensor<U>& operator*=(Tensor<U>& main, Tensor<W> other);
             template <typename U, typename W> friend Tensor<U>& operator/=(Tensor<U>& main, Tensor<W> other);
 
+            template <typename U>
+            friend auto infer_blas_meta(Tensor<U> left, Tensor<U> right, bool accumulate);
+
+
             // REDUCTIONS
 
             Tensor sum(const std::vector<int64_t>& axes, bool keepdims) const;

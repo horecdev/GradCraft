@@ -345,7 +345,8 @@ namespace gradc {
     }
 
     template <typename T, typename U>
-    inline Tensor<T> matmul(Tensor<T> left, Tensor<U> right) requires std::is_floating_point_v<T> {
+    requires (std::is_floating_point_v<T> && std::is_floating_point_v<U>)
+    inline Tensor<T> matmul(Tensor<T> left, Tensor<U> right) {
         Device target_device = infer_assert_device(left, right);
         
         using PromotedT = std::common_type_t<T, U>;

@@ -44,7 +44,7 @@ namespace gradc::cpu_functors {
         template <typename T>
         struct BExp {
             T operator()(T grad, T x) const {
-                return grad * std::exp(x);
+                return grad * static_cast<T>(std::exp(x));
             }
         };
 
@@ -65,7 +65,7 @@ namespace gradc::cpu_functors {
         template <typename T>
         struct BSigmoid {
             T operator()(T grad, T x) const {
-                T sig_val = static_cast<T>(1.0) / (static_cast<T>(1.0) + std::exp(-x));
+                T sig_val = static_cast<T>(1.0) / (static_cast<T>(1.0) + static_cast<T>(std::exp(-x)));
                 return grad * (sig_val) * (static_cast<T>(1.0) - sig_val);
             }
         };
@@ -73,7 +73,7 @@ namespace gradc::cpu_functors {
         template <typename T>
         struct BTanH {
             T operator()(T grad, T x) const {
-                T tanh_val = std::tanh(x);
+                T tanh_val = static_cast<T>(std::tanh(x));
                 return grad * (static_cast<T>(1.0) - tanh_val * tanh_val);
             }
         };
@@ -81,7 +81,7 @@ namespace gradc::cpu_functors {
         template <typename T>
         struct BSiLU {
             T operator()(T grad, T x) const {
-                T sig_val = static_cast<T>(1.0) / (static_cast<T>(1.0) + std::exp(-x));
+                T sig_val = static_cast<T>(1.0) / (static_cast<T>(1.0) + static_cast<T>(std::exp(-x)));
                 return grad * (sig_val + x * sig_val * (1 - sig_val));
             }
         };  
@@ -89,12 +89,12 @@ namespace gradc::cpu_functors {
         template <typename T>
         struct BGeLU {
             T operator()(T grad, T x) const {
-                T alpha = 0.7978845608;
-                T beta = 0.044715;
+                T alpha = static_cast<T>(0.7978845608);
+                T beta = static_cast<T>(0.044715);
                 T x_sq = x * x;
                 T x_cu = x_sq * x;
                 T u = alpha * (x + beta * x_cu);
-                T t = std::tanh(u);
+                T t = static_cast<T>(std::tanh(u));
                 T u_prime = alpha * (static_cast<T>(1.0) + static_cast<T>(3.0) * beta * x_sq);
                 T local_grad = static_cast<T>(0.5) * (static_cast<T>(1.0) + t) + static_cast<T>(0.5) * x * (static_cast<T>(1.0) - t * t) * u_prime;
                 return grad * local_grad;

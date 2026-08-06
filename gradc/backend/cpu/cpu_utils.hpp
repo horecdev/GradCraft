@@ -9,7 +9,7 @@ namespace gradc {
         template <typename T>
         static void fill_arange(T* ptr, T start, T step, int64_t size) {
             for (int64_t i = 0; i < size; ++i) {
-                ptr[i] = start + step * i;
+                ptr[i] = start + step * static_cast<T>(i);
             }
         }
         template <typename T>

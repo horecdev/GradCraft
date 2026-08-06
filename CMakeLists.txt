@@ -28,6 +28,7 @@ find_package(OpenBLAS REQUIRED)
 # Link the CUDA runtime so .cpp and .hpp files can see <cuda_runtime.h>
 target_link_libraries(tensor PRIVATE 
     CUDA::cudart
+    CUDA::cublas
     OpenBLAS::OpenBLAS
 )
 
