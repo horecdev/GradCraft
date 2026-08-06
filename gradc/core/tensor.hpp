@@ -49,6 +49,7 @@ namespace gradc {
             void backward();
 
             void accumulate_grad(const Tensor<T>& incoming_grad, bool is_sub = false);
+            void accumulate_grad_matmul(const Tensor<T>& left, const Tensor<T>& right, BLASGEMMMeta& blas_meta);
 
             void zero_grad();
 

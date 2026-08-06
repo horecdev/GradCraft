@@ -1,1 +1,0 @@
-If you link up BLAS + cuBLAS tomorrow its a giant W.

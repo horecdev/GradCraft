@@ -120,8 +120,8 @@ namespace gradc {
         float K;
         float N;
         
-        MatrixTensorOp left_is_transposed;
-        MatrixTensorOp right_is_transposed;
+        MatrixTensorOp left_op;
+        MatrixTensorOp right_op;
 
         int64_t lda;
         int64_t ldb;

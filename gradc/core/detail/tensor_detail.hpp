@@ -139,32 +139,32 @@ namespace gradc {
 
         if (left_locally_contig.strides()[1] == 1 && left_locally_contig.strides()[0] > 0) { // blas does not accept negative leading dims
             blas_meta.lda = left_locally_contig.strides()[0];
-            blas_meta.left_is_transposed = MatrixTensorOp::Normal;
+            blas_meta.left_op = MatrixTensorOp::Normal;
         }
         else if (left_locally_contig.strides()[0] == 1 && left_locally_contig.strides()[1] > 0) { // transposed
             blas_meta.lda = left.strides()[1];
-            blas_meta.left_is_transposed = MatrixTensorOp::Transposed;
+            blas_meta.left_op = MatrixTensorOp::Transposed;
         }
         else {
             left_locally_contig = left_locally_contig.contiguous();
             blas_meta.lda = left_locally_contig.strides()[0];
-            blas_meta.left_is_transposed = MatrixTensorOp::Normal;
+            blas_meta.left_op = MatrixTensorOp::Normal;
         }
         // left_locally_contig has whole graph of left
 
         Tensor<T> safe_right = right; // has whole story of right
         if (right.strides()[1] == 1 && right.strides()[0] > 0) { // blas does not accept negative leading dims
             blas_meta.ldb = right.strides()[0];
-            blas_meta.right_is_transposed = MatrixTensorOp::Normal;
+            blas_meta.right_op = MatrixTensorOp::Normal;
         }
         else if (right.strides()[0] == 1 && right.strides()[1] > 0) { // transposed
             blas_meta.ldb = left.strides()[1];
-            blas_meta.right_is_transposed = MatrixTensorOp::Transposed;
+            blas_meta.right_op = MatrixTensorOp::Transposed;
         }
         else {
             safe_right = right.contiguous();
             blas_meta.ldb = right.strides()[0];
-            blas_meta.right_is_transposed = MatrixTensorOp::Normal;
+            blas_meta.right_op = MatrixTensorOp::Normal;
         }
 
         blas_meta.ldc = blas_meta.N;

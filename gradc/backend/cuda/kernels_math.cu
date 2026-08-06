@@ -1,8 +1,10 @@
 #include "gradc/backend/cuda/cuda_math.hpp"
-#include <cuda_runtime.h>
 #include "gradc/core/detail/shape_inference.hpp"
 #include "gradc/backend/cuda/math_functors.cuh"
 #include "gradc/backend/cuda/cuda_utils.hpp"
+
+#include <cuda_runtime.h>
+#include <cublas_v2.h>
 
 namespace gradc {
     constexpr int MAX_DIMS = 8;
@@ -19,6 +21,16 @@ namespace gradc {
             meta.data[i] = vec[i];
         }
         return meta;
+    }
+
+    inline cublasHandle_t get_cublas_handle() {
+        static cublasHandle_t handle = nullptr;
+        if (handle == nullptr) {
+            if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS) {
+                throw std::runtime_error("cuBLAS handle initialization failed.");
+            }
+        }
+        return handle;
     }
 
     #pragma region BINARY OUT OF PLACE
@@ -798,6 +810,33 @@ namespace gradc {
 
     #pragma endregion REDUCTIONS
 
+    #pragma region MATRIX MULTIPLY
+
+    template <typename T>
+    void CUDAMath::apply_batched_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const BLASGEMMMeta& blas_meta) {
+        T* p_out = out._get_storage()->data() + out.m_offset;
+        const T* p_left = left._get_storage()->data() + left.m_offset;
+        const T* p_right = right._get_storage()->data() + right.m_offset;
+
+        cublasHandle_t handle = get_cublas_handle();
+        cublasOperation_t op_left = (blas_meta.left_op == MatrixTensorOp::Normal) ? CUBLAS_OP_N : CUBLAS_OP_T;
+        cublasOperation_t op_right = (blas_meta.right_op == MatrixTensorOp::Normal) ? CUBLAS_OP_N : CUBLAS_OP_T;
+
+        T typed_alpha = static_cast<T>(blas_meta.alpha);
+        T typed_beta = static_cast<T>(blas_meta.beta);
+
+        // row major = transposed col major
+        // AB = B^T A^T so just swap. col major cublas will treat them as transposed
+        if constexpr (std::is_same_v<T, float>) {
+            cublasSgemm(handle, op_left, op_right, blas_meta.N, blas_meta.M, blas_meta.K, &typed_alpha, p_right, blas_meta.ldb, p_left, blas_meta.lda, &typed_beta, p_out, blas_meta.ldc);
+        }
+        else if constexpr (std::is_same_v<T, double>) {
+            cublasDgemm(handle, op_left, op_right, blas_meta.N, blas_meta.M, blas_meta.K, &typed_alpha, p_right, blas_meta.ldb, p_left, blas_meta.lda, &typed_beta, p_out, blas_meta.ldc);
+        }
+    }
+
+    #pragma endregion MATRIX MULTIPLY
+
     #pragma region TEMPLATING
 
     #define INSTANTIATE_CUDA_MATH_SINGLE(T) \
@@ -809,6 +848,9 @@ namespace gradc {
 
     #define INSTANTIATE_CUDA_MATH_UOOP(OutT, InT) \
         template void CUDAMath::apply_unary_out_of_place<OutT, InT>(Tensor<OutT>&, const Tensor<InT>&, UnaryOp);
+
+    #define INSTANTIATE_CUDA_MATMUL(T) \
+        template void CUDAMath::apply_batched_gemm<T>(Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const BLASGEMMMeta&);
 
     #define INSTANTIATE_CUDA_UOOP_ALL_OUTS(InT) \
         INSTANTIATE_CUDA_MATH_UOOP(float, InT) \
@@ -825,6 +867,9 @@ namespace gradc {
     INSTANTIATE_CUDA_UOOP_ALL_OUTS(double)
     INSTANTIATE_CUDA_UOOP_ALL_OUTS(int32_t)
     INSTANTIATE_CUDA_UOOP_ALL_OUTS(int64_t)
+
+    INSTANTIATE_CUDA_MATMUL(float)
+    INSTANTIATE_CUDA_MATMUL(double)
 
     #pragma endregion TEMPLATING
 }

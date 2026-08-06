@@ -344,16 +344,19 @@ namespace gradc {
         
         template <typename T>
         static void apply_batched_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const BLASGEMMMeta& blas_meta) {
-            CBLAS_TRANSPOSE op_left = (blas_meta.left_is_transposed == MatrixTensorOp::Normal) ? CblasNoTrans : CblasTrans;
-            CBLAS_TRANSPOSE op_right = (blas_meta.right_is_transposed == MatrixTensorOp::Normal) ? CblasNoTrans : CblasTrans;
+            CBLAS_TRANSPOSE op_left = (blas_meta.left_op == MatrixTensorOp::Normal) ? CblasNoTrans : CblasTrans;
+            CBLAS_TRANSPOSE op_right = (blas_meta.right_op == MatrixTensorOp::Normal) ? CblasNoTrans : CblasTrans;
 
-            if constexpr (std::is_same_v<T, float) {
-                cblas_sgemm(CblasRowMajor, const enum CBLAS_TRANSPOSE TransA, const enum CBLAS_TRANSPOSE TransB, const blasint M, const blasint N, const blasint K, const float alpha, const float *A, const blasint lda, const float *B, const blasint ldb, const float beta, float *C, const blasint ldc)
+            T* p_out = out._get_storage()->data() + out.m_offset;
+            const T* p_left = out._get_storage()->data() + left.m_offset;
+            const T* p_right = out._get_storage()->data() + right.m_offset;
+
+            if constexpr (std::is_same_v<T, float>) {
+                cblas_sgemm(CblasRowMajor, op_left, op_right, blas_meta.M, blas_meta.N, blas_meta.K, blas_meta.alpha, p_left, blas_meta.lda, p_right, blas_meta.ldb, blas_meta.beta, p_out, blas_meta.ldc);
             }
             else if constexpr (std::is_same_v<T, double>) {
-            
+                cblas_dgemm(CblasRowMajor, op_left, op_right, blas_meta.M, blas_meta.N, blas_meta.K, blas_meta.alpha, p_left, blas_meta.lda, p_right, blas_meta.ldb, blas_meta.beta, p_out, blas_meta.ldc);
             }
-            
         }
         
     };

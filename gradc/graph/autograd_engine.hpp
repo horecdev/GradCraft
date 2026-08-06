@@ -49,15 +49,32 @@ namespace gradc {
 
         if (!m_requires_grad) {return;}
 
-        BinaryOpInPlace op = !is_sub ? BinaryOpInPlace::Add : BinaryOpInPlace::Sub;
-
         if (!m_state->m_grad.has_value()) {
-            Tensor<T> local_grad = Tensor<T>(m_shape, T(0), target_device);
+            UnaryOp op = !is_sub ? UnaryOp::Identity : UnaryOp::Neg;
+            Tensor<T> local_grad = Tensor<T>(m_shape, target_device, uninitialized);
             dispatch(target_device, op, local_grad, incoming_grad);
             m_state->m_grad = std::move(local_grad);
         }
         else {
+            BinaryOpInPlace op = !is_sub ? BinaryOpInPlace::Add : BinaryOpInPlace::Sub;
             dispatch(target_device, op, m_state->m_grad.value(), incoming_grad);
+        }
+    }
+
+    template <typename T>
+    void Tensor<T>::accumulate_grad_matmul(const Tensor<T>& left, const Tensor<T>& right, BLASGEMMMeta& blas_meta) {
+        Device target_device = infer_assert_device({*this, left, right});
+
+        if (!m_requires_grad) {return;}
+
+        if (!m_state->m_grad.has_value()) {
+            Tensor<T> local_grad = Tensor<T>(blas_meta.result_shape, target_device, uninitialized);
+            blas_meta.beta = static_cast<T>(0.0);
+            dispatch_batched_gemm(target_device, local_grad, left, right, blas_meta);
+            m_state->m_grad = std::move(local_grad);
+        }
+        else {
+            dispatch_batched_gemm(target_device, m_state->m_grad.value(), left, right, blas_meta);
         }
     }
 

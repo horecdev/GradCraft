@@ -315,6 +315,7 @@ namespace gradc {
             Tensor<T> m_left;
             Tensor<T> m_right;
             BLASGEMMMeta m_blas_meta;
+            // left, right are already 2D and good dims for BLAS. No contig nodes will be attached.
 
         public:
             MatMulNode<T>(Tensor<T> left, Tensor<T> right, BLASGEMMMeta blas_meta) : m_left(std::move(left)), m_right(std::move(right)), m_blas_meta(std::move(blas_meta)) {}
@@ -326,13 +327,38 @@ namespace gradc {
                 m_right.realize();
 
                 Tensor<T> result = Tensor<T>(m_blas_meta.result_shape, target_device, uninitialized);
-                dispatch(target_device, BinaryOp::MatMul, result, m_left, m_right, m_blas_meta);
+                dispatch_batched_gemm(target_device, result, m_left, m_right, m_blas_meta);
 
                 return result;
             }
 
             void backward(const Tensor<T>& out_grad) override {
 
+                // dL/dx = out_grad @ W.T
+                // dL/dW = X.T @ out_grad
+                Tensor<T> grad_flat = lobotomized_reshape_view(out_grad, {m_blas_meta.M, m_blas_meta.N});
+                Tensor<T> W_T = lobotomized_transpose_view(m_right, 0, 1);
+                Tensor<T> X_T = lobotomized_transpose_view(m_left, 0, 1);
+                // left, right are already perfectly viable for BLAS. They will NOT be attached contiguous nodes etc. what would break everything.
+                // One of their dimensions is exactly 1.
+                // They are NOT guaranteed to be perfectly contiguous. Can be transposed.
+
+                // Youre doing initially: X @ W which is (M, K) @ (K, N) where M is (B, T, ...) 
+                // Now its out_grad is (M, N), You do (M, N) @ (N, K) = (M, K). Thats dL/dx
+                // p_out is m_left.grad. It is contiguous, of shape (B, T, K). infer function will infer ldc to be K
+                std::pair<std::pair<Tensor<T>, Tensor<T>>, BLASGEMMMeta> dleft_gemm_prep = infer_blas_meta(std::move(grad_flat), std::move(W_T), true);
+                BLASGEMMMeta dleft_blas_meta = dleft_gemm_prep.second;
+                grad_flat = std::move(dleft_gemm_prep.first.first);
+                W_T = std::move(dleft_gemm_prep.first.second);
+
+                // For dL/dW you do (K, M) @ (M, N) = (K, N)
+                std::pair<std::pair<Tensor<T>, Tensor<T>>, BLASGEMMMeta> dright_gemm_prep = infer_blas_meta(std::move(X_T), std::move(grad_flat), true);
+                BLASGEMMMeta dright_blas_meta = dright_gemm_prep.second;
+                X_T = std::move(dright_gemm_prep.first.first);
+                grad_flat = std::move(dright_gemm_prep.first.second);
+
+                m_left.accumulate_grad_matmul(grad_flat, W_T, dleft_blas_meta);
+                m_right.accumulate_grad_matmul(X_T, grad_flat, dright_blas_meta);
             }
 
             std::vector<TensorStateBase*> get_input_states() override {

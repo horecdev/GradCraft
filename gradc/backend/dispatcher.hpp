@@ -284,8 +284,7 @@ namespace gradc {
             CPUBackend::apply_batched_gemm(out, left, right, blas_meta);
         }
         else if (device.is_cuda()) {
-            CUDAMath::apply_batched_gemm();
+            CUDAMath::apply_batched_gemm(out, left, right, blas_meta);
         }
     }
-
 }
