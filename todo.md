@@ -65,8 +65,8 @@ DONE Frontend for these 7 (Sub, Div, Neg, TanH, Sigmoid, SiLU, GeLU)
 DONE Add InPlaceOp for Sub, Div
 DONE ExpNode, LogNode + frontend
 DONE Take care of types (requires) for stuff like Exp, Log, Tanh, Sigmoid, LUs
-- Link up BLAS and cuBLAS + MatMulNode (if you do this its a giant W)
-- Test out matmul on CPU and on GPU
+DONE Link up BLAS and cuBLAS + MatMulNode (if you do this its a giant W)
+- Compile + test out on both
 - StackNode, SqueezeNode, UnsqueezeNode
 - SoftMaxNode
 - LayerNorm Node
