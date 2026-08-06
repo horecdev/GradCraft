@@ -343,6 +343,7 @@ namespace gradc {
         }
         
         template <typename T>
+        requires std::is_floating_point_v<T>
         static void apply_batched_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const BLASGEMMMeta& blas_meta) {
             CBLAS_TRANSPOSE op_left = (blas_meta.left_op == MatrixTensorOp::Normal) ? CblasNoTrans : CblasTrans;
             CBLAS_TRANSPOSE op_right = (blas_meta.right_op == MatrixTensorOp::Normal) ? CblasNoTrans : CblasTrans;

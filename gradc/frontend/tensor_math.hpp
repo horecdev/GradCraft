@@ -329,16 +329,14 @@ namespace gradc {
     }
 
     template <typename T>
-    template <typename U>
-    Tensor<T> Tensor<T>::exp() const requires std::is_floating_point_v<U> {
+    Tensor<T> Tensor<T>::exp() const requires std::is_floating_point_v<T> {
         Tensor<T> result = Tensor<T>(m_shape, m_requires_grad, lazy, this->device());
         result.m_state->m_creation_op = std::make_unique<ExpNode<T>>(*this);
         return result;
     }
 
     template <typename T>
-    template <typename U>
-    Tensor<T> Tensor<T>::log() const requires std::is_floating_point_v<U> {
+    Tensor<T> Tensor<T>::log() const requires std::is_floating_point_v<T> {
         Tensor<T> result = Tensor<T>(m_shape, m_requires_grad, lazy, this->device());
         result.m_state->m_creation_op = std::make_unique<LogNode<T>>(*this);
         return result;

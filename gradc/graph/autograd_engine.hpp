@@ -62,7 +62,7 @@ namespace gradc {
     }
 
     template <typename T>
-    void Tensor<T>::accumulate_grad_matmul(const Tensor<T>& left, const Tensor<T>& right, BLASGEMMMeta& blas_meta) {
+    void Tensor<T>::accumulate_grad_matmul(const Tensor<T>& left, const Tensor<T>& right, BLASGEMMMeta& blas_meta) requires std::is_floating_point_v<T> {
         Device target_device = infer_assert_device(std::vector<Tensor<T>>({*this, left, right}));
 
         if (!m_requires_grad) {return;}

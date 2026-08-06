@@ -813,6 +813,7 @@ namespace gradc {
     #pragma region MATRIX MULTIPLY
 
     template <typename T>
+    requires std::is_floating_point_v<T>
     void CUDAMath::apply_batched_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const BLASGEMMMeta& blas_meta) {
         T* p_out = out._get_storage()->data() + out.m_offset;
         const T* p_left = left._get_storage()->data() + left.m_offset;

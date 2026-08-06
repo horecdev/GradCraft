@@ -113,9 +113,8 @@ namespace gradc {
     }
 
     template <typename T>
-    template <typename U>
      // compiler treats as signature, so must put in both declaration and out of line definition
-    Tensor<T> Tensor<T>::normal(std::vector<int64_t> shape, T mean, T std, Device device) requires std::is_floating_point_v<U> {
+    Tensor<T> Tensor<T>::normal(std::vector<int64_t> shape, T mean, T std, Device device) requires std::is_floating_point_v<T> {
         Tensor<T> result = Tensor<T>(shape, device, uninitialized);
         T* ptr = result._get_storage()->data();
         int64_t n_elems = result.volume();
@@ -123,14 +122,13 @@ namespace gradc {
             CPUUtils::fill_normal(ptr, mean, std, n_elems);
         }
         else if (device.is_cuda()) {
-            CUDAUtils::fill_normal(ptr, mean, std, n_elems);
+            CUDAUtils::fill_normal(ptr, mean, std, n_elems, device);
         }
         return result;
     }
 
     template <typename T>
-    template <typename U>
-    Tensor<T> Tensor<T>::uniform(std::vector<int64_t> shape, T low, T high, Device device) requires std::is_floating_point_v<U> {
+    Tensor<T> Tensor<T>::uniform(std::vector<int64_t> shape, T low, T high, Device device) requires std::is_floating_point_v<T> {
         Tensor<T> result = Tensor<T>(shape, device, uninitialized);
         T* ptr = result._get_storage()->data();
         int64_t n_elems = result.volume();
@@ -138,36 +136,32 @@ namespace gradc {
             CPUUtils::fill_uniform(ptr, low, high, n_elems);
         }
         else if (device.is_cuda()) {
-            CUDAUtils::fill_uniform(ptr, low, high, n_elems);
+            CUDAUtils::fill_uniform(ptr, low, high, n_elems, device);
         }
         return result;
     }
 
     template <typename T>
-    template <typename U>
-    Tensor<T> Tensor<T>::xavier_uniform(std::vector<int64_t> shape, int64_t fan_in, int64_t fan_out, Device device) requires std::is_floating_point_v<U> {
+    Tensor<T> Tensor<T>::xavier_uniform(std::vector<int64_t> shape, int64_t fan_in, int64_t fan_out, Device device) requires std::is_floating_point_v<T> {
         T bound = static_cast<T>(std::sqrt(6.0 / static_cast<double>(fan_in + fan_out)));
         return Tensor<T>::uniform(std::move(shape), -bound, bound, device);
     }
 
     template <typename T>
-    template <typename U>
-    Tensor<T> Tensor<T>::xavier_normal(std::vector<int64_t> shape, int64_t fan_in, int64_t fan_out, Device device) requires std::is_floating_point_v<U> {
+    Tensor<T> Tensor<T>::xavier_normal(std::vector<int64_t> shape, int64_t fan_in, int64_t fan_out, Device device) requires std::is_floating_point_v<T> {
         T std = static_cast<T>(std::sqrt(2.0 / static_cast<double>(fan_in + fan_out)));
         return Tensor<T>::normal(std::move(shape), T(0), std, device);
     }
 
     template <typename T>
-    template <typename U>
-    Tensor<T> Tensor<T>::kaiming_uniform(std::vector<int64_t> shape, int64_t fan_in, T a, Device device) requires std::is_floating_point_v<U> {
+    Tensor<T> Tensor<T>::kaiming_uniform(std::vector<int64_t> shape, int64_t fan_in, T a, Device device) requires std::is_floating_point_v<T> {
         T gain = static_cast<T>(std::sqrt(2.0 / (1.0 + static_cast<double>(a * a))));
         T bound = gain * static_cast<T>(std::sqrt(3.0 / static_cast<double>(fan_in)));
         return Tensor<T>::uniform(std::move(shape), -bound, bound, device);
     }
 
     template <typename T>
-    template <typename U>
-    Tensor<T> Tensor<T>::kaiming_normal(std::vector<int64_t> shape, int64_t fan_in, T a, Device device) requires std::is_floating_point_v<U> {
+    Tensor<T> Tensor<T>::kaiming_normal(std::vector<int64_t> shape, int64_t fan_in, T a, Device device) requires std::is_floating_point_v<T> {
         T gain = static_cast<T>(std::sqrt(2.0 / (1.0 + static_cast<double>(a * a))));
         T std = gain / static_cast<T>(std::sqrt(static_cast<double>(fan_in)));
         return Tensor<T>::normal(std::move(shape), T(0), std, device);

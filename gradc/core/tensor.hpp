@@ -49,7 +49,7 @@ namespace gradc {
             void backward();
 
             void accumulate_grad(const Tensor<T>& incoming_grad, bool is_sub = false);
-            void accumulate_grad_matmul(const Tensor<T>& left, const Tensor<T>& right, BLASGEMMMeta& blas_meta);
+            void accumulate_grad_matmul(const Tensor<T>& left, const Tensor<T>& right, BLASGEMMMeta& blas_meta) requires std::is_floating_point_v<T>;
 
             void zero_grad();
 
@@ -80,24 +80,12 @@ namespace gradc {
             static Tensor arange(T start, T stop, T step, Device device = Device(DeviceType::CPU));
 
             
-            template <typename U = T> // requires keyword evaluates when function is instantiated, but our function is class method using class T and not its own T
-            // so it doesnt have a typename to check against. METHOD WITH REQUIRED MUST BE TEMPLATED
-            static Tensor normal(std::vector<int64_t> shape, T mean = T(0), T std = T(1), Device device = Device(DeviceType::CPU)) requires std::is_floating_point_v<U>;
-
-            template <typename U = T>
-            static Tensor uniform(std::vector<int64_t> shape, T low, T high, Device device = Device(DeviceType::CPU)) requires std::is_floating_point_v<U>;
-
-            template <typename U = T>
-            static Tensor xavier_uniform(std::vector<int64_t> shape, int64_t fan_in, int64_t fan_out, Device device) requires std::is_floating_point_v<U>;
-
-            template <typename U = T>
-            static Tensor xavier_normal(std::vector<int64_t> shape, int64_t fan_in, int64_t fan_out, Device device) requires std::is_floating_point_v<U>;
-
-            template <typename U = T>
-            static Tensor kaiming_uniform(std::vector<int64_t> shape, int64_t fan_in, T a, Device device) requires std::is_floating_point_v<U>;
-
-            template <typename U = T>
-            static Tensor kaiming_normal(std::vector<int64_t> shape, int64_t fan_in, T a, Device device) requires std::is_floating_point_v<U>;
+            static Tensor normal(std::vector<int64_t> shape, T mean = T(0), T std = T(1), Device device = Device(DeviceType::CPU)) requires std::is_floating_point_v<T>;
+            static Tensor uniform(std::vector<int64_t> shape, T low, T high, Device device = Device(DeviceType::CPU)) requires std::is_floating_point_v<T>;
+            static Tensor xavier_uniform(std::vector<int64_t> shape, int64_t fan_in, int64_t fan_out, Device device) requires std::is_floating_point_v<T>;
+            static Tensor xavier_normal(std::vector<int64_t> shape, int64_t fan_in, int64_t fan_out, Device device) requires std::is_floating_point_v<T>;
+            static Tensor kaiming_uniform(std::vector<int64_t> shape, int64_t fan_in, T a, Device device) requires std::is_floating_point_v<T>;
+            static Tensor kaiming_normal(std::vector<int64_t> shape, int64_t fan_in, T a, Device device) requires std::is_floating_point_v<T>;
             
             Tensor clone() const;
 
@@ -173,14 +161,10 @@ namespace gradc {
             // NN
             Tensor relu() const;
 
-            template <typename U = T>
-            Tensor sigmoid() const requires std::is_floating_point_v<U>;
-            template <typename U = T>
-            Tensor tanh() const requires std::is_floating_point_v<U>;
-            template <typename U = T>
-            Tensor silu() const requires std::is_floating_point_v<U>;
-            template <typename U = T>
-            Tensor gelu() const requires std::is_floating_point_v<U>;
+            Tensor sigmoid() const requires std::is_floating_point_v<T>;
+            Tensor tanh() const requires std::is_floating_point_v<T>;
+            Tensor silu() const requires std::is_floating_point_v<T>;
+            Tensor gelu() const requires std::is_floating_point_v<T>;
             
             // BACKEND
             friend CPUBackend;
@@ -189,10 +173,8 @@ namespace gradc {
 
             // MATH 
             Tensor operator-() const;
-            template <typename U = T>
-            Tensor exp() const requires std::is_floating_point_v<U>;
-            template <typename U = T>
-            Tensor log() const requires std::is_floating_point_v<U>;
+            Tensor exp() const requires std::is_floating_point_v<T>;
+            Tensor log() const requires std::is_floating_point_v<T>;
 
             template <typename U, typename W> friend auto operator+(Tensor<U> left, Tensor<W> right); // we befriend whole family of functions named operator+. 
             template <typename U, typename W> friend auto operator-(Tensor<U> left, Tensor<W> right);

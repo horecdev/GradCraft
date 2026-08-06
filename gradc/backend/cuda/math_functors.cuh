@@ -390,7 +390,7 @@ namespace gradc::cuda_functors {
 
         template <typename T>
         struct SiLU {
-            __device__ T operator()(T& x) const {
+            __device__ void operator()(T& x) const {
                 if constexpr (std::is_same_v<T, float>) {
                     x = x * (static_cast<T>(1.0) / (static_cast<T>(1.0) + expf(-x)));
                 }
@@ -406,7 +406,7 @@ namespace gradc::cuda_functors {
 
         template <typename T>
         struct GeLU {
-            __device__ T operator()(T& x) const {
+            __device__ void operator()(T& x) const {
                 if constexpr (std::is_same_v<T, float>) {
                     T alpha = static_cast<T>(0.7978845608);
                     T beta = static_cast<T>(0.044715);
