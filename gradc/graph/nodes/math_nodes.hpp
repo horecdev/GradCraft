@@ -316,9 +316,10 @@ namespace gradc {
             Tensor<T> m_right;
             BLASGEMMMeta m_blas_meta;
             // left, right are already 2D and good dims for BLAS. No contig nodes will be attached.
+            std::vector<int64_t> m_left_original_shape;
 
         public:
-            MatMulNode<T>(Tensor<T> left, Tensor<T> right, BLASGEMMMeta blas_meta) : m_left(std::move(left)), m_right(std::move(right)), m_blas_meta(std::move(blas_meta)) {}
+            MatMulNode<T>(Tensor<T> left, Tensor<T> right, BLASGEMMMeta blas_meta, std::vector<int64_t> left_original_shape) : m_left(std::move(left)), m_right(std::move(right)), m_blas_meta(std::move(blas_meta)), m_left_original_shape(std::move(left_original_shape)) {}
             
             Tensor<T> realize() override {
                 Device target_device = m_left.device(); 
@@ -361,8 +362,8 @@ namespace gradc {
                 X_T = std::move(dright_gemm_prep.first.first);
                 grad_flat = std::move(dright_gemm_prep.first.second);
 
-                m_left.accumulate_grad_matmul(grad_flat, W_T, dleft_blas_meta);
-                m_right.accumulate_grad_matmul(X_T, grad_flat, dright_blas_meta);
+                m_left.accumulate_grad_matmul(grad_flat, W_T, dleft_blas_meta, m_left_original_shape);
+                m_right.accumulate_grad_matmul(X_T, grad_flat, dright_blas_meta, m_right.shape());
             }
 
             std::vector<TensorStateBase*> get_input_states() override {

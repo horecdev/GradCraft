@@ -109,6 +109,7 @@ namespace gradc {
 
         Tensor<T> left_locally_contig;
         if (std::ssize(initial_fuse_result.shared_shape) != 1) {
+            // path where you cannot fuse into 2D immediately
             left_locally_contig = left.contiguous();
             std::vector<int64_t> left_locally_contig_shape_except_rightmost(left_locally_contig.shape().begin(), left_locally_contig.shape().end() - 1);
             std::vector<int64_t> left_locally_contig_strides_except_rightmost(left_locally_contig.strides().begin(), left_locally_contig.strides().end() - 1);
@@ -146,6 +147,7 @@ namespace gradc {
             blas_meta.left_op = MatrixTensorOp::Transposed;
         }
         else {
+            // you CAN flatten into 2D (say it comes in as 2D) but it doesnt have lda=1 or ldb=1
             left_locally_contig = left_locally_contig.contiguous();
             blas_meta.lda = left_locally_contig.strides()[0];
             blas_meta.left_op = MatrixTensorOp::Normal;

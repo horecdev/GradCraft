@@ -66,8 +66,8 @@ DONE Add InPlaceOp for Sub, Div
 DONE ExpNode, LogNode + frontend
 DONE Take care of types (requires) for stuff like Exp, Log, Tanh, Sigmoid, LUs
 DONE Link up BLAS and cuBLAS + MatMulNode (if you do this its a giant W)
-- Extend guard for matmul to only be instantiated for floating point ops
-- 
+DONE Extend guard for matmul to only be instantiated for floating point ops
+- Make infer_assert_device operate on pointers and not std::vector of tensors (less copies)
 - Compile + test out on both
 - StackNode, SqueezeNode, UnsqueezeNode
 - SoftMaxNode

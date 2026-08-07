@@ -34,3 +34,4 @@ This is where bugs slip (modifying storage with the same storage, __restrict and
 But if its just out_grad * m_left? sure. Then unbroadcast and accumulate it after editing.
 16) Another optimization: if BOOP both need grad, you allocate grad for one, then reuse it in the other as the buffer.
 17) Look for places in BOOP where one grad relies on the other. You save calculations.
+18) You pass orig_shape into accumulate_grad_matmul because MatMulNode holds fake flattened tensors. They are result of modified A or A.contiguous() with changed m_shape, m_strides. They do not have separate states. This means they share grad. So when you initialize grad, initialize it to A or A.contiguous() shape. Not the artificially flat one to satisfy BLAS

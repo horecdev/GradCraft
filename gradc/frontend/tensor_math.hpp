@@ -350,6 +350,8 @@ namespace gradc {
         using PromotedT = std::common_type_t<T, U>;
         auto [p_left, p_right] = promote_to_common(std::move(left), std::move(right));
 
+        std::vector<int64_t> original_left_shape = p_left.shape();
+
         bool requires_grad = p_left.requires_grad() || p_right.requires_grad();
 
         std::pair<std::pair<Tensor<T>, Tensor<T>>, BLASGEMMMeta> gemm_prep = infer_blas_meta(std::move(p_left), std::move(p_right), false);
@@ -358,7 +360,7 @@ namespace gradc {
         Tensor<T> safe_right = std::move(gemm_prep.first.second);
 
         Tensor<PromotedT> result = Tensor<PromotedT>(blas_meta.result_shape, requires_grad, lazy, target_device);
-        result.m_state->m_creation_op = std::make_unique<MatMulNode<PromotedT>>(std::move(safe_left), std::move(safe_right), blas_meta);
+        result.m_state->m_creation_op = std::make_unique<MatMulNode<PromotedT>>(std::move(safe_left), std::move(safe_right), blas_meta, original_left_shape);
         return result;
     }
 
