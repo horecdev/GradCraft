@@ -43,7 +43,7 @@ namespace gradc {
     }
 
     template <typename T>
-    Tensor<T> lazy_concat(std::vector<Tensor<T>>& tensor_list, int64_t concat_dim) {
+    Tensor<T> lazy_concat(std::vector<Tensor<T>> tensor_list, int64_t concat_dim) {
         Device target_device = infer_assert_device(tensor_list);
 
         const int64_t n_dim = std::ssize(tensor_list[0].m_shape);
@@ -66,7 +66,7 @@ namespace gradc {
         }
 
         Tensor<T> result = Tensor<T>(final_shape, requires_grad, lazy, target_device);
-        result.m_state->m_creation_op = std::make_unique<ConcatNode<T>>(tensor_list, concat_dim, std::move(final_shape));
+        result.m_state->m_creation_op = std::make_unique<ConcatNode<T>>(std::move(tensor_list), concat_dim, std::move(final_shape));
         
         return result;
     }

@@ -67,9 +67,9 @@ DONE ExpNode, LogNode + frontend
 DONE Take care of types (requires) for stuff like Exp, Log, Tanh, Sigmoid, LUs
 DONE Link up BLAS and cuBLAS + MatMulNode (if you do this its a giant W)
 DONE Extend guard for matmul to only be instantiated for floating point ops
-- Make infer_assert_device operate on pointers and not std::vector of tensors (less copies)
-- Fix set_data to work on both CPU and CUDA 
-- Compile + test out on both
+DONE Make infer_assert_device not force making a vector/copying
+DONE Fix set_data to work on both CPU and CUDA 
+DONE Compile + test out on both
 - StackNode, SqueezeNode, UnsqueezeNode
 - SoftMaxNode
 - LayerNorm Node

@@ -68,7 +68,7 @@ namespace gradc {
         // They share states because the swaps were done via mutating member variables m_shape and m_strides, not .reshape() etc.
         // (exception: can be forced to be contiguous. Then it is sharing tensor state with A.contiguous() and not A. But still, issue persists)
         // Since they share TensorState, initializing grad of flat tensor means initializing grad of A or A.contiguous() what makes it the wrong shape (flat) 
-        Device target_device = infer_assert_device(std::vector<Tensor<T>>({*this, left, right}));
+        Device target_device = infer_assert_device(*this, left, right);
 
         if (!m_requires_grad) {return;}
 

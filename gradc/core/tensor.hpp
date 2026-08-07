@@ -156,7 +156,7 @@ namespace gradc {
             Tensor permute(const std::vector<int64_t>& axes) const;
             Tensor reshape(const std::vector<int64_t>& target_shape) const;
             
-            template <typename U> friend Tensor<T> lazy_concat(std::vector<Tensor<T>> &tensor_list, int64_t concat_dim);
+            template <typename U> friend Tensor<U> lazy_concat(std::vector<Tensor<U>> tensor_list, int64_t concat_dim);
 
             // NN
             Tensor relu() const;
@@ -214,7 +214,6 @@ namespace gradc {
             template <typename U> friend std::ostream& print_tensor(std::ostream& stream, const Tensor<U>& source, PrintOptions opts);
             template <typename U> friend void print_dim(std::ostream& stream, const Tensor<U>& source, const PrintOptions& opts, int64_t current_dim, int64_t base_offset, bool is_last);
             template <typename U> friend Tensor<U> unbroadcast_grad(const Tensor<U>& raw_grad, const std::vector<int64_t>& orig_shape);
-            template <typename U> friend Tensor<U> lazy_concat(std::vector<Tensor<U>>& tensor_list, int64_t concat_dim);
 
             template <typename TargetT> Tensor<TargetT> cast() const;
 
