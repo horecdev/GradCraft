@@ -29,6 +29,7 @@ find_package(OpenBLAS REQUIRED)
 target_link_libraries(tensor PRIVATE 
     CUDA::cudart
     CUDA::cublas
+    CUDA::curand
     OpenBLAS::OpenBLAS
 )
 

@@ -350,7 +350,7 @@ namespace gradc {
         using PromotedT = std::common_type_t<T, U>;
         auto [p_left, p_right] = promote_to_common(std::move(left), std::move(right));
 
-        bool requires_grad = p_left.requires_grad() || p_left.requires_grad();
+        bool requires_grad = p_left.requires_grad() || p_right.requires_grad();
 
         std::pair<std::pair<Tensor<T>, Tensor<T>>, BLASGEMMMeta> gemm_prep = infer_blas_meta(std::move(p_left), std::move(p_right), false);
         BLASGEMMMeta blas_meta = gemm_prep.second;

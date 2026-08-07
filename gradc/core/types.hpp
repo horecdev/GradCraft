@@ -116,9 +116,9 @@ namespace gradc {
         float alpha;
         float beta;
 
-        float M;
-        float K;
-        float N;
+        int64_t M;
+        int64_t K;
+        int64_t N;
         
         MatrixTensorOp left_op;
         MatrixTensorOp right_op;

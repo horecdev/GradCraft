@@ -105,14 +105,14 @@ namespace gradc {
 
         std::vector<int64_t> left_shape_except_rightmost = std::vector<int64_t>(left.shape().begin(), left.shape().end() - 1);
         std::vector<int64_t> left_strides_except_rightmost = std::vector<int64_t>(left.strides().begin(), left.strides().end() - 1);
-        FusedView initial_fuse_result = fuse_dimensions(left_shape_except_rightmost, {left_strides_except_rightmost});
+        FusedView initial_fuse_result = fuse_dimensions(left_shape_except_rightmost, {&left_strides_except_rightmost});
 
         Tensor<T> left_locally_contig;
         if (std::ssize(initial_fuse_result.shared_shape) != 1) {
             left_locally_contig = left.contiguous();
             std::vector<int64_t> left_locally_contig_shape_except_rightmost(left_locally_contig.shape().begin(), left_locally_contig.shape().end() - 1);
             std::vector<int64_t> left_locally_contig_strides_except_rightmost(left_locally_contig.strides().begin(), left_locally_contig.strides().end() - 1);
-            FusedView locally_contig_fuse = fuse_dimensions(left_locally_contig_shape_except_rightmost, {left_locally_contig_strides_except_rightmost});
+            FusedView locally_contig_fuse = fuse_dimensions(left_locally_contig_shape_except_rightmost, {&left_locally_contig_strides_except_rightmost});
             left_locally_contig.m_shape = locally_contig_fuse.shared_shape;
             left_locally_contig.m_strides = locally_contig_fuse.strides[0];
             left_locally_contig.m_shape.push_back(left.shape().back());
@@ -158,7 +158,7 @@ namespace gradc {
             blas_meta.right_op = MatrixTensorOp::Normal;
         }
         else if (right.strides()[0] == 1 && right.strides()[1] > 0) { // transposed
-            blas_meta.ldb = left.strides()[1];
+            blas_meta.ldb = right.strides()[1];
             blas_meta.right_op = MatrixTensorOp::Transposed;
         }
         else {

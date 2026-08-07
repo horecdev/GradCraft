@@ -189,6 +189,10 @@ namespace gradc {
             template <typename U>
             friend auto infer_blas_meta(Tensor<U> left, Tensor<U> right, bool accumulate);
 
+            template <typename U, typename W>
+            requires (std::is_floating_point_v<U> && std::is_floating_point_v<W>)
+            friend Tensor<U> matmul(Tensor<U> left, Tensor<W> right);
+
 
             // REDUCTIONS
 

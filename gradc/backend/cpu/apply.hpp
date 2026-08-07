@@ -349,8 +349,8 @@ namespace gradc {
             CBLAS_TRANSPOSE op_right = (blas_meta.right_op == MatrixTensorOp::Normal) ? CblasNoTrans : CblasTrans;
 
             T* p_out = out._get_storage()->data() + out.m_offset;
-            const T* p_left = out._get_storage()->data() + left.m_offset;
-            const T* p_right = out._get_storage()->data() + right.m_offset;
+            const T* p_left = left._get_storage()->data() + left.m_offset;
+            const T* p_right = right._get_storage()->data() + right.m_offset;
 
             blasint blas_M = static_cast<blasint>(blas_meta.M);
             blasint blas_N = static_cast<blasint>(blas_meta.N);
