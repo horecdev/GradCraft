@@ -259,11 +259,16 @@ namespace gradc { // here is what dereferences m_state, since before its created
             throw std::runtime_error("set_data must set data for the entire underlying storage.");
         }
 
-        int64_t i = 0;
         T* raw_ptr = m_state->m_storage->data();
-        for (const T& val : data) {
-            raw_ptr[i] = val;\
-            i++;
+        int64_t bytes = sizeof(T) * std::ssize(data);
+        Device dev = this->device();
+
+        if (dev.is_cpu()) {
+            std::memcpy(raw_ptr, data.begin(), bytes);
+        }
+        else if (dev.is_cuda()) {
+            cudaSetDevice(dev.index);
+            cudaMemcpy(raw_ptr, data.begin(), bytes, cudaMemcpyHostToDevice);
         }
     }
 

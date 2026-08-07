@@ -54,7 +54,7 @@ namespace gradc {
             void backward(const Tensor<T>& out_grad) override {
                 if (m_parent.requires_grad()) {
                     Tensor<T> divided_grad = Tensor<T>(out_grad.shape(), out_grad.device(), uninitialized);
-                    dispatch(out_grad.device(), BinaryOpInPlace::Div, divided_grad, Tensor<T>(static_cast<T>(m_reduction_metadata.reduced_vol)));
+                    dispatch(out_grad.device(), BinaryOp::Div, divided_grad, out_grad, Tensor<T>(static_cast<T>(m_reduction_metadata.reduced_vol)));
                     Tensor<T> strided_mean_grad = Tensor<T>(m_parent.shape(), m_reduction_metadata.temp_strides, 0, divided_grad._get_storage(), false);
                     m_parent.accumulate_grad(strided_mean_grad);
                 }

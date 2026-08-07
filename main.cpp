@@ -5,7 +5,7 @@
 using namespace gradc;
 
 int main() {
-    Device cpu_dev = Device(DeviceType::CPU, 0);
+    Device cpu_dev = Device(DeviceType::CUDA, 0);
 
     // ==========================================
     // TEST 1: STANDARD 2D MATMUL
@@ -15,19 +15,22 @@ int main() {
     std::cout << "==========================================\n";
 
     Tensor<float> A({2, 3}, 0.0f, cpu_dev);
+    
     A.set_data({1.0f, 2.0f, 3.0f, 
                 4.0f, 5.0f, 6.0f});
+    std::cout << "before here" << std::endl;
     A.set_requires_grad(true);
+    
 
     Tensor<float> B({3, 2}, 0.0f, cpu_dev);
     B.set_data({ 7.0f,  8.0f, 
                  9.0f, 10.0f, 
                 11.0f, 12.0f});
     B.set_requires_grad(true);
-
+    
     auto Y = matmul(A, B); 
     auto loss1 = Y.sum({0, 1}, false); // Sum all elements to get a scalar loss
-
+    
     loss1.realize();
 
     std::cout << "\n--- Forward Pass (2D Matmul) ---\n";

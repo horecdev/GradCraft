@@ -651,6 +651,8 @@ namespace gradc {
         T* p_out = out._get_storage()->data();
         T* p_source = source._get_storage()->data();
 
+        CUDAUtils::fill(p_out, init_value, out.volume(), out.device());
+
         if (out.volume() == 1 && source.is_contiguous()) {
             switch (op) {
                 case ReduceOp::Sum:
@@ -671,8 +673,6 @@ namespace gradc {
         CUDAMeta source_shape = to_cuda_meta(source.m_shape);
         CUDAMeta out_strides = to_cuda_meta(reduction_metadata.temp_strides);
         CUDAMeta source_strides = to_cuda_meta(source.m_strides);
-
-        CUDAUtils::fill(p_out, init_value, out.volume(), out.device());
 
         switch (op) {
             case ReduceOp::Sum:
@@ -829,10 +829,10 @@ namespace gradc {
         // row major = transposed col major
         // AB = B^T A^T so just swap. col major cublas will treat them as transposed
         if constexpr (std::is_same_v<T, float>) {
-            cublasSgemm(handle, op_left, op_right, blas_meta.N, blas_meta.M, blas_meta.K, &typed_alpha, p_right, blas_meta.ldb, p_left, blas_meta.lda, &typed_beta, p_out, blas_meta.ldc);
+            cublasSgemm(handle, op_right, op_left, blas_meta.N, blas_meta.M, blas_meta.K, &typed_alpha, p_right, blas_meta.ldb, p_left, blas_meta.lda, &typed_beta, p_out, blas_meta.ldc);
         }
         else if constexpr (std::is_same_v<T, double>) {
-            cublasDgemm(handle, op_left, op_right, blas_meta.N, blas_meta.M, blas_meta.K, &typed_alpha, p_right, blas_meta.ldb, p_left, blas_meta.lda, &typed_beta, p_out, blas_meta.ldc);
+            cublasDgemm(handle, op_right, op_left, blas_meta.N, blas_meta.M, blas_meta.K, &typed_alpha, p_right, blas_meta.ldb, p_left, blas_meta.lda, &typed_beta, p_out, blas_meta.ldc);
         }
     }
 
