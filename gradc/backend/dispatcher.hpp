@@ -70,6 +70,18 @@ namespace gradc {
                     CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::BLog<T>());
                     break;
 
+                case BinaryOp::BSin:
+                    CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::BSin<T>());
+                    break;
+                
+                case BinaryOp::BCos:
+                    CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::BCos<T>());
+                    break;
+
+                case BinaryOp::BSquare:
+                    CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::BSquare<T>());
+                    break;
+
                 case BinaryOp::BReLU:
                     CPUBackend::apply_binary_out_of_place(out, left, right, cpu_functors::BOOP::BReLU<T>());
                     break;
@@ -154,8 +166,36 @@ namespace gradc {
                     CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOOP::Log<T>());
                     break;
 
+                case UnaryOp::Sin:
+                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOOP::Sin<T>());
+                    break;
+
+                case UnaryOp::Cos:
+                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOOP::Cos<T>());
+                    break;
+
+                case UnaryOp::Square:
+                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOOP::Square<T>());
+                    break;
+
                 case UnaryOp::ReLU:
                     CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOOP::ReLU<T>());
+                    break;
+
+                case UnaryOp::Sigmoid:
+                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOOP::Sigmoid<T>());
+                    break;
+
+                case UnaryOp::TanH:
+                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOOP::TanH<T>());
+                    break;
+
+                case UnaryOp::SiLU:
+                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOOP::SiLU<T>());
+                    break;
+
+                case UnaryOp::GeLU:
+                    CPUBackend::apply_unary_out_of_place(out, in, cpu_functors::UOOP::GeLU<T>());
                     break;
 
                 default:
@@ -180,8 +220,36 @@ namespace gradc {
                     CPUBackend::apply_unary_in_place(in, cpu_functors::UIP::Log<T>());
                     break;
 
+                case UnaryOpInPlace::Sin:
+                    CPUBackend::apply_unary_in_place(in, cpu_functors::UIP::Sin<T>());
+                    break;
+
+                case UnaryOpInPlace::Cos:
+                    CPUBackend::apply_unary_in_place(in, cpu_functors::UIP::Cos<T>());
+                    break;
+
+                case UnaryOpInPlace::Square:
+                    CPUBackend::apply_unary_in_place(in, cpu_functors::UIP::Square<T>());
+                    break;
+
                 case UnaryOpInPlace::ReLU:
                     CPUBackend::apply_unary_in_place(in, cpu_functors::UIP::ReLU<T>());
+                    break;
+
+                case UnaryOpInPlace::Sigmoid:
+                    CPUBackend::apply_unary_in_place(in, cpu_functors::UIP::Sigmoid<T>());
+                    break;
+
+                case UnaryOpInPlace::TanH:
+                    CPUBackend::apply_unary_in_place(in, cpu_functors::UIP::TanH<T>());
+                    break;
+
+                case UnaryOpInPlace::SiLU:
+                    CPUBackend::apply_unary_in_place(in, cpu_functors::UIP::SiLU<T>());
+                    break;
+
+                case UnaryOpInPlace::GeLU:
+                    CPUBackend::apply_unary_in_place(in, cpu_functors::UIP::GeLU<T>());
                     break;
 
                 default:

@@ -56,6 +56,27 @@ namespace gradc::cpu_functors {
         };
 
         template <typename T>
+        struct BSin {
+            T operator()(T grad, T x) const {
+                return grad * static_cast<T>(std::cos(x));
+            }
+        };
+
+        template <typename T>
+        struct BCos {
+            T operator()(T grad, T x) const {
+                return -(grad * static_cast<T>(std::sin(x)));
+            }
+        };
+
+        template <typename T>
+        struct BSquare {
+            T operator()(T grad, T x) const {
+                return grad * 2 * x;
+            }
+        };
+
+        template <typename T>
         struct BReLU {
             T operator()(T grad, T value) const {
                 return value > 0 ? grad : 0;
@@ -193,6 +214,37 @@ namespace gradc::cpu_functors {
         };
 
         template <typename T>
+        struct Sin {
+            T operator()(T x) const {
+                if constexpr (std::is_floating_point_v<T>) {
+                    return static_cast<T>(std::sin(x));
+                }
+                else {
+                    throw std::runtime_error("Sin CPU UOOP functor running on non-floating.");
+                }
+            }
+        };
+
+        template <typename T>
+        struct Cos {
+            T operator()(T x) const {
+                if constexpr (std::is_floating_point_v<T>) {
+                    return static_cast<T>(std::cos(x));
+                }
+                else {
+                    throw std::runtime_error("Cos CPU UOOP functor running on non-floating.");
+                }
+            }
+        };
+
+        template <typename T>
+        struct Square {
+            T operator()(T x) const {
+                return x * x;
+            }
+        };
+
+        template <typename T>
         struct Sigmoid {
             T operator()(T x) const {
                 if constexpr (std::is_floating_point_v<T>) {
@@ -286,6 +338,37 @@ namespace gradc::cpu_functors {
                 else {
                     throw std::runtime_error("UIP Log CPU functor running on non-floating.");
                 }
+            }
+        };
+
+        template <typename T>
+        struct Sin {
+            void operator()(T& x) const {
+                if constexpr (std::is_floating_point_v<T>) {
+                    x = static_cast<T>(std::sin(x));
+                }
+                else {
+                    throw std::runtime_error("UIP Sin CPU functor running on non-floating.");
+                }
+            }
+        };
+
+        template <typename T>
+        struct Cos {
+            void operator()(T& x) const {
+                if constexpr (std::is_floating_point_v<T>) {
+                    x = static_cast<T>(std::cos(x));
+                }
+                else {
+                    throw std::runtime_error("UIP Cos CPU functor running on non-floating.");
+                }
+            }
+        };
+
+        template <typename T>
+        struct Square {
+            void operator()(T& x) const {
+                x = x * x;
             }
         };
 

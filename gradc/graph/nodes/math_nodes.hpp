@@ -310,6 +310,105 @@ namespace gradc {
     };
 
     template <typename T>
+    class SinNode : public Node<T> {
+        private:
+            Tensor<T> m_parent;
+        public:
+            SinNode(Tensor<T> parent) : m_parent(parent) {}
+
+            Tensor<T> realize() override {
+                m_parent.realize();
+                if (!m_parent.requires_grad() && m_parent.is_exclusive()) {
+                    dispatch(m_parent.device(), UnaryOpInPlace::Sin, m_parent);
+                    return m_parent;
+                }
+
+                Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
+                dispatch(m_parent.device(), UnaryOp::Sin, result, m_parent);
+
+                return result;
+            }
+
+            void backward(const Tensor<T>& out_grad) override {
+                if (m_parent.requires_grad()) {
+                    Tensor<T> sin_grad = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
+                    dispatch(m_parent.device(), BinaryOp::BSin, sin_grad, out_grad, m_parent);
+                    m_parent.accumulate_grad(sin_grad);
+                }
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_parent._get_state_base()};
+            }
+    };
+
+    template <typename T>
+    class CosNode : public Node<T> {
+        private:
+            Tensor<T> m_parent;
+        public:
+            CosNode(Tensor<T> parent) : m_parent(parent) {}
+
+            Tensor<T> realize() override {
+                m_parent.realize();
+                if (!m_parent.requires_grad() && m_parent.is_exclusive()) {
+                    dispatch(m_parent.device(), UnaryOpInPlace::Cos, m_parent);
+                    return m_parent;
+                }
+
+                Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
+                dispatch(m_parent.device(), UnaryOp::Cos, result, m_parent);
+
+                return result;
+            }
+
+            void backward(const Tensor<T>& out_grad) override {
+                if (m_parent.requires_grad()) {
+                    Tensor<T> cos_grad = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
+                    dispatch(m_parent.device(), BinaryOp::BCos, cos_grad, out_grad, m_parent);
+                    m_parent.accumulate_grad(cos_grad);
+                }
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_parent._get_state_base()};
+            }
+    };
+
+    template <typename T>
+    class SquareNode : public Node<T> {
+        private:
+            Tensor<T> m_parent;
+        public:
+            SquareNode(Tensor<T> parent) : m_parent(parent) {}
+
+            Tensor<T> realize() override {
+                m_parent.realize();
+                if (!m_parent.requires_grad() && m_parent.is_exclusive()) {
+                    dispatch(m_parent.device(), UnaryOpInPlace::Square, m_parent);
+                    return m_parent;
+                }
+
+                Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
+                dispatch(m_parent.device(), UnaryOp::Square, result, m_parent);
+
+                return result;
+            }
+
+            void backward(const Tensor<T>& out_grad) override {
+                if (m_parent.requires_grad()) {
+                    Tensor<T> square_grad = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
+                    dispatch(m_parent.device(), BinaryOp::BSquare, square_grad, out_grad, m_parent);
+                    m_parent.accumulate_grad(square_grad);
+                }
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_parent._get_state_base()};
+            }
+    };
+
+    template <typename T>
     class MatMulNode : public Node<T> {
         private:
             Tensor<T> m_left;

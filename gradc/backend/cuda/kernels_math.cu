@@ -112,6 +112,15 @@ namespace gradc {
                 case BinaryOp::BLog:
                     binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::BLog<T>());
                     break;
+                case BinaryOp::BSin:
+                    binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::BSin<T>());
+                    break;
+                case BinaryOp::BCos:
+                    binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::BCos<T>());
+                    break;
+                case BinaryOp::BSquare:
+                    binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::BSquare<T>());
+                    break;
                 case BinaryOp::BReLU:
                     binary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_left, p_right, out.m_offset, left.m_offset, right.m_offset, total_elems, cuda_functors::BOOP::BReLU<T>());
                     break;
@@ -184,6 +193,15 @@ namespace gradc {
                 break;
             case BinaryOp::BLog:
                 binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::BLog<T>());
+                break;
+            case BinaryOp::BSin:
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::BSin<T>());
+                break;
+            case BinaryOp::BCos:
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::BCos<T>());
+                break;
+            case BinaryOp::BSquare:
+                binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::BSquare<T>());
                 break;
             case BinaryOp::BReLU:
                 binary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_left, p_right, gpu_shape, gpu_out_strides, gpu_left_strides, gpu_right_strides, out.m_offset, left_offset, right_offset, total_elems, cuda_functors::BOOP::BReLU<T>());
@@ -377,43 +395,49 @@ namespace gradc {
         }
     }
 
-    template <typename OutT, typename InT>
-    void CUDAMath::apply_unary_out_of_place(Tensor<OutT>& out, const Tensor<InT>& source, UnaryOp op) {
+    template <typename T>
+    void CUDAMath::apply_unary_out_of_place(Tensor<T>& out, const Tensor<T>& source, UnaryOp op) {
         int64_t total_elems = out.volume();
         int64_t threads = 256;
         int64_t blocks = (total_elems + threads - 1) / threads;
 
-        OutT* p_out = out._get_storage()->data();
-        const InT* p_source = source._get_storage()->data(); 
+        T* p_out = out._get_storage()->data();
+        const T* p_source = source._get_storage()->data(); 
 
         if (out.is_contiguous() && source.is_contiguous() && out.m_shape == source.m_shape) {
             switch (op) {
                 case UnaryOp::Identity:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Identity<InT>());
-                    break;
-                case UnaryOp::Cast:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Cast<InT, OutT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Identity<T>());
                     break;
                 case UnaryOp::ReLU:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::ReLU<InT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::ReLU<T>());
                     break;
                 case UnaryOp::Exp:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Exp<InT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Exp<T>());
                     break;
                 case UnaryOp::Log:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Log<InT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Log<T>());
+                    break;
+                case UnaryOp::Sin:
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Sin<T>());
+                    break;
+                case UnaryOp::Cos:
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Cos<T>());
+                    break;
+                case UnaryOp::Square:
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Square<T>());
                     break;
                 case UnaryOp::Sigmoid:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Sigmoid<InT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Sigmoid<T>());
                     break;
                 case UnaryOp::TanH:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::TanH<InT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::TanH<T>());
                     break;
                 case UnaryOp::SiLU:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::SiLU<InT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::SiLU<T>());
                     break;
                 case UnaryOp::GeLU:
-                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::GeLU<InT>());
+                    unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::GeLU<T>());
                     break;
                 default:
                     throw std::runtime_error("Unsupported CUDA UOOP");
@@ -433,35 +457,67 @@ namespace gradc {
 
         switch (op) {
             case UnaryOp::Identity:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Identity<InT>());
-                break;
-            case UnaryOp::Cast:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Cast<InT, OutT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Identity<T>());
                 break;
             case UnaryOp::ReLU:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::ReLU<InT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::ReLU<T>());
                 break;
             case UnaryOp::Exp:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Exp<InT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Exp<T>());
                 break;
             case UnaryOp::Log:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Log<InT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Log<T>());
+                break;
+            case UnaryOp::Sin:
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Sin<T>());
+                break;
+            case UnaryOp::Cos:
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Cos<T>());
+                break;
+            case UnaryOp::Square:
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Square<T>());
                 break;
             case UnaryOp::Sigmoid:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Sigmoid<InT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Sigmoid<T>());
                 break;
             case UnaryOp::TanH:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::TanH<InT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::TanH<T>());
                 break;
             case UnaryOp::SiLU:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::SiLU<InT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::SiLU<T>());
                 break;
             case UnaryOp::GeLU:
-                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::GeLU<InT>());
+                unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::GeLU<T>());
                 break;
             default:
                 throw std::runtime_error("Unsupported CUDA UOOP");
         }
+    }
+
+    template <typename OutT, typename InT>
+    void CUDAMath::apply_cast_out_of_place(Tensor<OutT>& out, const Tensor<InT>& source) {
+        int64_t total_elems = out.volume();
+        int64_t threads = 256;
+        int64_t blocks = (total_elems + threads - 1) / threads;
+
+        OutT* p_out = out._get_storage()->data();
+        const InT* p_source = source._get_storage()->data(); 
+
+        if (out.is_contiguous() && source.is_contiguous() && out.m_shape == source.m_shape) {
+            unary_out_of_place_kernel_fast<<<blocks, threads>>>(p_out, p_source, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Cast<InT, OutT>());
+        }
+
+        FusedView fused = fuse_dimensions(out.m_shape, {&out.m_strides, &source.m_strides});
+        const std::vector<int64_t>* out_strides = &fused.strides[0];
+        const std::vector<int64_t>* source_strides = &fused.strides[1];
+
+        CUDAMeta gpu_shape = to_cuda_meta(fused.shared_shape);
+        CUDAMeta gpu_out_strides = to_cuda_meta(fused.strides[0]);
+        CUDAMeta gpu_source_strides = to_cuda_meta(fused.strides[1]);
+
+        cudaSetDevice(out.device().index);
+
+        unary_out_of_place_kernel<<<blocks, threads>>>(p_out, p_source, gpu_shape, gpu_out_strides, gpu_source_strides, out.m_offset, source.m_offset, total_elems, cuda_functors::UOOP::Cast<InT, OutT>());
     }
 
     #pragma endregion UNARY OUT OF PLACE
@@ -526,6 +582,15 @@ namespace gradc {
                 case UnaryOpInPlace::Log:
                     unary_in_place_kernel_fast<<<blocks, threads>>>(p_source, source.m_offset, total_elems, cuda_functors::UIP::Log<T>());
                     break;
+                case UnaryOpInPlace::Sin:
+                    unary_in_place_kernel_fast<<<blocks, threads>>>(p_source, source.m_offset, total_elems, cuda_functors::UIP::Sin<T>());
+                    break;
+                case UnaryOpInPlace::Cos:
+                    unary_in_place_kernel_fast<<<blocks, threads>>>(p_source, source.m_offset, total_elems, cuda_functors::UIP::Cos<T>());
+                    break;
+                case UnaryOpInPlace::Square:
+                    unary_in_place_kernel_fast<<<blocks, threads>>>(p_source, source.m_offset, total_elems, cuda_functors::UIP::Square<T>());
+                    break;
                 case UnaryOpInPlace::Sigmoid:
                     unary_in_place_kernel_fast<<<blocks, threads>>>(p_source, source.m_offset, total_elems, cuda_functors::UIP::Sigmoid<T>());
                     break;
@@ -560,6 +625,15 @@ namespace gradc {
                 break;
             case UnaryOpInPlace::Log:
                 unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, cuda_functors::UIP::Log<T>());
+                break;
+            case UnaryOpInPlace::Sin:
+                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, cuda_functors::UIP::Sin<T>());
+                break;
+            case UnaryOpInPlace::Cos:
+                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, cuda_functors::UIP::Cos<T>());
+                break;
+            case UnaryOpInPlace::Square:
+                unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, cuda_functors::UIP::Square<T>());
                 break;
             case UnaryOpInPlace::Sigmoid:
                 unary_in_place_kernel<<<blocks, threads>>>(p_source, gpu_shape, gpu_source_strides, source.m_offset, total_elems, cuda_functors::UIP::Sigmoid<T>());

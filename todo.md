@@ -70,13 +70,14 @@ DONE Extend guard for matmul to only be instantiated for floating point ops
 DONE Make infer_assert_device not force making a vector/copying
 DONE Fix set_data to work on both CPU and CUDA 
 DONE Compile + test out on both
-- StackNode, SqueezeNode, UnsqueezeNode
+DONE StackNode, SqueezeNode, UnsqueezeNode
+DONE Frontend for these 3
+- PowNode, SinNode, CosNode
 - Frontend for these 3
+- Standarize all the nodes in ORDER, switch case for every single one
+- Fix the CUDA setDevice in apply_ functions to execute before the fast paths
 - SoftmaxNode
 - LayerNormNode
-- SinNode
-- CosNode
-- SquareNode
 - MSELossNode
 - add multithreading with OpenMP (no writing mutexes and shit)
 - Create a diffusion transformer final proof project 

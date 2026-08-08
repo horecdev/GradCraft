@@ -64,6 +64,47 @@ namespace gradc::cuda_functors {
         };
 
         template <typename T>
+        struct BSin {
+            __device__ T operator()(T grad, T x) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    return grad * cosf(x);
+                }
+                else if constexpr (std::is_same_v<T, float>)  {
+                    return grad * cos(x);
+                }
+                else {
+                    __trap();
+                    return T(0);
+                }
+                
+            }
+        };
+
+        template <typename T>
+        struct BCos {
+            __device__ T operator()(T grad, T x) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    return -(grad * sinf(x));
+                }
+                else if constexpr (std::is_same_v<T, float>)  {
+                    return -(grad * sin(x));
+                }
+                else {
+                    __trap();
+                    return T(0);
+                }
+                
+            }
+        };
+
+        template <typename T>
+        struct BSquare {
+            __device__ T operator()(T grad, T x) const {
+                return grad * 2 * x;
+            }
+        };
+
+        template <typename T>
         struct BReLU {
             __device__ T operator()(T grad, T value) const {
                 return value > 0 ? grad : 0;
@@ -234,6 +275,45 @@ namespace gradc::cuda_functors {
         };
 
         template <typename T>
+        struct Sin {
+            __device__ T operator()(T x) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    return sinf(x);
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    return sin(x);
+                }
+                else {
+                    __trap();
+                    return T(0);
+                }
+            }
+        };
+
+        template <typename T>
+        struct Cos {
+            __device__ T operator()(T x) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    return cosf(x);
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    return cos(x);
+                }
+                else {
+                    __trap();
+                    return T(0);
+                }
+            }
+        };
+
+        template <typename T>
+        struct Square {
+            __device__ T operator()(T x) const {
+                return x * x;
+            }
+        };
+
+        template <typename T>
         struct Sigmoid {
             __device__ T operator()(T x) const {
                 if constexpr (std::is_same_v<T, float>) {
@@ -353,6 +433,45 @@ namespace gradc::cuda_functors {
                     __trap();
                     x = T(0);
                 }
+            }
+        };
+
+        template <typename T>
+        struct Sin {
+            __device__ void operator()(T& x) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    x = sinf(x);
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    x = sin(x);
+                }
+                else {
+                    __trap();
+                    x = T(0);
+                }
+            }
+        };
+
+        template <typename T>
+        struct Cos {
+            __device__ void operator()(T& x) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    x = cosf(x);
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    x = cos(x);
+                }
+                else {
+                    __trap();
+                    x = T(0);
+                }
+            }
+        };
+
+        template <typename T>
+        struct Square {
+            __device__ void operator()(T& x) const {
+                x = x * x;
             }
         };
 

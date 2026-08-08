@@ -159,8 +159,9 @@ namespace gradc {
             Tensor squeeze(std::optional<int64_t> dim = std::nullopt) const;
             
             template <typename U> friend Tensor<U> concat(std::vector<Tensor<U>> tensor_list, int64_t concat_dim);
+            template <typename U> friend Tensor<U> stack(std::vector<Tensor<U>> tensor_list, int64_t stack_dim);
 
-            // NN
+            // ACTIVATIONS
             Tensor relu() const;
 
             Tensor sigmoid() const requires std::is_floating_point_v<T>;
@@ -177,6 +178,10 @@ namespace gradc {
             Tensor operator-() const;
             Tensor exp() const requires std::is_floating_point_v<T>;
             Tensor log() const requires std::is_floating_point_v<T>;
+            Tensor sin() const requires std::is_floating_point_v<T>;
+            Tensor cos() const requires std::is_floating_point_v<T>;
+            Tensor square() const;
+
 
             template <typename U, typename W> friend auto operator+(Tensor<U> left, Tensor<W> right); // we befriend whole family of functions named operator+. 
             template <typename U, typename W> friend auto operator-(Tensor<U> left, Tensor<W> right);
@@ -215,6 +220,7 @@ namespace gradc {
             template <typename InT, typename OutT> friend Tensor<OutT> lobotomized_cast_alloc(const Tensor<InT>& source);
             template <typename U> friend Tensor<U> create_lobotomized_slice_view(const Tensor<U>& source, const std::vector<IndexDesc>& descriptors);
             template <typename U> friend Tensor<U> lobotomized_concat_alloc(const std::vector<Tensor<U>>& tensor_list, int64_t concat_dim, const std::vector<int64_t>& final_shape);
+            template <typename U> friend Tensor<U> lobotomized_stack_alloc(const std::vector<Tensor<U>>& tensor_list, int64_t stack_dim, const std::vector<int64_t>& final_shape);
             template <typename U> friend std::ostream& print_tensor(std::ostream& stream, const Tensor<U>& source, PrintOptions opts);
             template <typename U> friend void print_dim(std::ostream& stream, const Tensor<U>& source, const PrintOptions& opts, int64_t current_dim, int64_t base_offset, bool is_last);
             template <typename U> friend Tensor<U> unbroadcast_grad(const Tensor<U>& raw_grad, const std::vector<int64_t>& orig_shape);
