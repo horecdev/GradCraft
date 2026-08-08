@@ -74,10 +74,11 @@ DONE StackNode, SqueezeNode, UnsqueezeNode
 DONE Frontend for these 3
 DONE PowNode, SinNode, CosNode
 DONE Frontend for these 3
-- Write a functor mapper for cpu and cuda based on a scoped lambda (pass lambda that calls function)
+DONE Write a functor mapper for cpu and cuda based on a scoped lambda (pass lambda that calls function)
 DONE Fix the CUDA setDevice in apply_ functions to execute before the fast paths
 - SoftmaxNode
 - LayerNormNode
 - MSELossNode
+- Parameter (with requires_grad = true)
 - add multithreading with OpenMP (no writing mutexes and shit)
 - Create a diffusion transformer final proof project 

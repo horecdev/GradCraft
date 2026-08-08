@@ -49,4 +49,13 @@ namespace gradc {
         dispatch(this->device(), ArgExtrOp::ArgMax, dim, result, *this);
         return result;
     }
+
+    template <typename T>
+    Tensor<T> Tensor<T>::softmax(int64_t dim, bool keepdims) const requires std::is_floating_point_v<T> {
+        ReductionMetadata reduction_metadata = infer_reduction_metadata(m_shape, {dim}, keepdims);
+        Tensor result = Tensor(reduction_metadata.result_shape, m_requires_grad, lazy, this->device());
+        result.m_state->m_creation_op = std::make_unique<SoftmaxNode<T>>(*this, reduction_metadata);
+
+        return result;
+    }
 }

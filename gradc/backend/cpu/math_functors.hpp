@@ -398,7 +398,7 @@ namespace gradc::cpu_functors {
 
         template <typename T>
         struct SiLU {
-            T operator()(T& x) const {
+            void operator()(T& x) const {
                 if constexpr (std::is_floating_point_v<T>) {
                     x = x * (static_cast<T>(1.0) / (static_cast<T>(1.0) + std::exp(-x)));
                 }
@@ -410,7 +410,7 @@ namespace gradc::cpu_functors {
 
         template <typename T>
         struct GeLU {
-            T operator()(T& x) const {
+            void operator()(T& x) const {
                 if constexpr (std::is_floating_point_v<T>) {
                     T alpha = static_cast<T>(0.7978845608);
                     T beta = static_cast<T>(0.044715);

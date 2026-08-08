@@ -163,8 +163,8 @@ namespace gradc {
                 --new_size;
             }
 
-            std::vector<int64_t> collapsed_result_shape = std::vector<int64_t>{};
-            std::vector<int64_t> collapsed_result_strides = std::vector<int64_t>{};
+            std::vector<int64_t> collapsed_result_shape;
+            std::vector<int64_t> collapsed_result_strides;
             collapsed_result_shape.reserve(new_size);
             collapsed_result_strides.reserve(new_size);
 

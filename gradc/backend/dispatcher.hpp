@@ -53,7 +53,7 @@ namespace gradc {
     template <typename T>
     inline void dispatch(Device device, BinaryOpInPlace op, Tensor<T>& left, const Tensor<T>& right) {
         if (device.is_cpu()) {
-            cpu_mapper::map_bip<T>(op, [&](auto functor) {CPUBackend::apply_binary_out_of_place(left, right, functor);});
+            cpu_mapper::map_bip<T>(op, [&](auto functor) {CPUBackend::apply_binary_in_place(left, right, functor);});
         }
 
         else if (device.is_cuda()) {
@@ -90,27 +90,7 @@ namespace gradc {
         }
 
         else if (device.is_cuda()) {
-            switch (op) {
-                case ReduceOp::Sum:
-                    CUDAMath::apply_reduction_operation(out, in, reduction_metadata, T(0), ReduceOp::Sum);
-                    break;
-
-                case ReduceOp::Mean:
-                    CUDAMath::apply_reduction_operation(out, in, reduction_metadata, T(0), ReduceOp::Sum);
-                    CUDAMath::apply_binary_in_place(out, Tensor<T>(static_cast<T>(reduction_metadata.reduced_vol), out.device()), BinaryOpInPlace::Div);
-                    break;
-
-                case ReduceOp::Max:
-                    CUDAMath::apply_reduction_operation(out, in, reduction_metadata, std::numeric_limits<T>::lowest(), ReduceOp::Max);
-                    break;
-
-                case ReduceOp::Min:
-                    CUDAMath::apply_reduction_operation(out, in, reduction_metadata, std::numeric_limits<T>::max(), ReduceOp::Min);
-                    break;
-
-                default:
-                    throw std::runtime_error("Unsupported ReduceOp in CPU Dispatcher.");
-            }
+            CUDAMath::apply_reduction_operation(out, in, reduction_metadata, op);
         }
     }
 
@@ -120,14 +100,7 @@ namespace gradc {
             cpu_mapper::map_argextr<T>(op, [&](auto functor, T init_value) {CPUBackend::apply_arg_extr_operation(out, in, dim, init_value, functor);});
         }
         else if (device.is_cuda()) {
-            switch (op) {
-                case ArgExtrOp::ArgMax:
-                    CUDAMath::apply_arg_extr_operation(out, in, dim, std::numeric_limits<T>::max(), ArgExtrOp::ArgMax);
-                    break;
-                case ArgExtrOp::ArgMin:
-                    CUDAMath::apply_arg_extr_operation(out, in, dim, std::numeric_limits<T>::lowest(), ArgExtrOp::ArgMin);
-                    break;
-            }
+            CUDAMath::apply_arg_extr_operation(out, in, dim, op);
         }
     }
 

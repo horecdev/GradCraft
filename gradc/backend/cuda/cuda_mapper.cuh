@@ -83,7 +83,7 @@ namespace gradc::cuda_mapper {
         switch (op) {
             case ReduceOp::Sum: callback(cuda_functors::RED::Sum<T>(), T(0)); break;
             case ReduceOp::Max: callback(cuda_functors::RED::Max<T>(), std::numeric_limits<T>::lowest()); break;
-            case ReduceOp::Min: callback(cuda_functors::RED::Min<T>()), std::numeric_limits<T>::max(); break;
+            case ReduceOp::Min: callback(cuda_functors::RED::Min<T>(), std::numeric_limits<T>::max()); break;
             default: throw std::runtime_error("Unsupported ReduceOp in CUDA mapper.");
         }
     }
