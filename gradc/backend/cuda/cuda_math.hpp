@@ -17,9 +17,9 @@ namespace gradc {
             template <typename T>
             static void apply_unary_in_place(Tensor<T>& source, UnaryOpInPlace op);
             template <typename T>
-            static void apply_reduction_operation(Tensor<T>& out, const Tensor<T>& source, const ReductionMetadata& reduction_metadata, T init_value, ReduceOp op);
+            static void apply_reduction_operation(Tensor<T>& out, const Tensor<T>& source, const ReductionMetadata& reduction_metadata, ReduceOp op);
             template <typename T>
-            static void apply_arg_extr_operation(Tensor<int64_t>& out, const Tensor<T>& source, int64_t dim, T init_value, ArgExtrOp op);
+            static void apply_arg_extr_operation(Tensor<int64_t>& out, const Tensor<T>& source, int64_t dim, ArgExtrOp op);
             template <typename T> 
             requires std::is_floating_point_v<T>
             static void apply_batched_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const BLASGEMMMeta& blas_meta);

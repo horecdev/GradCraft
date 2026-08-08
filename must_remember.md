@@ -41,3 +41,4 @@ stride only ever shows 0. This means it literally does not ever matter.
 original -> optional: contiguous -> edit the shape/strides in place (flatten) -> pass into matmul 
 MatmulNode holds the wrong shape logically. Therefore, before the reshaping happens, matmul func saves the real shape (batched, not flat) then passes it into MatMulNode.
 Say you do C = A + B, matmul(C, D). C gets copied into matmul (alias) this alias now has m_op of AddNode(A, B). When this realizes, C realizes. The alias has a different shape than real C (edited in place). It may also have a contiguous node attached. It has the original C shape saved. It passes it into matmul.
+21) There is no dispatch for ReduceOp::Mean because its handled in MeanNode (Sum then Div)

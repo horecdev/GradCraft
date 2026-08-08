@@ -72,10 +72,10 @@ DONE Fix set_data to work on both CPU and CUDA
 DONE Compile + test out on both
 DONE StackNode, SqueezeNode, UnsqueezeNode
 DONE Frontend for these 3
-- PowNode, SinNode, CosNode
-- Frontend for these 3
-- Standarize all the nodes in ORDER, switch case for every single one
-- Fix the CUDA setDevice in apply_ functions to execute before the fast paths
+DONE PowNode, SinNode, CosNode
+DONE Frontend for these 3
+- Write a functor mapper for cpu and cuda based on a scoped lambda (pass lambda that calls function)
+DONE Fix the CUDA setDevice in apply_ functions to execute before the fast paths
 - SoftmaxNode
 - LayerNormNode
 - MSELossNode
