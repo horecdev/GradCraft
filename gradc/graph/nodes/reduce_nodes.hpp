@@ -134,8 +134,10 @@ namespace gradc {
                     dispatch(m_logits.device(), ReduceOp::Sum, m_reduction_metadata, logits_sum, m_logits);
                     dispatch(m_logits.device(), BinaryOpInPlace::Div, m_logits, logits_sum);
 
-                    m_result = Tensor<T>(m_logits.shape(), m_logits.device(), uninitialized);
-                    dispatch(m_logits.device(), UnaryOp::Identity, m_result, m_logits);
+                    if (m_logits.requires_grad()) {
+                        m_result = Tensor<T>(m_logits.shape(), m_logits.device(), uninitialized);
+                        dispatch(m_logits.device(), UnaryOp::Identity, m_result, m_logits);
+                    }
 
                     return m_logits;
                 }
@@ -151,9 +153,11 @@ namespace gradc {
                 dispatch(m_logits.device(), ReduceOp::Sum, m_reduction_metadata, logits_sum, normalized_logits);
                 dispatch(m_logits.device(), BinaryOpInPlace::Div, normalized_logits, logits_sum);
 
-                m_result = Tensor<T>(m_logits.shape(), m_logits.device(), uninitialized);
-                dispatch(m_logits.device(), UnaryOp::Identity, m_result, normalized_logits);
-
+                if (m_logits.requires_grad()) {
+                    m_result = Tensor<T>(m_logits.shape(), m_logits.device(), uninitialized);
+                    dispatch(m_logits.device(), UnaryOp::Identity, m_result, normalized_logits);
+                }
+                
                 return normalized_logits;
             }
     };
