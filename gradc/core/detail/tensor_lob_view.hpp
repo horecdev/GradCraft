@@ -210,4 +210,80 @@ namespace gradc {
         return result;
     }
 
+    template <typename T>
+    Tensor<T> lobotomized_squeeze_view(const Tensor<T>& source, std::optional<int64_t> target_dim = std::nullopt) {
+        const int64_t n_dim = std::ssize(source.m_shape);
+        if (n_dim == 0) {
+            throw std::runtime_error("Tried squeezing a scalar (0D Tensor)");
+        }
+        
+        std::vector<int64_t> new_shape;
+        new_shape.reserve(n_dim);
+        std::vector<int64_t> new_strides;
+        new_strides.reserve(n_dim);
+
+        if (target_dim.has_value()) {
+            target_dim.value() = normalize_axis(target_dim.value(), n_dim);
+            if (source.m_shape[target_dim.value()] != 1) {
+                throw std::runtime_error("Tried squeezing a dimension whose size isnt 1.");
+            }
+            for (int64_t i = 0; i < n_dim; ++i) {
+                if (i != target_dim) {
+                    new_shape.push_back(source.m_shape[i]);
+                    new_strides.push_back(source.m_strides[i]);
+                }
+            }
+
+            return Tensor<T>(std::move(new_shape), std::move(new_strides), source.m_offset, source.m_state->m_storage, false);
+        }
+        else {
+            for (int64_t i = 0; i < n_dim; ++i) {
+                if (source.m_shape[i] != 1) {
+                    new_shape.push_back(source.m_shape[i]);
+                    new_strides.push_back(source.m_strides[i]);
+                }
+            }
+
+            return Tensor<T>(std::move(new_shape), std::move(new_strides), source.m_offset, source.m_state->m_storage, false);
+        }
+    }
+
+    template <typename T>
+    Tensor<T> lobotomized_unsqueeze_view(const Tensor<T>& source, int64_t dim = 0) {
+        const int64_t n_dim = std::ssize(source.m_shape);
+        dim = normalize_axis(dim, n_dim + 1);
+        
+        std::vector<int64_t> new_shape;
+        new_shape.reserve(n_dim + 1);
+        std::vector<int64_t> new_strides;
+        new_strides.reserve(n_dim + 1);
+
+        if (dim == n_dim) {
+            for (int64_t i = 0; i < n_dim; ++i) {
+                new_shape.push_back(source.m_shape[i]);
+                new_strides.push_back(source.m_strides[i]);
+            }
+
+            new_shape.push_back(1);
+            new_strides.push_back(1);
+
+            return Tensor<T>(std::move(new_shape), std::move(new_strides), source.m_offset, source.m_state->m_storage, false);
+        }
+
+        else {
+            for (int64_t i = 0; i < n_dim; ++i) {
+                if (i == dim) {
+                    new_shape.push_back(1);
+                    new_strides.push_back(source.m_shape[i] * source.m_strides[i]);
+                }
+                
+                new_shape.push_back(source.m_shape[i]);
+                new_strides.push_back(source.m_strides[i]);
+            }
+
+            return Tensor<T>(std::move(new_shape), std::move(new_strides), source.m_offset, source.m_state->m_storage, false);
+        }
+    }
+
+
 }

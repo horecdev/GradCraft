@@ -71,15 +71,12 @@ DONE Make infer_assert_device not force making a vector/copying
 DONE Fix set_data to work on both CPU and CUDA 
 DONE Compile + test out on both
 - StackNode, SqueezeNode, UnsqueezeNode
-- SoftMaxNode
-- LayerNorm Node
-- EmbeddingNode?
-- SoftMaxCrossEntropyLossNode
-- Conv2DNode
-- MaxPool2DNode, AvgPool2DNode
-- UpsampleNode
-- BatchNorm2DNode
-- PadNode
+- Frontend for these 3
+- SoftmaxNode
+- LayerNormNode
+- SinNode
+- CosNode
+- SquareNode
+- MSELossNode
 - add multithreading with OpenMP (no writing mutexes and shit)
-- Write STACK node
-- Add ton of bloated nodes so the engine is actually usable
+- Create a diffusion transformer final proof project 

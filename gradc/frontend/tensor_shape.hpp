@@ -42,5 +42,19 @@ namespace gradc {
         }
     }
 
+    template <typename T>
+    Tensor<T> Tensor<T>::squeeze(std::optional<int64_t> dim) const {
+        Tensor<T> squeezed = lobotomized_squeeze_view(*this, dim);
+        squeezed.m_state->m_creation_op = std::make_unique<SqueezeNode<T>>(*this);
+        squeezed.m_requires_grad = m_requires_grad;
+        return squeezed;
+    }
 
+    template <typename T>
+    Tensor<T> Tensor<T>::unsqueeze(int64_t dim) const {
+        Tensor<T> unsqueezed = lobotomized_unsqueeze_view(*this, dim);
+        unsqueezed.m_state->m_creation_op = std::make_unique<UnsqueezeNode<T>>(*this);
+        unsqueezed.m_requires_grad = m_requires_grad;
+        return unsqueezed;
+    }
 }

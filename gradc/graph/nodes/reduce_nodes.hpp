@@ -107,4 +107,12 @@ namespace gradc {
                 return {m_parent._get_state_base()};
             }
     };
+
+    template <typename T>
+    class SoftmaxNode : public Node<T> {
+        private:
+            Tensor<T> m_parent;
+        public:
+            
+    };
 }

@@ -43,7 +43,36 @@ namespace gradc {
     }
 
     template <typename T>
-    Tensor<T> lazy_concat(std::vector<Tensor<T>> tensor_list, int64_t concat_dim) {
+    Tensor<T> concat(std::vector<Tensor<T>> tensor_list, int64_t concat_dim) {
+        Device target_device = infer_assert_device(tensor_list);
+
+        const int64_t n_dim = std::ssize(tensor_list[0].m_shape);
+        std::vector<int64_t> final_shape = tensor_list[0].m_shape;
+        concat_dim = normalize_axis(concat_dim, n_dim);
+        final_shape[concat_dim] = 0;
+        bool requires_grad = false;
+
+        for (const Tensor<T>& parent : tensor_list) {
+            if (std::ssize(parent.m_shape) != n_dim) {
+                throw std::runtime_error("Error during concat: Tensors must have the same number of dimensions.");
+            }
+            for (int64_t i = 0; i < n_dim; ++i) {
+                if (i != concat_dim && parent.m_shape[i] != tensor_list[0].m_shape[i]) {
+                    throw std::runtime_error("Error during concat: Tensors must match on non-concat dimensions.");
+                }
+            }
+            final_shape[concat_dim] += parent.m_shape[concat_dim];
+            requires_grad = requires_grad || parent.m_requires_grad;
+        }
+
+        Tensor<T> result = Tensor<T>(final_shape, requires_grad, lazy, target_device);
+        result.m_state->m_creation_op = std::make_unique<ConcatNode<T>>(std::move(tensor_list), concat_dim, std::move(final_shape));
+        
+        return result;
+    }
+
+    template <typename T>
+    Tensor<T> stack(std::vector<Tensor<T>> tensor_list, int64_t stack_dim) {
         Device target_device = infer_assert_device(tensor_list);
 
         const int64_t n_dim = std::ssize(tensor_list[0].m_shape);

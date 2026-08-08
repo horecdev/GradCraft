@@ -127,4 +127,52 @@ namespace gradc {
             }
     };
 
+    template <typename T>
+    class SqueezeNode : public Node<T> {
+        private:
+            Tensor<T> m_parent;
+        public:
+            SqueezeNode(Tensor<T> parent) : m_parent(std::move(parent)) {}
+            
+            Tensor<T> realize() override {
+                m_parent.realize();
+                return m_parent;
+            }
+
+            void backward(const Tensor<T>& out_grad) override {
+                if (m_parent.requires_grad()) {
+                    Tensor<T> unsqueezed_grad = lobotomized_reshape_view(out_grad, m_parent.shape());
+                    m_parent.accumulate_grad(unsqueezed_grad);
+                }
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_parent._get_state_base()};
+            }
+    };
+
+    template <typename T>
+    class UnsqueezeNode : public Node<T> {
+        private:
+            Tensor<T> m_parent;
+        public:
+            UnsqueezeNode(Tensor<T> parent) : m_parent(std::move(parent)) {}
+            
+            Tensor<T> realize() override {
+                m_parent.realize();
+                return m_parent;
+            }
+
+            void backward(const Tensor<T>& out_grad) override {
+                if (m_parent.requires_grad()) {
+                    Tensor<T> squeezed_grad = lobotomized_reshape_view(out_grad, m_parent.shape());
+                    m_parent.accumulate_grad(squeezed_grad);
+                }
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_parent._get_state_base()};
+            }
+    };
+
 }

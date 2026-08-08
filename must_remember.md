@@ -35,3 +35,9 @@ But if its just out_grad * m_left? sure. Then unbroadcast and accumulate it afte
 16) Another optimization: if BOOP both need grad, you allocate grad for one, then reuse it in the other as the buffer.
 17) Look for places in BOOP where one grad relies on the other. You save calculations.
 18) You pass orig_shape into accumulate_grad_matmul because MatMulNode holds fake flattened tensors. They are result of modified A or A.contiguous() with changed m_shape, m_strides. They do not have separate states. This means they share grad. So when you initialize grad, initialize it to A or A.contiguous() shape. Not the artificially flat one to satisfy BLAS
+19) You can squeeze literally ANY tensor. Mathematically: nothing ever breaks. Thats because with dim_size = 1, the odometer loop for this
+stride only ever shows 0. This means it literally does not ever matter.
+20) During matmul, A is rendered flat. 
+original -> optional: contiguous -> edit the shape/strides in place (flatten) -> pass into matmul 
+MatmulNode holds the wrong shape logically. Therefore, before the reshaping happens, matmul func saves the real shape (batched, not flat) then passes it into MatMulNode.
+Say you do C = A + B, matmul(C, D). C gets copied into matmul (alias) this alias now has m_op of AddNode(A, B). When this realizes, C realizes. The alias has a different shape than real C (edited in place). It may also have a contiguous node attached. It has the original C shape saved. It passes it into matmul.

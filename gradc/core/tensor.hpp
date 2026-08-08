@@ -155,8 +155,10 @@ namespace gradc {
             Tensor transpose(const int64_t dim0, const int64_t dim1) const;
             Tensor permute(const std::vector<int64_t>& axes) const;
             Tensor reshape(const std::vector<int64_t>& target_shape) const;
+            Tensor unsqueeze(int64_t dim) const;
+            Tensor squeeze(std::optional<int64_t> dim = std::nullopt) const;
             
-            template <typename U> friend Tensor<U> lazy_concat(std::vector<Tensor<U>> tensor_list, int64_t concat_dim);
+            template <typename U> friend Tensor<U> concat(std::vector<Tensor<U>> tensor_list, int64_t concat_dim);
 
             // NN
             Tensor relu() const;
@@ -208,6 +210,8 @@ namespace gradc {
             template <typename U> friend Tensor<U> lobotomized_transpose_view(const Tensor<U>& source, int64_t dim0, int64_t dim1);
             template <typename U> friend Tensor<U> lobotomized_reshape_view(const Tensor<U>& source, const std::vector<int64_t>& target_shape);
             template <typename U> friend Tensor<U> lobotomized_permute_view(const Tensor<U>& source, const std::vector<int64_t>& axes);
+            template <typename U> friend Tensor<U> lobotomized_squeeze_view(const Tensor<U>& source, std::optional<int64_t> target_dim);
+            template <typename U> friend Tensor<U> lobotomized_unsqueeze_view(const Tensor<U>& source, int64_t);
             template <typename InT, typename OutT> friend Tensor<OutT> lobotomized_cast_alloc(const Tensor<InT>& source);
             template <typename U> friend Tensor<U> create_lobotomized_slice_view(const Tensor<U>& source, const std::vector<IndexDesc>& descriptors);
             template <typename U> friend Tensor<U> lobotomized_concat_alloc(const std::vector<Tensor<U>>& tensor_list, int64_t concat_dim, const std::vector<int64_t>& final_shape);
