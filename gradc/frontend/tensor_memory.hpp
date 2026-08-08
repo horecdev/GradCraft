@@ -74,28 +74,37 @@ namespace gradc {
     template <typename T>
     Tensor<T> stack(std::vector<Tensor<T>> tensor_list, int64_t stack_dim) {
         Device target_device = infer_assert_device(tensor_list);
-
         const int64_t n_dim = std::ssize(tensor_list[0].m_shape);
-        std::vector<int64_t> final_shape = tensor_list[0].m_shape;
-        concat_dim = normalize_axis(concat_dim, n_dim);
-        final_shape[concat_dim] = 0;
+        stack_dim = normalize_axis(stack_dim, n_dim + 1);
+
+        std::vector<int64_t> final_shape;
+        final_shape.reserve(n_dim + 1);
+        
         bool requires_grad = false;
 
         for (const Tensor<T>& parent : tensor_list) {
             if (std::ssize(parent.m_shape) != n_dim) {
-                throw std::runtime_error("Error during concat: Tensors must have the same number of dimensions.");
+                throw std::runtime_error("Error during stack: Tensors must have the same number of dimensions.");
             }
             for (int64_t i = 0; i < n_dim; ++i) {
-                if (i != concat_dim && parent.m_shape[i] != tensor_list[0].m_shape[i]) {
-                    throw std::runtime_error("Error during concat: Tensors must match on non-concat dimensions.");
+                if (parent.m_shape[i] != tensor_list[0].m_shape[i]) {
+                    throw std::runtime_error("Error during stack: all tensors must have matching dimensions.");
                 }
             }
-            final_shape[concat_dim] += parent.m_shape[concat_dim];
             requires_grad = requires_grad || parent.m_requires_grad;
         }
 
+        for (int64_t i = 0; i <= n_dim; ++i) {
+            if (i == stack_dim) {
+                final_shape.push_back(std::ssize(tensor_list));
+            }
+            if (i < n_dim) {
+                final_shape.push_back(tensor_list[0].m_shape[i]);
+            }
+        }
+
         Tensor<T> result = Tensor<T>(final_shape, requires_grad, lazy, target_device);
-        result.m_state->m_creation_op = std::make_unique<ConcatNode<T>>(std::move(tensor_list), concat_dim, std::move(final_shape));
+        result.m_state->m_creation_op = std::make_unique<StackNode<T>>(std::move(tensor_list), stack_dim, std::move(final_shape));
         
         return result;
     }

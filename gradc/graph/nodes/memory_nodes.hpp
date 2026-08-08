@@ -157,30 +157,29 @@ namespace gradc {
                     parent.realize();
                 }
 
-                return lobotomized_concat_alloc(m_parents_list, m_concat_dim, m_final_shape);
+                return lobotomized_stack_alloc(m_parents_list, m_stack_dim, m_final_shape);
             }
 
             void backward(const Tensor<T>& out_grad) override {
                 int64_t n_dim = std::ssize(m_final_shape);
-                int64_t concat_dim_progress = 0;
+                int64_t stack_dim_progress = 0;
                 for (Tensor<T>& parent : m_parents_list) {
                     if (parent.requires_grad()) {
                         std::vector<IndexDesc> descriptors;
                         descriptors.reserve(n_dim);
 
                         for (int64_t i = 0; i < n_dim; ++i) {
-                            if (i != m_concat_dim) {
+                            if (i != m_stack_dim) {
                                 descriptors.push_back(IndexDesc(_));
                             }
-                            else {
-                                descriptors.push_back(IndexDesc(Slice(concat_dim_progress, concat_dim_progress + parent.shape()[m_concat_dim])));
-
+                            else { // giving it a value automatically collapses the stack dimension (1). You dont have to squeeze.
+                                descriptors.push_back(IndexDesc(stack_dim_progress));
                             }
                         }
                         Tensor<T> grad_view = create_lobotomized_slice_view(out_grad, descriptors);
                         parent.accumulate_grad(grad_view);
                     }
-                    concat_dim_progress += parent.shape()[m_concat_dim];
+                    stack_dim_progress += 1;
                 }
             }
 
