@@ -77,8 +77,10 @@ DONE Frontend for these 3
 DONE Write a functor mapper for cpu and cuda based on a scoped lambda (pass lambda that calls function)
 DONE Fix the CUDA setDevice in apply_ functions to execute before the fast paths
 DONE SoftmaxNode
-- SqrtNode
-- LayerNormNode
+DONE SqrtNode
+- Make softmax free memory and without big branching falling back to default case
+- LayerNormNode (remember about dependencies)
+- free memory from cached results in all nodes during the backward pass when they are not used
 - MSELossNode
 - Parameter (with requires_grad = true)
 - Module class - holds parameters for the optimizer
