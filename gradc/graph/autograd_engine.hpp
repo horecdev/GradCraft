@@ -84,11 +84,11 @@ namespace gradc {
     }
 
     template <typename T>
-    void Tensor<T>::backward() {
+    void Tensor<T>::backward(bool retain_graph) {
         std::vector<TensorStateBase*> topo_order = AutogradEngine::build_topo(m_state.get());
 
         for (TensorStateBase* current : topo_order) {
-            current->backward();
+            current->backward(retain_graph);
             current->clear_grad_if_non_leaf();
         }
     }

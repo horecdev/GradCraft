@@ -46,7 +46,7 @@ namespace gradc {
         public:
             void realize();
 
-            void backward();
+            void backward(bool retain_graph = false);
 
             void accumulate_grad(const Tensor<T>& incoming_grad, bool is_sub = false);
             void accumulate_grad_matmul(const Tensor<T>& left, const Tensor<T>& right, BLASGEMMMeta& blas_meta, const std::vector<int64_t>& orig_shape) requires std::is_floating_point_v<T>;

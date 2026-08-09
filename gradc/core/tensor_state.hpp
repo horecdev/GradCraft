@@ -17,7 +17,7 @@ namespace gradc {
         public:
             virtual std::vector<TensorStateBase*> get_dependencies() const = 0;
 
-            virtual void backward() const = 0;
+            virtual void backward(bool retain_graph) const = 0;
 
             virtual void clear_grad_if_non_leaf() = 0;
         };
@@ -43,9 +43,9 @@ namespace gradc {
             return m_creation_op->get_input_states();
         }
 
-        void backward() const override {
+        void backward(bool retain_graph) const override {
             if (m_creation_op != nullptr) {
-                m_creation_op->backward(m_grad.value());
+                m_creation_op->backward(m_grad.value(), retain_graph);
             }
         }
 

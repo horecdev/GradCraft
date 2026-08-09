@@ -15,21 +15,34 @@ namespace gradc {
 
             Tensor<T> realize() override {
                 m_parent.realize();
+                Device target_device = m_parent.device();
+
                 if (!m_parent.requires_grad() && m_parent.is_exclusive()) {
-                    dispatch(m_parent.device(), UnaryOpInPlace::ReLU, m_parent);
+                    dispatch(target_device, UnaryOpInPlace::ReLU, m_parent);
                     return m_parent;
                 }
                 
-                Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                dispatch(m_parent.device(), UnaryOp::ReLU, result, m_parent);
+                Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                dispatch(target_device, UnaryOp::ReLU, result, m_parent);
+
+                if (!m_parent.requires_grad()) {
+                    m_parent = Tensor<T>();
+                }
+
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, bool retain_graph) override {
                 if (m_parent.requires_grad()) {
-                    Tensor<T> relu_grad = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                    dispatch(m_parent.device(), BinaryOp::BReLU, relu_grad, out_grad, m_parent);
+                    Device target_device = out_grad.device();
+
+                    Tensor<T> relu_grad = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::BReLU, relu_grad, out_grad, m_parent);
                     m_parent.accumulate_grad(relu_grad);
+
+                    if (!retain_graph) {
+                        m_parent = Tensor<T>();
+                    }
                 }
             }
 
@@ -47,22 +60,34 @@ namespace gradc {
 
             Tensor<T> realize() override {
                 m_parent.realize();
+                Device target_device = m_parent.device();
+
                 if (!m_parent.requires_grad() && m_parent.is_exclusive()) {
-                    dispatch(m_parent.device(), UnaryOpInPlace::Sigmoid, m_parent);
+                    dispatch(target_device, UnaryOpInPlace::Sigmoid, m_parent);
                     return m_parent;
                 }
 
-                Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                dispatch(m_parent.device(), UnaryOp::Sigmoid, result, m_parent);
+                Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                dispatch(target_device, UnaryOp::Sigmoid, result, m_parent);
+
+                if (!m_parent.requires_grad()) {
+                    m_parent = Tensor<T>();
+                }
 
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, bool retain_graph) override {
                 if (m_parent.requires_grad()) {
-                    Tensor<T> sig_grad = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                    dispatch(m_parent.device(), BinaryOp::BSigmoid, sig_grad, out_grad, m_parent);
+                    Device target_device = out_grad.device();
+
+                    Tensor<T> sig_grad = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::BSigmoid, sig_grad, out_grad, m_parent);
                     m_parent.accumulate_grad(sig_grad);
+
+                    if (!retain_graph) {
+                        m_parent = Tensor<T>();
+                    }
                 }
             }
 
@@ -80,22 +105,34 @@ namespace gradc {
 
             Tensor<T> realize() override {
                 m_parent.realize();
+                Device target_device = m_parent.device();
+
                 if (!m_parent.requires_grad() && m_parent.is_exclusive()) {
-                    dispatch(m_parent.device(), UnaryOpInPlace::TanH, m_parent);
+                    dispatch(target_device, UnaryOpInPlace::TanH, m_parent);
                     return m_parent;
                 }
 
-                Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                dispatch(m_parent.device(), UnaryOp::TanH, result, m_parent);
+                Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                dispatch(target_device, UnaryOp::TanH, result, m_parent);
+
+                if (!m_parent.requires_grad()) {
+                    m_parent = Tensor<T>();
+                }
 
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, bool retain_graph) override {
                 if (m_parent.requires_grad()) {
-                    Tensor<T> tanh_grad = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                    dispatch(m_parent.device(), BinaryOp::BTanH, tanh_grad, out_grad, m_parent);
+                    Device target_device = out_grad.device();
+
+                    Tensor<T> tanh_grad = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::BTanH, tanh_grad, out_grad, m_parent);
                     m_parent.accumulate_grad(tanh_grad);
+
+                    if (!retain_graph) {
+                        m_parent = Tensor<T>();
+                    }
                 }
             }
 
@@ -113,22 +150,34 @@ namespace gradc {
 
             Tensor<T> realize() override {
                 m_parent.realize();
+                Device target_device = m_parent.device();
+
                 if (!m_parent.requires_grad() && m_parent.is_exclusive()) {
-                    dispatch(m_parent.device(), UnaryOpInPlace::SiLU, m_parent);
+                    dispatch(target_device, UnaryOpInPlace::SiLU, m_parent);
                     return m_parent;
                 }
 
-                Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                dispatch(m_parent.device(), UnaryOp::SiLU, result, m_parent);
+                Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                dispatch(target_device, UnaryOp::SiLU, result, m_parent);
+
+                if (!m_parent.requires_grad()) {
+                    m_parent = Tensor<T>();
+                }
 
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, bool retain_graph) override {
                 if (m_parent.requires_grad()) {
-                    Tensor<T> silu_grad = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                    dispatch(m_parent.device(), BinaryOp::BSiLU, silu_grad, out_grad, m_parent);
+                    Device target_device = out_grad.device();
+
+                    Tensor<T> silu_grad = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::BSiLU, silu_grad, out_grad, m_parent);
                     m_parent.accumulate_grad(silu_grad);
+
+                    if (!retain_graph) {
+                        m_parent = Tensor<T>();
+                    }
                 }
             }
 
@@ -146,22 +195,34 @@ namespace gradc {
 
             Tensor<T> realize() override {
                 m_parent.realize();
+                Device target_device = m_parent.device();
+
                 if (!m_parent.requires_grad() && m_parent.is_exclusive()) {
-                    dispatch(m_parent.device(), UnaryOpInPlace::GeLU, m_parent);
+                    dispatch(target_device, UnaryOpInPlace::GeLU, m_parent);
                     return m_parent;
                 }
 
-                Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                dispatch(m_parent.device(), UnaryOp::GeLU, result, m_parent);
+                Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                dispatch(target_device, UnaryOp::GeLU, result, m_parent);
+
+                if (!m_parent.requires_grad()) {
+                    m_parent = Tensor<T>();
+                }
 
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, bool retain_graph) override {
                 if (m_parent.requires_grad()) {
-                    Tensor<T> gelu_grad = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                    dispatch(m_parent.device(), BinaryOp::BGeLU, gelu_grad, out_grad, m_parent);
+                    Device target_device = out_grad.device();
+                    
+                    Tensor<T> gelu_grad = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::BGeLU, gelu_grad, out_grad, m_parent);
                     m_parent.accumulate_grad(gelu_grad);
+
+                    if (!retain_graph) {
+                        m_parent = Tensor<T>();
+                    }
                 }
             }
 
@@ -210,22 +271,31 @@ namespace gradc {
                     dispatch(target_device, UnaryOp::Identity, m_probs, probs);
                 }
                 
+                if (!m_logits.is_exclusive() && !m_logits.requires_grad()) {
+                    m_logits = Tensor<T>(); // wipe if probs is NOT an alias of m_logits
+                }
+                
                 return probs;
             }
 
-            void backward(const Tensor<T>& out_grad) {
+            void backward(const Tensor<T>& out_grad, bool retain_graph) {
                 if (m_logits.requires_grad()) {
-                    Tensor<T> y_mul_grad = Tensor<T>(out_grad.shape(), out_grad.device(), uninitialized);
-                    dispatch(out_grad.device(), BinaryOp::Mul, y_mul_grad, out_grad, m_probs);
+                    Device target_device = out_grad.device();
 
-                    Tensor<T> sum_y_mul_grad = Tensor<T>(m_reduction_metadata.temp_shape, out_grad.device(), uninitialized);
-                    dispatch(out_grad.device(), ReduceOp::Sum, m_reduction_metadata, sum_y_mul_grad, y_mul_grad);
-                    dispatch(out_grad.device(), BinaryOp::Sub, y_mul_grad, out_grad, sum_y_mul_grad);
-                    dispatch(out_grad.device(), BinaryOpInPlace::Mul, y_mul_grad, m_probs);
+                    Tensor<T> y_mul_grad = Tensor<T>(out_grad.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::Mul, y_mul_grad, out_grad, m_probs);
+
+                    Tensor<T> sum_y_mul_grad = Tensor<T>(m_reduction_metadata.temp_shape, target_device, uninitialized);
+                    dispatch(target_device, ReduceOp::Sum, m_reduction_metadata, sum_y_mul_grad, y_mul_grad);
+                    dispatch(target_device, BinaryOp::Sub, y_mul_grad, out_grad, sum_y_mul_grad);
+                    dispatch(target_device, BinaryOpInPlace::Mul, y_mul_grad, m_probs);
 
                     m_logits.accumulate_grad(y_mul_grad);
 
-                    m_probs = Tensor<T>(); // free memory
+                    if (!retain_graph) {
+                        m_logits = Tensor<T>();
+                        m_probs = Tensor<T>();
+                    }
                 }
             }
     };

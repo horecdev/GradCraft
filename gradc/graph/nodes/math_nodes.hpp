@@ -20,20 +20,30 @@ namespace gradc {
 
             Tensor<T> realize() override {
                 m_parent.realize();
+                Device target_device = m_parent.device();
 
                 if (m_parent.is_exclusive()) {
-                    dispatch(m_parent.device(), UnaryOpInPlace::Neg, m_parent);
+                    dispatch(target_device, UnaryOpInPlace::Neg, m_parent);
                     return m_parent;
                 }
 
-                Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                dispatch(m_parent.device(), UnaryOp::Neg, result, m_parent);
+                Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                dispatch(target_device, UnaryOp::Neg, result, m_parent);
+
+                if (!m_parent.requires_grad()) {
+                    m_parent = Tensor<T>();
+                }
+                
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, bool retain_grad) override {
                 if (m_parent.requires_grad()) {
                     m_parent.accumulate_grad(out_grad, true);
+
+                    if (!retain_grad) {
+                        m_parent = Tensor<T>();
+                    }
                 }
             }
 
