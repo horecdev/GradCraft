@@ -62,10 +62,7 @@ namespace gradc {
                     m_probs = probs; // probs (or m_flat_logits alias) is not ever edited here or anywhere else
                 }
 
-                if (!m_flat_logits.requires_grad()) {
-                    m_flat_logits = Tensor<T>();
-                    m_flat_targets = Tensor<T>();
-                }
+                if (!m_flat_logits.requires_grad()) {m_flat_logits = Tensor<T>(); m_flat_targets = Tensor<T>();}
 
                 return loss;
 
@@ -83,11 +80,7 @@ namespace gradc {
 
                     m_flat_logits.accumulate_grad(dx);
 
-                    if (!retain_graph) {
-                        m_probs = Tensor<T>();
-                        m_flat_logits = Tensor<T>();
-                        m_flat_targets = Tensor<T>();
-                    }
+                    if (!retain_graph) {m_probs = Tensor<T>(); m_flat_logits = Tensor<T>(); m_flat_targets = Tensor<T>();}
                     
                 }
             }

@@ -85,16 +85,15 @@ DONE MinNode
 DONE ArgMax, ArgMin Node (backward pass crash)
 DONE retain_graph bool flag across Tensor backward, tensorstate, base Node class
 - target_device in every node backward/forward
-- Free tensor during realize if parent does not require grad and is not conditionally needed in the backward pass
+- conditionaly free tensor during realize
 - Free memory if retain_graph = false during backward pass
-- go through activation nodes
+DONE go through activation nodes
+DONE go through loss nodes
 - go through math nodes
 - go through memory nodes
 - go through normalization nodes
 - go through reduce nodes
 - go through view nodes
-
-You cannot free everything in realize if its not used 
 - MSELossNode
 - SoftmaxCrossEntropyNode restricted for floats
 - DropoutNode
