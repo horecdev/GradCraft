@@ -97,7 +97,15 @@ namespace gradc {
             }
 
             void backward(const Tensor<T>& out_grad) {
-                
+                Tensor<T> dbeta = unbroadcast_grad(out_grad, m_normalized_shape); // result always contiguous (result of reduce op)
+                dbeta = lobotomized_reshape_view(dbeta, m_beta.shape());
+                m_beta.accumulate_grad(dbeta);
+
+                Tensor<T> dgamma_broadcast = Tensor<T>(out_grad.shape(), out_grad.device(), uninitialized);
+                dispatch(out_grad.device(), BinaryOp::Mul, dgamma_broadcast, out_grad, m_normalized_z_scores);
+                Tensor<T> dgamma = unbroadcast_grad(dgamma_broadcast, m_normalized_shape);
+                dgamma = lobotomized_reshape_view(dgamma, m_normalized_shape);
+                m_gamma.accumulate_grad(dgamma);
             }
     };
 }
