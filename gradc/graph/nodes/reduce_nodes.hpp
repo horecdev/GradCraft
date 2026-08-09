@@ -100,6 +100,53 @@ namespace gradc {
                     Tensor<T> grad_input = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
                     dispatch(m_parent.device(), BinaryOp::Mul, grad_input, mask, broadcast_grad);
                     m_parent.accumulate_grad(grad_input);
+
+                    m_result = Tensor<T>(); // free memory (even if it has aliases here, they are destroyed. Destroy the last one here)
+                }
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_parent._get_state_base()};
+            }
+    };
+
+    template <typename T>
+    class MinNode : public Node<T> {
+        private:
+            Tensor<T> m_parent;
+            ReductionMetadata m_reduction_metadata;
+            Tensor<T> m_result;
+        public:
+            MinNode(Tensor<T> parent, ReductionMetadata reduction_metadata) : m_parent(std::move(parent)), m_reduction_metadata(std::move(reduction_metadata)) {}
+            
+            Tensor<T> realize() override {
+                m_parent.realize();
+                Tensor<T> result = Tensor<T>(m_reduction_metadata.result_shape, m_parent.device(), uninitialized);
+                dispatch(m_parent.device(), ReduceOp::Min, m_reduction_metadata, result, m_parent);
+
+                if (m_parent.requires_grad()) {
+                    m_result = Tensor<T>(m_reduction_metadata.result_shape, m_parent.device(), uninitialized); // create a deep copy of result
+                    dispatch(m_parent.device(), UnaryOp::Identity, m_result, result);
+                }
+                return result;
+            }
+
+            void backward(const Tensor<T>& out_grad) override {
+                if (m_parent.requires_grad()) {
+                    Tensor<T> reshaped_result = lobotomized_reshape_view(m_result, m_reduction_metadata.temp_shape);
+                    Tensor<T> broadcast_result = lobotomized_broadcast_view(reshaped_result, m_parent.shape());
+
+                    Tensor<T> reshaped_grad = lobotomized_reshape_view(out_grad, m_reduction_metadata.temp_shape);
+                    Tensor<T> broadcast_grad = lobotomized_broadcast_view(out_grad, m_parent.shape());
+                    
+                    Tensor<T> mask = Tensor<T>(m_parent.shape(), out_grad.device(), uninitialized);
+                    dispatch(out_grad.device(), BinaryOp::EqMask, mask, m_parent, broadcast_result);
+
+                    Tensor<T> grad_input = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
+                    dispatch(m_parent.device(), BinaryOp::Mul, grad_input, mask, broadcast_grad);
+                    m_parent.accumulate_grad(grad_input);
+
+                    m_result = Tensor<T>(); 
                 }
             }
 

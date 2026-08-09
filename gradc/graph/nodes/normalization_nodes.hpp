@@ -64,7 +64,7 @@ namespace gradc {
                 dispatch(target_device, BinaryOp::Mul, shifted_scaled, normalized_z_scores, gamma_reshaped);
                 dispatch(target_device, BinaryOpInPlace::Add, shifted_scaled, beta_reshaped);
 
-                if (m_parent.requires_grad() || m_gamma.requires_grad() || m_beta.requires_grad()) {
+                if (m_parent.requires_grad()) {
                     m_inv_std = inv_std;
                     m_z_scores = normalized_z_scores;
                 }
@@ -112,5 +112,10 @@ namespace gradc {
                     m_z_scores = Tensor<T>();
                 }
             }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_parent._get_state_base(), m_gamma._get_state_base(), m_beta._get_state_base()};
+            }
     };
+    
 }
