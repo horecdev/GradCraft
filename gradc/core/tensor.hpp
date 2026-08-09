@@ -182,7 +182,7 @@ namespace gradc {
             Tensor sin() const requires std::is_floating_point_v<T>;
             Tensor cos() const requires std::is_floating_point_v<T>;
             Tensor square() const;
-            Tensor sqrt() const;
+            Tensor sqrt() const requires std::is_floating_point_v<T>;
 
 
             template <typename U, typename W> friend auto operator+(Tensor<U> left, Tensor<W> right); // we befriend whole family of functions named operator+. 

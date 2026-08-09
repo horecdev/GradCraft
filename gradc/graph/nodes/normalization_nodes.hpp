@@ -30,51 +30,23 @@ namespace gradc {
                     // first calcualate the mean, shape is (B, 1, C)
                     Tensor<T> mean = Tensor<T>(m_reduction_metadata.temp_shape, target_device, uninitialized);
                     dispatch(target_device, ReduceOp::Sum, m_reduction_metadata, mean, m_parent);
-                    dispatch(target_device, BinaryOpInPlace::Div, m_reduction_metadata, mean, Tensor<T>(static_cast<T>(m_reduction_metadata.reduced_vol), target_device));
+                    dispatch(target_device, BinaryOpInPlace::Div, mean, Tensor<T>(static_cast<T>(m_reduction_metadata.reduced_vol), target_device));
                     
                     dispatch(target_device, BinaryOpInPlace::Sub, m_parent, mean); // X - mean (needed later)
 
                     Tensor<T> squared_x_minus_mean = Tensor<T>(m_parent.shape(), target_device, uninitialized);
                     dispatch(target_device, UnaryOp::Square, squared_x_minus_mean, m_parent);
                     Tensor<T>& inv_std = mean;
-                    dispatch(target_device, ReduceOp::Sum, m_reduction_metadata, mean, squared_x_minus_mean);
+                    dispatch(target_device, ReduceOp::Sum, m_reduction_metadata, inv_std, squared_x_minus_mean);
+                    dispatch(target_device, BinaryOpInPlace::Div, inv_std, Tensor<T>(static_cast<T>(m_reduction_metadata.reduced_vol), target_device));
+                    dispatch(target_device, BinaryOpInPlace::Add, inv_std, Tensor<T>(static_cast<T>(m_eps), target_device));
+                    dispatch(target_device, UnaryOpInPlace::Sqrt, inv_std);
                     dispatch(target_device, BinaryOpInPlace::IDiv, inv_std, Tensor<T>(T(static_cast<T>(1.0)), target_device));
 
                     Tensor<T>& normalized_z_scores = m_parent;
                     dispatch(target_device, BinaryOpInPlace::Mul, normalized_z_scores, inv_std);
 
                     // gamma must be same shape as normalized_shape. Same with beta. Both must be contiguous
-                    Tensor<T> gamma_reshaped = lobotomized_reshape_view(m_gamma, m_normalized_shape);
-                    Tensor<T> beta_reshaped = lobotomized_reshape_view(m_beta, m_normalized_shape);
-                    Tensor<T> shifted_scaled = Tensor<T>(m_parent.shape(), target_device, uninitialized);
-                    dispatch(target_device, BinaryOp::Mul, shifted_scaled, normalized_z_scores, gamma_reshaped);
-                    dispatch(target_device, BinaryOpInPlace::Add, shifted_scaled, beta_reshaped);
-
-                    if (m_parent.requires_grad()) {
-                        m_inv_std = inv_std;
-                        m_normalized_z_scores = normalized_z_scores;
-                    }
-
-                    return shifted_scaled;
-                }
-
-                else {
-                    Tensor<T> mean = Tensor<T>(m_reduction_metadata.temp_shape, target_device, uninitialized);
-                    dispatch(target_device, ReduceOp::Sum, m_reduction_metadata, mean, m_parent);
-                    dispatch(target_device, BinaryOpInPlace::Div, m_reduction_metadata, mean, Tensor<T>(static_cast<T>(m_reduction_metadata.reduced_vol), target_device));
-                    
-                    Tensor<T> x_minus_mean = Tensor<T>(m_parent.shape(), target_device, uninitialized);
-                    dispatch(target_device, BinaryOp::Sub, x_minus_mean, m_parent, mean);
-
-                    Tensor<T> squared_x_minus_mean = Tensor<T>(x_minus_mean.shape(), target_device, uninitialized);
-                    dispatch(target_device, UnaryOp::Square, squared_x_minus_mean, x_minus_mean);
-                    Tensor<T>& inv_std = mean;
-                    dispatch(target_device, ReduceOp::Sum, m_reduction_metadata, mean, squared_x_minus_mean);
-                    dispatch(target_device, BinaryOpInPlace::IDiv, inv_std, Tensor<T>(T(static_cast<T>(1.0)), target_device));
-
-                    Tensor<T>& normalized_z_scores = x_minus_mean;
-                    dispatch(target_device, BinaryOpInPlace::Div, normalized_z_scores, inv_std);
-
                     Tensor<T> gamma_reshaped = lobotomized_reshape_view(m_gamma, m_normalized_shape);
                     Tensor<T> beta_reshaped = lobotomized_reshape_view(m_beta, m_normalized_shape);
                     Tensor<T> shifted_scaled = Tensor<T>(m_parent.shape(), target_device, uninitialized);
@@ -89,10 +61,43 @@ namespace gradc {
                     return shifted_scaled;
                 }
 
-                
-                
+                else {
+                    Tensor<T> mean = Tensor<T>(m_reduction_metadata.temp_shape, target_device, uninitialized);
+                    dispatch(target_device, ReduceOp::Sum, m_reduction_metadata, mean, m_parent);
+                    dispatch(target_device, BinaryOpInPlace::Div, mean, Tensor<T>(static_cast<T>(m_reduction_metadata.reduced_vol), target_device));
+                    
+                    Tensor<T> x_minus_mean = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::Sub, x_minus_mean, m_parent, mean);
 
+                    Tensor<T> squared_x_minus_mean = Tensor<T>(x_minus_mean.shape(), target_device, uninitialized);
+                    dispatch(target_device, UnaryOp::Square, squared_x_minus_mean, x_minus_mean);
+                    Tensor<T>& inv_std = mean;
+                    dispatch(target_device, ReduceOp::Sum, m_reduction_metadata, inv_std, squared_x_minus_mean);
+                    dispatch(target_device, BinaryOpInPlace::Div, inv_std, Tensor<T>(static_cast<T>(m_reduction_metadata.reduced_vol), target_device));
+                    dispatch(target_device, BinaryOpInPlace::Add, inv_std, Tensor<T>(static_cast<T>(m_eps), target_device));
+                    dispatch(target_device, UnaryOpInPlace::Sqrt, inv_std);
+                    dispatch(target_device, BinaryOpInPlace::IDiv, inv_std, Tensor<T>(T(static_cast<T>(1.0)), target_device));
 
+                    Tensor<T>& normalized_z_scores = x_minus_mean;
+                    dispatch(target_device, BinaryOpInPlace::Mul, normalized_z_scores, inv_std);
+
+                    Tensor<T> gamma_reshaped = lobotomized_reshape_view(m_gamma, m_normalized_shape);
+                    Tensor<T> beta_reshaped = lobotomized_reshape_view(m_beta, m_normalized_shape);
+                    Tensor<T> shifted_scaled = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::Mul, shifted_scaled, normalized_z_scores, gamma_reshaped);
+                    dispatch(target_device, BinaryOpInPlace::Add, shifted_scaled, beta_reshaped);
+
+                    if (m_parent.requires_grad() || m_gamma.requires_grad() || m_beta.requires_grad()) {
+                        m_inv_std = inv_std;
+                        m_normalized_z_scores = normalized_z_scores;
+                    }
+
+                    return shifted_scaled;
+                }
+            }
+
+            void backward(const Tensor<T>& out_grad) {
+                
             }
     };
 }
