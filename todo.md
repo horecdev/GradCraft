@@ -82,9 +82,9 @@ DONE Make softmax free memory and without big branching falling back to default 
 DONE LayerNormNode (remember about dependencies)
 DONE free memory from cached results in all nodes during the backward pass when they are not used
 DONE MinNode
-- ArgMax, ArgMin Node (backward pass crash)
+DONE ArgMax, ArgMin Node (backward pass crash)
 - MSELossNode
-- SoftmaxCrossEntropyNode
+- SoftmaxCrossEntropyNode restricted for floats
 - DropoutNode
 - Im2ColNode (backward pass crash)
 - Parameter (with requires_grad = true)

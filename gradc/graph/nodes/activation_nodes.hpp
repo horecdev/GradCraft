@@ -182,30 +182,32 @@ namespace gradc {
             Tensor<T> realize() override {
                 m_logits.realize();
 
+                Device target_device = m_logits.device();
+
                 Tensor<T> probs;
                 if (m_logits.is_exclusive()) {
                     probs = m_logits;
                 }
                 else {
-                    probs = Tensor<T>(m_logits.shape(), m_logits.device(), uninitialized);
+                    probs = Tensor<T>(m_logits.shape(), target_device, uninitialized);
                 }
 
-                Tensor<T> max_logits = Tensor<T>(m_reduction_metadata.temp_shape, m_logits.device(), uninitialized);
-                dispatch(m_logits.device(), ReduceOp::Max, m_reduction_metadata, max_logits, m_logits);
-                dispatch(m_logits.device(), BinaryOp::Sub, probs, m_logits, max_logits);
+                Tensor<T> max_logits = Tensor<T>(m_reduction_metadata.temp_shape, target_device, uninitialized);
+                dispatch(target_device, ReduceOp::Max, m_reduction_metadata, max_logits, m_logits);
+                dispatch(target_device, BinaryOp::Sub, probs, m_logits, max_logits);
                 // probs is now X - max
 
-                dispatch(m_logits.device(), UnaryOpInPlace::Exp, probs);
+                dispatch(target_device, UnaryOpInPlace::Exp, probs);
                 // (X - max).exp()
                 
                 Tensor<T>& logits_sum = max_logits;
-                dispatch(m_logits.device(), ReduceOp::Sum, m_reduction_metadata, logits_sum, probs);
-                dispatch(m_logits.device(), BinaryOpInPlace::Div, probs, logits_sum);
+                dispatch(target_device, ReduceOp::Sum, m_reduction_metadata, logits_sum, probs);
+                dispatch(target_device, BinaryOpInPlace::Div, probs, logits_sum);
                 // probs is now true probs
 
                 if (m_logits.requires_grad()) {
-                    m_probs = Tensor<T>(m_logits.shape(), m_logits.device(), uninitialized);
-                    dispatch(m_logits.device(), UnaryOp::Identity, m_probs, probs);
+                    m_probs = Tensor<T>(m_logits.shape(), target_device, uninitialized);
+                    dispatch(target_device, UnaryOp::Identity, m_probs, probs);
                 }
                 
                 return probs;

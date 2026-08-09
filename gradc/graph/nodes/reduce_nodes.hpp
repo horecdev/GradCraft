@@ -202,7 +202,7 @@ namespace gradc {
 
             void backward(const Tensor<T>& out_grad) override {
                 if (m_parent.requires_grad()) {
-                    throw std::runtime_error("Tried invoking backward pass of ArgMax");
+                    throw std::runtime_error("Tried invoking backward pass of ArgMin");
                 }
             }
 
