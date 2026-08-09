@@ -168,7 +168,7 @@ namespace gradc {
             Tensor tanh() const requires std::is_floating_point_v<T>;
             Tensor silu() const requires std::is_floating_point_v<T>;
             Tensor gelu() const requires std::is_floating_point_v<T>;
-            Tensor softmax(int64_t dim, bool keepdims) const requires std::is_floating_point_v<T>;
+            Tensor softmax(int64_t dim) const requires std::is_floating_point_v<T>;
             
             // BACKEND
             friend CPUBackend;
@@ -182,6 +182,7 @@ namespace gradc {
             Tensor sin() const requires std::is_floating_point_v<T>;
             Tensor cos() const requires std::is_floating_point_v<T>;
             Tensor square() const;
+            Tensor sqrt() const;
 
 
             template <typename U, typename W> friend auto operator+(Tensor<U> left, Tensor<W> right); // we befriend whole family of functions named operator+. 

@@ -363,6 +363,13 @@ namespace gradc {
         return result;
     }
 
+    template <typename T>
+    Tensor<T> Tensor<T>::sqrt() const {
+        Tensor<T> result = Tensor<T>(m_shape, m_requires_grad, lazy, this->device());
+        result.m_state->m_creation_op = std::make_unique<SqrtNode<T>>(*this);
+        return result;
+    }
+
     template <typename T, typename U>
     requires (std::is_floating_point_v<T> && std::is_floating_point_v<U>)
     inline Tensor<T> matmul(Tensor<T> left, Tensor<U> right) {

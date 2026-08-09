@@ -199,7 +199,7 @@ namespace gradc {
             Tensor<T> m_parent; // forced to be contiguous
             Device m_target_device;
         public:
-            ToNode(Tensor<T> parent, Device target_device) : m_parent(parent), m_target_device(target_device) {}
+            ToNode(Tensor<T> parent, Device target_device) : m_parent(std::move(parent)), m_target_device(target_device) {}
 
             Tensor<T> realize() override {
                 Tensor<T> result = Tensor<T>(m_parent.shape(), m_target_device, uninitialized);

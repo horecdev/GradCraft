@@ -13,7 +13,7 @@ namespace gradc {
     Tensor<T> Tensor<T>::sum(const std::vector<int64_t>& red_axes, bool keepdims) const {
         ReductionMetadata reduction_metadata = infer_reduction_metadata(m_shape, red_axes, keepdims);
         Tensor result = Tensor(reduction_metadata.result_shape, m_requires_grad, lazy, this->device());
-        result.m_state->m_creation_op = std::make_unique<SumNode<T>>(*this, reduction_metadata);
+        result.m_state->m_creation_op = std::make_unique<SumNode<T>>(*this, std::move(reduction_metadata));
 
         return result;
     }
@@ -24,7 +24,7 @@ namespace gradc {
         Tensor<OutT> promoted_self = this->template cast<OutT>(); // first: cast source into right type. Then just add MeanNode.
         ReductionMetadata reduction_metadata = infer_reduction_metadata(promoted_self.m_shape, red_axes, keepdims);
         Tensor<OutT> result = Tensor<OutT>(reduction_metadata.result_shape, m_requires_grad, lazy, this->device());
-        result.m_state->m_creation_op = std::make_unique<MeanNode<OutT>>(std::move(promoted_self), reduction_metadata);
+        result.m_state->m_creation_op = std::make_unique<MeanNode<OutT>>(std::move(promoted_self), std::move(reduction_metadata));
 
         return result;
     }
@@ -33,7 +33,7 @@ namespace gradc {
     Tensor<T> Tensor<T>::max(const std::vector<int64_t>& red_axes, bool keepdims) const {
         ReductionMetadata reduction_metadata = infer_reduction_metadata(m_shape, red_axes, keepdims);
         Tensor<T> result = Tensor<T>(reduction_metadata.result_shape, m_requires_grad, lazy, this->device());
-        result.m_state->m_creation_op = std::make_unique<MaxNode<T>>(*this, reduction_metadata);
+        result.m_state->m_creation_op = std::make_unique<MaxNode<T>>(*this, std::move(reduction_metadata));
 
         return result;
     }
@@ -47,15 +47,6 @@ namespace gradc {
         ReductionMetadata reduction_metadata = infer_reduction_metadata(m_shape, red_axes, keepdims);
         Tensor<int64_t> result = Tensor<int64_t>(reduction_metadata.result_shape, this->device(), uninitialized);
         dispatch(this->device(), ArgExtrOp::ArgMax, dim, result, *this);
-        return result;
-    }
-
-    template <typename T>
-    Tensor<T> Tensor<T>::softmax(int64_t dim, bool keepdims) const requires std::is_floating_point_v<T> {
-        ReductionMetadata reduction_metadata = infer_reduction_metadata(m_shape, {dim}, keepdims);
-        Tensor result = Tensor(reduction_metadata.result_shape, m_requires_grad, lazy, this->device());
-        result.m_state->m_creation_op = std::make_unique<SoftmaxNode<T>>(*this, reduction_metadata);
-
         return result;
     }
 }

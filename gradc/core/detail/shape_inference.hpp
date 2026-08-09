@@ -250,5 +250,14 @@ namespace gradc {
         return FusedView({std::move(fused_shape), std::move(fused_strides)});
     }
 
-    // inline BLASGEMMMeta get_blas_matmul_meta(std::vector<int64_t>& a, std::vector<t)
+    inline std::vector<int64_t> get_normalized_shape(const std::vector<int64_t>& initial_shape, const std::vector<int64_t> red_axes) {
+        const int64_t n_dim = std::ssize(initial_shape);
+        std::vector<int64_t> result(n_dim, 1);
+        for (int64_t ax : red_axes) {
+            ax = normalize_axis(ax, n_dim);
+            result[ax] = initial_shape[ax];
+        }
+
+        return result;
+    }
 }

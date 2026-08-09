@@ -77,6 +77,13 @@ namespace gradc::cpu_functors {
         };
 
         template <typename T>
+        struct BSqrt {
+            T operator()(T grad, T x) const {
+                return static_cast<T>(0.5) / std::sqrt(x) * grad;
+            }
+        };
+
+        template <typename T>
         struct BReLU {
             T operator()(T grad, T value) const {
                 return value > 0 ? grad : 0;
@@ -245,6 +252,18 @@ namespace gradc::cpu_functors {
         };
 
         template <typename T>
+        struct Sqrt {
+            T operator()(T x) const {
+                if constexpr (std::is_floating_point_v<T>) {
+                    return std::sqrt(x);
+                }
+                else {
+                    throw std::runtime_error("Sqrt CPU UOOP functor running on non-floating.");
+                }
+            }
+        };
+
+        template <typename T>
         struct Sigmoid {
             T operator()(T x) const {
                 if constexpr (std::is_floating_point_v<T>) {
@@ -369,6 +388,18 @@ namespace gradc::cpu_functors {
         struct Square {
             void operator()(T& x) const {
                 x = x * x;
+            }
+        };
+
+        template <typename T>
+        struct Sqrt {
+            void operator()(T& x) const {
+                if constexpr (std::is_floating_point_v<T>) {
+                    x = static_cast<T>(std::cos(x));
+                }
+                else {
+                    throw std::runtime_error("UIP Sqrt CPU functor running on non-floating.");
+                }
             }
         };
 

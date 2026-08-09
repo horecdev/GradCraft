@@ -24,6 +24,7 @@ namespace gradc::cuda_mapper {
             case BinaryOp::BSin:     callback(cuda_functors::BOOP::BSin<T>()); break;
             case BinaryOp::BCos:     callback(cuda_functors::BOOP::BCos<T>()); break;
             case BinaryOp::BSquare:  callback(cuda_functors::BOOP::BSquare<T>()); break;
+            case BinaryOp::BSqrt:    callback(cuda_functors::BOOP::BSqrt<T>()); break;
             default: throw std::runtime_error("Unsupported BOOP in CUDA mapper.");
         }
     }
@@ -56,6 +57,7 @@ namespace gradc::cuda_mapper {
             case UnaryOp::Sin:      callback(cuda_functors::UOOP::Sin<T>()); break;
             case UnaryOp::Cos:      callback(cuda_functors::UOOP::Cos<T>()); break;
             case UnaryOp::Square:   callback(cuda_functors::UOOP::Square<T>()); break;
+            case UnaryOp::Sqrt:     callback(cuda_functors::UOOP::Sqrt<T>()); break;
             default: throw std::runtime_error("Unsupported UOOP in CUDA mapper.");
         }
     }
@@ -74,6 +76,7 @@ namespace gradc::cuda_mapper {
             case UnaryOpInPlace::Sin:      callback(cuda_functors::UIP::Sin<T>()); break;
             case UnaryOpInPlace::Cos:      callback(cuda_functors::UIP::Cos<T>()); break;
             case UnaryOpInPlace::Square:   callback(cuda_functors::UIP::Square<T>()); break;
+            case UnaryOpInPlace::Sqrt:     callback(cuda_functors::UIP::Sqrt<T>()); break;
             default: throw std::runtime_error("Unsupported UIP in CUDA mapper.");
         }
     }

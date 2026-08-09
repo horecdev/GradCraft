@@ -105,6 +105,22 @@ namespace gradc::cuda_functors {
         };
 
         template <typename T>
+        struct BSqrt {
+            __device__ T operator()(T grad, T x) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    return static_cast<T>(0.5) / std::sqrtf(x) * grad;
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    return static_cast<T>(0.5) / std::sqrt(x) * grad;
+                }
+                else {
+                    __trap();
+                    return T(0);
+                }
+            }
+        };  
+
+        template <typename T>
         struct BReLU {
             __device__ T operator()(T grad, T value) const {
                 return value > 0 ? grad : 0;
@@ -314,6 +330,22 @@ namespace gradc::cuda_functors {
         };
 
         template <typename T>
+        struct Sqrt {
+            __device__ T operator()(T x) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    return sqrtf(x);
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    return sqrt(x);
+                }
+                else {
+                    __trap();
+                    return T(0);
+                }
+            }
+        };
+
+        template <typename T>
         struct Sigmoid {
             __device__ T operator()(T x) const {
                 if constexpr (std::is_same_v<T, float>) {
@@ -472,6 +504,22 @@ namespace gradc::cuda_functors {
         struct Square {
             __device__ void operator()(T& x) const {
                 x = x * x;
+            }
+        };
+
+        template <typename T>
+        struct Sqrt {
+            __device__ void operator()(T& x) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    x = sqrtf(x);
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    x = sqrt(x);
+                }
+                else {
+                    __trap();
+                    x = T(0);
+                }
             }
         };
 

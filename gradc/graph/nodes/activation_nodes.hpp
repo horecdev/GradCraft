@@ -11,7 +11,7 @@ namespace gradc {
         private:
             Tensor<T> m_parent;
         public:
-            ReLUNode(Tensor<T> parent) : m_parent(parent) {}
+            ReLUNode(Tensor<T> parent) : m_parent(std::move(parent)) {}
 
             Tensor<T> realize() override {
                 m_parent.realize();
@@ -43,7 +43,7 @@ namespace gradc {
         private:
             Tensor<T> m_parent;
         public:
-            SigmoidNode(Tensor<T> parent) : m_parent(parent) {}
+            SigmoidNode(Tensor<T> parent) : m_parent(std::move(parent)) {}
 
             Tensor<T> realize() override {
                 m_parent.realize();
@@ -76,7 +76,7 @@ namespace gradc {
         private:
             Tensor<T> m_parent;
         public:
-            TanHNode(Tensor<T> parent) : m_parent(parent) {}
+            TanHNode(Tensor<T> parent) : m_parent(std::move(parent)) {}
 
             Tensor<T> realize() override {
                 m_parent.realize();
@@ -109,7 +109,7 @@ namespace gradc {
         private:
             Tensor<T> m_parent;
         public:
-            SiLUNode(Tensor<T> parent) : m_parent(parent) {}
+            SiLUNode(Tensor<T> parent) : m_parent(std::move(parent)) {}
 
             Tensor<T> realize() override {
                 m_parent.realize();
@@ -142,7 +142,7 @@ namespace gradc {
         private:
             Tensor<T> m_parent;
         public:
-            GeLUNode(Tensor<T> parent) : m_parent(parent) {}
+            GeLUNode(Tensor<T> parent) : m_parent(std::move(parent)) {}
 
             Tensor<T> realize() override {
                 m_parent.realize();
@@ -170,6 +170,73 @@ namespace gradc {
             }
     };
 
+    template <typename T>
+    class SoftmaxNode : public Node<T> {
+        private:
+            Tensor<T> m_logits;
+            ReductionMetadata m_reduction_metadata;
+            Tensor<T> m_result;
+        public:
+            SoftmaxNode(Tensor<T> logits, ReductionMetadata reduction_metadata) : m_logits(std::move(logits)), m_reduction_metadata(std::move(reduction_metadata)) {}
+
+            Tensor<T> realize() override {
+                m_logits.realize();
+
+                if (m_logits.is_exclusive()) {
+                    // using temp_shape is keeping the collapsed dim as 1 so it can broadcast.
+                    Tensor<T> max_logits = Tensor<T>(m_reduction_metadata.temp_shape, m_logits.device(), uninitialized);
+                    dispatch(m_logits.device(), ReduceOp::Max, m_reduction_metadata, max_logits, m_logits);
+                    
+                    dispatch(m_logits.device(), BinaryOpInPlace::Sub, m_logits, max_logits);
+                    // now m_logits are X - MAX
+                    dispatch(m_logits.device(), UnaryOpInPlace::Exp, m_logits);
+                    // exponentiated
+                    
+                    Tensor<T>& logits_sum = max_logits;
+                    dispatch(m_logits.device(), ReduceOp::Sum, m_reduction_metadata, logits_sum, m_logits);
+                    dispatch(m_logits.device(), BinaryOpInPlace::Div, m_logits, logits_sum);
+
+                    if (m_logits.requires_grad()) {
+                        m_result = Tensor<T>(m_logits.shape(), m_logits.device(), uninitialized);
+                        dispatch(m_logits.device(), UnaryOp::Identity, m_result, m_logits);
+                    }
+
+                    return m_logits;
+                }
+
+                Tensor<T> max_logits = Tensor<T>(m_reduction_metadata.temp_shape, m_logits.device(), uninitialized);
+                dispatch(m_logits.device(), ReduceOp::Max, m_reduction_metadata, max_logits, m_logits);
+                Tensor<T> normalized_logits = Tensor<T>(m_logits.shape(), m_logits.device(), uninitialized);
+                dispatch(m_logits.device(), BinaryOp::Sub, normalized_logits, m_logits, max_logits);
+
+                dispatch(m_logits.device(), UnaryOpInPlace::Exp, normalized_logits);
+                
+                Tensor<T>& logits_sum = max_logits;
+                dispatch(m_logits.device(), ReduceOp::Sum, m_reduction_metadata, logits_sum, normalized_logits);
+                dispatch(m_logits.device(), BinaryOpInPlace::Div, normalized_logits, logits_sum);
+
+                if (m_logits.requires_grad()) {
+                    m_result = Tensor<T>(m_logits.shape(), m_logits.device(), uninitialized);
+                    dispatch(m_logits.device(), UnaryOp::Identity, m_result, normalized_logits);
+                }
+                
+                return normalized_logits;
+            }
+
+            void backward(const Tensor<T>& out_grad) {
+                if (m_logits.requires_grad()) {
+                    Tensor<T> y_mul_grad = Tensor<T>(out_grad.shape(), out_grad.device(), uninitialized);
+                    dispatch(out_grad.device(), BinaryOp::Mul, y_mul_grad, out_grad, m_result);
+
+                    Tensor<T> sum_y_mul_grad = Tensor<T>(m_reduction_metadata.temp_shape, out_grad.device(), uninitialized);
+                    dispatch(out_grad.device(), ReduceOp::Sum, m_reduction_metadata, sum_y_mul_grad, y_mul_grad);
+                    dispatch(out_grad.device(), BinaryOp::Sub, y_mul_grad, out_grad, sum_y_mul_grad);
+                    dispatch(out_grad.device(), BinaryOpInPlace::Mul, y_mul_grad, m_result);
+
+                    m_logits.accumulate_grad(y_mul_grad);
+                }
+            }
+    };
     
 
 }

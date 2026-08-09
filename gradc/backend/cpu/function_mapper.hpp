@@ -27,6 +27,7 @@ namespace gradc::cpu_mapper {
             case BinaryOp::BSin:     callback(cpu_functors::BOOP::BSin<T>()); break;
             case BinaryOp::BCos:     callback(cpu_functors::BOOP::BCos<T>()); break;
             case BinaryOp::BSquare:  callback(cpu_functors::BOOP::BSquare<T>()); break;
+            case BinaryOp::BSqrt:    callback(cpu_functors::BOOP::BSqrt<T>()); break;
             default: throw std::runtime_error("Unsupported BOOP in CPU mapper.");
         }
     }
@@ -59,6 +60,7 @@ namespace gradc::cpu_mapper {
             case UnaryOp::Sin:      callback(cpu_functors::UOOP::Sin<T>()); break;
             case UnaryOp::Cos:      callback(cpu_functors::UOOP::Cos<T>()); break;
             case UnaryOp::Square:   callback(cpu_functors::UOOP::Square<T>()); break;
+            case UnaryOp::Sqrt:     callback(cpu_functors::UOOP::Sqrt<T>()); break;
             default: throw std::runtime_error("Unsupported UOOP in CPU mapper.");
         }
     }
@@ -77,6 +79,7 @@ namespace gradc::cpu_mapper {
             case UnaryOpInPlace::Sin:      callback(cpu_functors::UIP::Sin<T>()); break;
             case UnaryOpInPlace::Cos:      callback(cpu_functors::UIP::Cos<T>()); break;
             case UnaryOpInPlace::Square:   callback(cpu_functors::UIP::Square<T>()); break;
+            case UnaryOpInPlace::Sqrt:     callback(cpu_functors::UIP::Sqrt<T>()); break;
             default: throw std::runtime_error("Unsupported UIP in CPU mapper.");
         }
     }
