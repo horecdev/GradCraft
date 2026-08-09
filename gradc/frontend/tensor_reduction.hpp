@@ -40,13 +40,21 @@ namespace gradc {
 
     template <typename T>
     Tensor<int64_t> Tensor<T>::argmax(int64_t dim, bool keepdims) {
-        if (this->_get_storage()->data() == nullptr) {
-            throw std::runtime_error("Tried invoking an eager function (argmax) on an unrealized tensor. Call .realize() first.");
-        }
         std::vector<int64_t> red_axes = std::vector<int64_t>({dim});
         ReductionMetadata reduction_metadata = infer_reduction_metadata(m_shape, red_axes, keepdims);
-        Tensor<int64_t> result = Tensor<int64_t>(reduction_metadata.result_shape, this->device(), uninitialized);
-        dispatch(this->device(), ArgExtrOp::ArgMax, dim, result, *this);
+        Tensor<int64_t> result = Tensor<int64_t>(reduction_metadata.result_shape, m_requires_grad, lazy, this->device());
+        result.m_state->m_creation_op = std::make_unique<ArgMaxNode>(*this, std::move(reduction_metadata.result_shape), dim);
+
+        return result;
+    }
+
+    template <typename T>
+    Tensor<int64_t> Tensor<T>::argmin(int64_t dim, bool keepdims) {
+        std::vector<int64_t> red_axes = std::vector<int64_t>({dim});
+        ReductionMetadata reduction_metadata = infer_reduction_metadata(m_shape, red_axes, keepdims);
+        Tensor<int64_t> result = Tensor<int64_t>(reduction_metadata.result_shape, m_requires_grad, lazy, this->device());
+        result.m_state->m_creation_op = std::make_unique<ArgMinNode>(*this, std::move(reduction_metadata.result_shape), dim);
+        
         return result;
     }
 }

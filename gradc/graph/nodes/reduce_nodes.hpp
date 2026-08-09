@@ -155,5 +155,59 @@ namespace gradc {
             }
     };
 
-    
+    template <typename T>
+    class ArgMaxNode : public Node<T> {
+        private:
+            Tensor<T> m_parent;
+            std::vector<int64_t> m_result_shape;
+            int64_t m_dim;
+        public:
+            ArgMaxNode(Tensor<T> parent, std::vector<int64_t> result_shape, int64_t dim) : m_parent(std::move(parent)), m_result_shape(std::move(result_shape)), m_dim(dim) {}
+            
+            Tensor<T> realize() override {
+                m_parent.realize();
+                Tensor<T> result = Tensor<T>(m_result_shape, m_parent.device(), uninitialized);
+                dispatch(m_parent.device(), ArgExtrOp::ArgMax, m_dim, result, m_parent);
+
+                return result;
+            }
+
+            void backward(const Tensor<T>& out_grad) override {
+                if (m_parent.requires_grad()) {
+                    throw std::runtime_error("Tried invoking backward pass of ArgMax");
+                }
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_parent._get_state_base()};
+            }
+    };
+
+    template <typename T>
+    class ArgMinNode : public Node<T> {
+        private:
+            Tensor<T> m_parent;
+            std::vector<int64_t> m_result_shape;
+            int64_t m_dim;
+        public:
+            ArgMinNode(Tensor<T> parent, std::vector<int64_t> result_shape, int64_t dim) : m_parent(std::move(parent)), m_result_shape(std::move(result_shape)), m_dim(dim) {}
+            
+            Tensor<T> realize() override {
+                m_parent.realize();
+                Tensor<T> result = Tensor<T>(m_result_shape, m_parent.device(), uninitialized);
+                dispatch(m_parent.device(), ArgExtrOp::ArgMin, m_dim, result, m_parent);
+
+                return result;
+            }
+
+            void backward(const Tensor<T>& out_grad) override {
+                if (m_parent.requires_grad()) {
+                    throw std::runtime_error("Tried invoking backward pass of ArgMax");
+                }
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_parent._get_state_base()};
+            }
+    };
 }

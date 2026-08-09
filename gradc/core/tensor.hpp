@@ -210,6 +210,7 @@ namespace gradc {
             Tensor<OutT> mean(const std::vector<int64_t>& axes, bool keepdims) const;
             Tensor max(const std::vector<int64_t>& red_axes, bool keepdims) const;
             Tensor<int64_t> argmax(int64_t dim, bool keepdims);
+            Tensor<int64_t> argmin(int64_t dim, bool keepdims);
 
             // UTILS
             template <typename U> friend Tensor<U> lobotomized_broadcast_view(const Tensor<U>& source, const std::vector<int64_t>& target_shape);

@@ -80,13 +80,15 @@ DONE SoftmaxNode
 DONE SqrtNode
 DONE Make softmax free memory and without big branching falling back to default case
 DONE LayerNormNode (remember about dependencies)
-- free memory from cached results in all nodes during the backward pass when they are not used
-- MinNode
+DONE free memory from cached results in all nodes during the backward pass when they are not used
+DONE MinNode
+- ArgMax, ArgMin Node (backward pass crash)
 - MSELossNode
 - SoftmaxCrossEntropyNode
+- DropoutNode
+- Im2ColNode (backward pass crash)
 - Parameter (with requires_grad = true)
 - Module class - holds parameters for the optimizer
-
 - add multithreading with OpenMP (no writing mutexes and shit)
 - Create a diffusion transformer final proof project 
-- Create a big GPT for coding (finetune maybe?)
+- Create a big GPT for coding himself (finetune maybe?)

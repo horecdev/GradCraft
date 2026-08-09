@@ -338,6 +338,7 @@ namespace gradc {
                     }
                 }
 
+                // since it figures out where it is solely based on source.m_shape, it doesnt matter if p_out is [6, 4, 1] or [6, 4] (keepdims)
                 p_out[out_idx] = result_idx;
             }
         }
