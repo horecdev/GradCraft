@@ -35,12 +35,13 @@ namespace gradc::cpu_mapper {
     template <typename T, typename F>
     inline void map_bip(BinaryOpInPlace op, F&& callback) {
         switch (op) {
-            case BinaryOpInPlace::Add:  callback(cpu_functors::BIP::Add<T>()); break;
-            case BinaryOpInPlace::Sub:  callback(cpu_functors::BIP::Sub<T>()); break;
-            case BinaryOpInPlace::ISub: callback(cpu_functors::BIP::ISub<T>()); break;
-            case BinaryOpInPlace::Mul:  callback(cpu_functors::BIP::Mul<T>()); break;
-            case BinaryOpInPlace::Div:  callback(cpu_functors::BIP::Div<T>()); break;
-            case BinaryOpInPlace::IDiv: callback(cpu_functors::BIP::IDiv<T>()); break;
+            case BinaryOpInPlace::Add:      callback(cpu_functors::BIP::Add<T>()); break;
+            case BinaryOpInPlace::Sub:      callback(cpu_functors::BIP::Sub<T>()); break;
+            case BinaryOpInPlace::ISub:     callback(cpu_functors::BIP::ISub<T>()); break;
+            case BinaryOpInPlace::Mul:      callback(cpu_functors::BIP::Mul<T>()); break;
+            case BinaryOpInPlace::Div:      callback(cpu_functors::BIP::Div<T>()); break;
+            case BinaryOpInPlace::IDiv:     callback(cpu_functors::BIP::IDiv<T>()); break;
+            case BinaryOpInPlace::GrThan:   callback(cpu_functors::BIP::GrThan<T>()); break;
             default: throw std::runtime_error("Unsupported BIP in CPU mapper.");
         }
     }

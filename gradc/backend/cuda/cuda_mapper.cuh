@@ -32,12 +32,13 @@ namespace gradc::cuda_mapper {
     template <typename T, typename F>
     inline void map_bip(BinaryOpInPlace op, F&& callback) {
         switch (op) {
-            case BinaryOpInPlace::Add:  callback(cuda_functors::BIP::Add<T>()); break;
-            case BinaryOpInPlace::Sub:  callback(cuda_functors::BIP::Sub<T>()); break;
-            case BinaryOpInPlace::ISub: callback(cuda_functors::BIP::ISub<T>()); break;
-            case BinaryOpInPlace::Mul:  callback(cuda_functors::BIP::Mul<T>()); break;
-            case BinaryOpInPlace::Div:  callback(cuda_functors::BIP::Div<T>()); break;
-            case BinaryOpInPlace::IDiv: callback(cuda_functors::BIP::IDiv<T>()); break;
+            case BinaryOpInPlace::Add:      callback(cuda_functors::BIP::Add<T>()); break;
+            case BinaryOpInPlace::Sub:      callback(cuda_functors::BIP::Sub<T>()); break;
+            case BinaryOpInPlace::ISub:     callback(cuda_functors::BIP::ISub<T>()); break;
+            case BinaryOpInPlace::Mul:      callback(cuda_functors::BIP::Mul<T>()); break;
+            case BinaryOpInPlace::Div:      callback(cuda_functors::BIP::Div<T>()); break;
+            case BinaryOpInPlace::IDiv:     callback(cuda_functors::BIP::IDiv<T>()); break;
+            case BinaryOpInPlace::GrThan:   callback(cuda_functors::BIP::GrThan<T>()); break;
             default: throw std::runtime_error("Unsupported BIP in CUDA mapper.");
         }
     }

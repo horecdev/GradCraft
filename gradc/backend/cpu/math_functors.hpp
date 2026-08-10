@@ -172,6 +172,13 @@ namespace gradc::cpu_functors {
                 divisor = main / divisor;
             }
         };
+
+        template <typename T>
+        struct GrThan {
+            void operator()(T& element, T value) const {
+                element = element > value ? static_cast<T>(1.0) : static_cast<T>(0.0);
+            }
+        };
     }
 
     namespace UOOP {

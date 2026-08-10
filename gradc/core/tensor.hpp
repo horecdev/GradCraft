@@ -170,8 +170,14 @@ namespace gradc {
             Tensor gelu() const requires std::is_floating_point_v<T>;
             Tensor softmax(int64_t dim) const requires std::is_floating_point_v<T>;
 
+            // REGULARIZATION
+
+            Tensor dropout(T p) const requires std::is_floating_point_v<T>;
+
+
             // LOSSES
             template <typename U> friend Tensor<U> softmax_crossentropy(Tensor<U> flat_logits, Tensor<U> flat_targets, int64_t distrib_dim, U eps) requires std::is_floating_point_v<U>;
+            template <typename U> friend Tensor<U> mse_loss(Tensor<U> preds, Tensor<U> targets) requires std::is_floating_point_v<U>;
             
             // BACKEND
             friend CPUBackend;

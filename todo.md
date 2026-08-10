@@ -86,12 +86,12 @@ DONE ArgMax, ArgMin Node (backward pass crash)
 DONE retain_graph bool flag across Tensor backward, tensorstate, base Node class
 DONE target_device in every node backward/forward
 DONE Free copied mem for bwd if retain_graph = false during backward pass
-- Promote to common in MSELoss, SoftmaxCrossEntropy (targets and logits / preds)
-- MSELossNode
+DONE MSELossNode
 DONE SoftmaxCrossEntropyNode restricted for floats
-- SoftmaxCEN bwd for targets one-hot encoded
-- DropoutNode
-- Im2ColNode (backward pass crash)
+DONE SoftmaxCELN bwd for targets one-hot encoded
+DONE DropoutNode
+- ExtractPathesNode (backward pass crash) - purely util, like argmin/argmax - Im2Col or smth
+- Compile
 - Parameter (with requires_grad = true)
 - Module class - holds parameters for the optimizer
 - add multithreading with OpenMP (no writing mutexes and shit)
