@@ -90,7 +90,8 @@ DONE MSELossNode
 DONE SoftmaxCrossEntropyNode restricted for floats
 DONE SoftmaxCELN bwd for targets one-hot encoded
 DONE DropoutNode
-- Batched matmul node? / expand the current one
+- BMMNode
+- infer bmm meta func and BMMMeta 
 - ExtractPathesNode (backward pass crash) - purely util, like argmin/argmax - Im2Col or smth
 - Compile
 - Parameter (with requires_grad = true)
