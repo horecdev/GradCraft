@@ -29,7 +29,7 @@ namespace gradc {
                 return m_parent;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
                     Tensor<T> transposed_grad = lobotomized_transpose_view(out_grad, m_dim0,  m_dim1);
                     m_parent.accumulate_grad(transposed_grad);
@@ -53,7 +53,7 @@ namespace gradc {
                 return m_parent;
             }
 
-            void backward(const Tensor<T>& out_grad) override { // parent AND out_grad are contiguous, (aligns 1D memory perfectly) so can just copy shape, strides.
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override { // parent AND out_grad are contiguous, (aligns 1D memory perfectly) so can just copy shape, strides.
                 if (m_parent.requires_grad()) {
                     Tensor<T> reshaped_grad = Tensor<T>(m_parent.shape(), m_parent.strides(), 0, out_grad._get_storage(), false);
                     m_parent.accumulate_grad(reshaped_grad);
@@ -78,7 +78,7 @@ namespace gradc {
                 return m_parent;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
                     const int64_t n_dim = std::ssize(m_parent.shape());
                     std::vector<int64_t> normalized_axes = normalize_axes_vector(m_axes, n_dim);
@@ -110,12 +110,14 @@ namespace gradc {
                 return m_parent;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
-                    Tensor<T> full_grad = Tensor<T>(m_parent.shape(), T(0), out_grad.device()); // Incoming grad is [5, 32] but the parent is [5, 10, 32]. 
+                    Device target_device = out_grad.device();
+
+                    Tensor<T> full_grad = Tensor<T>(m_parent.shape(), T(0), target_device); // Incoming grad is [5, 32] but the parent is [5, 10, 32]. 
                     // You add dimension back for the temporary tensor (filled with 0s).
                     Tensor<T> grad_view = create_lobotomized_slice_view(full_grad, m_descriptors);
-                    dispatch(out_grad.device(), UnaryOp::Identity, grad_view, out_grad);
+                    dispatch(target_device, UnaryOp::Identity, grad_view, out_grad);
                     // grad_view and out_grad have the same dimensions.
                     // grad_view has buffer of full_grad that matches shape of m_parent, so in-place assignment actually edits full_grad.
                     m_parent.accumulate_grad(full_grad);
@@ -139,7 +141,7 @@ namespace gradc {
                 return m_parent;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
                     Tensor<T> unsqueezed_grad = lobotomized_reshape_view(out_grad, m_parent.shape());
                     m_parent.accumulate_grad(unsqueezed_grad);
@@ -163,7 +165,7 @@ namespace gradc {
                 return m_parent;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
                     Tensor<T> squeezed_grad = lobotomized_reshape_view(out_grad, m_parent.shape());
                     m_parent.accumulate_grad(squeezed_grad);

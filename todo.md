@@ -85,8 +85,7 @@ DONE MinNode
 DONE ArgMax, ArgMin Node (backward pass crash)
 DONE retain_graph bool flag across Tensor backward, tensorstate, base Node class
 - target_device in every node backward/forward
-- conditionaly free tensor during realize
-- Free memory if retain_graph = false during backward pass
+- Free copied mem for bwd if retain_graph = false during backward pass
 DONE go through activation nodes
 DONE go through loss nodes
 - go through math nodes

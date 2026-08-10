@@ -42,13 +42,7 @@ original -> optional: contiguous -> edit the shape/strides in place (flatten) ->
 MatmulNode holds the wrong shape logically. Therefore, before the reshaping happens, matmul func saves the real shape (batched, not flat) then passes it into MatMulNode.
 Say you do C = A + B, matmul(C, D). C gets copied into matmul (alias) this alias now has m_op of AddNode(A, B). When this realizes, C realizes. The alias has a different shape than real C (edited in place). It may also have a contiguous node attached. It has the original C shape saved. It passes it into matmul.
 21) There is no dispatch for ReduceOp::Mean because its handled in MeanNode (Sum then Div)
-22) Rule of thumb for realization:
-If it needs tensor for calculating backward pass and requires grad: its left unchanged
-If it does not not need if for calculating backward pass but needs it for accumulate_grad: its storage pointer might be stolen (retains tensor state and grad for us to accumulate into) such as m_logits in  if probs is alias of m_logits thats returned.
-If it needs tensor for its own backward pass and does not require grad: its wiped. 
-If it needs tensor for some other backward pass and does not require grad: its conditionally left (depending on if the elem that needs it requires grad)
-If it does not need tensor for backward pass and does not require grad: its wiped
-23) Rule of thumb for backward pass:
-If you do NOT retain graph: dump everything (it will never be needed again)
-Otherwise keep it all (whats needed for accumulation / calculation of backward pass)
-24) During fast paths (is exclusive) you do not have to clean up memory. It literally already is a shell
+22) Clean only temporaries EXPLICITLY saved if retain_graph=false
+23) You cannot wipe parents after backward pass because if parent is exclusive then you wipe its history
+Say X depends on A and B. A is exclusive in some way. topo_order was built, its [X, A, B]. Bwd of X runs, this means bwd of AddNode. It wipes A that was exclusive. Then 
+A->backward() runs but the tensor dereference crashes because it was wiped.

@@ -62,8 +62,6 @@ namespace gradc {
                     m_probs = probs; // probs (or m_flat_logits alias) is not ever edited here or anywhere else
                 }
 
-                if (!m_flat_logits.requires_grad()) {m_flat_logits = Tensor<T>(); m_flat_targets = Tensor<T>();}
-
                 return loss;
 
             }
@@ -80,9 +78,19 @@ namespace gradc {
 
                     m_flat_logits.accumulate_grad(dx);
 
-                    if (!retain_graph) {m_probs = Tensor<T>(); m_flat_logits = Tensor<T>(); m_flat_targets = Tensor<T>();}
-                    
+                    if (!retain_graph) {m_probs = Tensor<T>();}
+                    // if probs is an alias of m_flat_logits: alias is deleted, but not wiped (cuz m_flat_logits is second alias)
+                    // also m_flat_logits has edited data if its an alias
+                    // otherwise its wiped
                 }
+
+                if (m_flat_targets.requires_grad()) {
+                    throw std::runtime_error("flat_targets cannot require grad in SoftmaxCrossEntropy");
+                }
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_flat_logits._get_state_base(), m_flat_targets._get_state_base()};
             }
     };
 }

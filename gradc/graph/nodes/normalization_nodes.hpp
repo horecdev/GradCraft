@@ -72,7 +72,9 @@ namespace gradc {
                 return shifted_scaled;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, bool retain_graph) override {
+                Device target_device = out_grad.device();
+
                 if (m_beta.requires_grad()) {
                     Tensor<T> dbeta = unbroadcast_grad(out_grad, m_normalized_shape); // result always contiguous (result of reduce op)
                     dbeta = lobotomized_reshape_view(dbeta, m_beta.shape());
@@ -80,36 +82,39 @@ namespace gradc {
                 }
 
                 if (m_gamma.requires_grad()) {
-                    Tensor<T> dgamma_broadcast = Tensor<T>(out_grad.shape(), out_grad.device(), uninitialized);
-                    dispatch(out_grad.device(), BinaryOp::Mul, dgamma_broadcast, out_grad, m_z_scores);
+                    Tensor<T> dgamma_broadcast = Tensor<T>(out_grad.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::Mul, dgamma_broadcast, out_grad, m_z_scores);
                     Tensor<T> dgamma = unbroadcast_grad(dgamma_broadcast, m_normalized_shape);
                     dgamma = lobotomized_reshape_view(dgamma, m_gamma.shape());
                     m_gamma.accumulate_grad(dgamma);
                 }
 
                 if (m_parent.requires_grad()) {
-                    Tensor<T> dx_hat = Tensor<T>(out_grad.shape(), out_grad.device(), uninitialized);
+                    
+                    Tensor<T> dx_hat = Tensor<T>(out_grad.shape(), target_device, uninitialized);
                     Tensor<T> reshaped_gamma = lobotomized_reshape_view(m_gamma, m_normalized_shape);
-                    dispatch(out_grad.device(), BinaryOp::Mul, dx_hat, out_grad, reshaped_gamma);
-                    Tensor<T> dx_hat_mean = Tensor<T>(m_reduction_metadata.temp_shape, out_grad.device(), uninitialized);
-                    dispatch(out_grad.device(), ReduceOp::Sum, m_reduction_metadata, dx_hat_mean, dx_hat);
-                    dispatch(out_grad.device(), BinaryOpInPlace::Div, dx_hat_mean, Tensor<T>(static_cast<T>(m_reduction_metadata.reduced_vol), out_grad.device()));
-                    Tensor<T> dx = Tensor<T>(m_parent.shape(), out_grad.device(), uninitialized);
-                    dispatch(out_grad.device(), BinaryOp::Sub, dx, dx_hat, dx_hat_mean);
+                    dispatch(target_device, BinaryOp::Mul, dx_hat, out_grad, reshaped_gamma);
+                    Tensor<T> dx_hat_mean = Tensor<T>(m_reduction_metadata.temp_shape, target_device, uninitialized);
+                    dispatch(target_device, ReduceOp::Sum, m_reduction_metadata, dx_hat_mean, dx_hat);
+                    dispatch(target_device, BinaryOpInPlace::Div, dx_hat_mean, Tensor<T>(static_cast<T>(m_reduction_metadata.reduced_vol), target_device));
+                    Tensor<T> dx = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::Sub, dx, dx_hat, dx_hat_mean);
 
-                    Tensor<T> dx_hat_mul_normalized_z_scores = Tensor<T>(out_grad.shape(), out_grad.device(), uninitialized);
-                    dispatch(out_grad.device(), BinaryOp::Mul, dx_hat_mul_normalized_z_scores, dx_hat, m_z_scores);
+                    Tensor<T> dx_hat_mul_normalized_z_scores = Tensor<T>(out_grad.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::Mul, dx_hat_mul_normalized_z_scores, dx_hat, m_z_scores);
                     Tensor<T>& dx_hat_mul_normalized_z_scores_mean = dx_hat_mean;
-                    dispatch(out_grad.device(), ReduceOp::Sum, m_reduction_metadata, dx_hat_mul_normalized_z_scores_mean, dx_hat_mul_normalized_z_scores);
-                    dispatch(out_grad.device(), BinaryOpInPlace::Div, dx_hat_mul_normalized_z_scores_mean, Tensor<T>(static_cast<T>(m_reduction_metadata.reduced_vol), out_grad.device()));
+                    dispatch(target_device, ReduceOp::Sum, m_reduction_metadata, dx_hat_mul_normalized_z_scores_mean, dx_hat_mul_normalized_z_scores);
+                    dispatch(target_device, BinaryOpInPlace::Div, dx_hat_mul_normalized_z_scores_mean, Tensor<T>(static_cast<T>(m_reduction_metadata.reduced_vol), target_device));
 
                     Tensor<T>& norm_mul_mean_dx_hat_mul_norm = dx_hat;
-                    dispatch(out_grad.device(), BinaryOp::Mul, norm_mul_mean_dx_hat_mul_norm, m_z_scores, dx_hat_mul_normalized_z_scores_mean);
-                    dispatch(out_grad.device(), BinaryOpInPlace::Sub, dx, norm_mul_mean_dx_hat_mul_norm);
-                    dispatch(out_grad.device(), BinaryOpInPlace::Mul, dx, m_inv_std);
+                    dispatch(target_device, BinaryOp::Mul, norm_mul_mean_dx_hat_mul_norm, m_z_scores, dx_hat_mul_normalized_z_scores_mean);
+                    dispatch(target_device, BinaryOpInPlace::Sub, dx, norm_mul_mean_dx_hat_mul_norm);
+                    dispatch(target_device, BinaryOpInPlace::Mul, dx, m_inv_std);
 
-                    m_inv_std = Tensor<T>(); // free memory
-                    m_z_scores = Tensor<T>();
+                    if (!retain_graph) {
+                        m_inv_std = Tensor<T>();
+                        m_z_scores = Tensor<T>();
+                    }
                 }
             }
 

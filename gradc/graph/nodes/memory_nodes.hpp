@@ -24,12 +24,14 @@ namespace gradc {
 
             Tensor<T> realize() override {
                 m_parent.realize();
-                Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                dispatch(m_parent.device(), UnaryOp::Identity, result, m_parent);
+                Device target_device = m_parent.device();
+
+                Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                dispatch(target_device, UnaryOp::Identity, result, m_parent);
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
                     m_parent.accumulate_grad(out_grad); // literally just copy over
                 }
@@ -49,12 +51,14 @@ namespace gradc {
 
             Tensor<T> realize() override {
                 m_parent.realize();
-                Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                dispatch(m_parent.device(), UnaryOp::Identity, result, m_parent);
+                Device target_device = m_parent.device();
+
+                Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                dispatch(target_device, UnaryOp::Identity, result, m_parent);
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
                     m_parent.accumulate_grad(out_grad);
                 }
@@ -74,15 +78,19 @@ namespace gradc {
 
             Tensor<OutT> realize() override {
                 m_parent.realize();
-                Tensor<OutT> result = Tensor<OutT>(m_parent.shape(), m_parent.device(), uninitialized); 
-                dispatch_cast(m_parent.device(), result, m_parent);
+                Device target_device = m_parent.device();
+
+                Tensor<OutT> result = Tensor<OutT>(m_parent.shape(), target_device, uninitialized); 
+                dispatch_cast(target_device, result, m_parent);
                 return result;
             }
 
-            void backward(const Tensor<OutT>& out_grad) override {
+            void backward(const Tensor<OutT>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
-                    Tensor<InT> cast_grad = Tensor<InT>(out_grad.shape(), out_grad.device(), uninitialized);
-                    dispatch_cast(out_grad.device(), cast_grad, out_grad);
+                    Device target_device = out_grad.device();
+
+                    Tensor<InT> cast_grad = Tensor<InT>(out_grad.shape(), target_device, uninitialized);
+                    dispatch_cast(target_device, cast_grad, out_grad);
                     m_parent.accumulate_grad(cast_grad);
                 }
             }
@@ -109,7 +117,7 @@ namespace gradc {
                 return lobotomized_concat_alloc(m_parents_list, m_concat_dim, m_final_shape);
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 int64_t n_dim = std::ssize(m_final_shape);
                 int64_t concat_dim_progress = 0;
                 for (Tensor<T>& parent : m_parents_list) {
@@ -160,7 +168,7 @@ namespace gradc {
                 return lobotomized_stack_alloc(m_parents_list, m_stack_dim, m_final_shape);
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 int64_t n_dim = std::ssize(m_final_shape);
                 int64_t stack_dim_progress = 0;
                 for (Tensor<T>& parent : m_parents_list) {
@@ -217,7 +225,7 @@ namespace gradc {
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
                     Tensor<T> to_grad = Tensor<T>(out_grad.shape(), m_parent.device(), uninitialized);
                     int64_t bytes_to_copy = out_grad.volume() * sizeof(T);

@@ -30,16 +30,12 @@ namespace gradc {
                 Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
                 dispatch(target_device, UnaryOp::Neg, result, m_parent);
 
-                if (!m_parent.requires_grad()) {m_parent = Tensor<T>();}
-
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad, bool retain_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_grad) override {
                 if (m_parent.requires_grad()) {
                     m_parent.accumulate_grad(out_grad, true);
-
-                    if (!retain_grad) {m_parent = Tensor<T>();}
                 }
             }
 
@@ -66,37 +62,26 @@ namespace gradc {
                 if (m_left.is_exclusive() && m_left.shape() == m_target_shape) { // inside addnode m_left storage is used solely for producing a result. 
                     // If nobody else uses the m_left EVER, then instead of using new memory, can just edit it and return.
                     dispatch(target_device, BinaryOpInPlace::Add, m_left, m_right);
-
-                    if (!m_right.requires_grad()) {m_right = Tensor<T>();}
-
                     return m_left;
                 }
                 else if (m_right.is_exclusive() && m_right.shape() == m_target_shape) {
                     dispatch(target_device, BinaryOpInPlace::Add, m_right, m_left);
-
-                    if (!m_left.requires_grad()) {m_left = Tensor<T>();}
-
                     return m_right;
                 }
 
                 Tensor<T> result = Tensor<T>(m_target_shape, target_device, uninitialized);
                 dispatch(target_device, BinaryOp::Add, result, m_left, m_right);
 
-                if (!m_left.requires_grad()) {m_left = Tensor<T>();}
-                if (!m_right.requires_grad()) {m_right = Tensor<T>();}
-
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad, bool retain_graph) override { // CPU child can only have CPU parents (enforced outside of graph nodes)
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override { // CPU child can only have CPU parents (enforced outside of graph nodes)
                 if (m_left.requires_grad()) {
                     m_left.accumulate_grad(unbroadcast_grad(out_grad, m_left.shape()));
                 }
                 if (m_right.requires_grad()) {
                     m_right.accumulate_grad(unbroadcast_grad(out_grad, m_right.shape()));
                 }
-
-                if (!retain_graph) {m_left = Tensor<T>(); m_right = Tensor<T>();}
             }
 
             std::vector<TensorStateBase*> get_input_states() override {
@@ -122,14 +107,10 @@ namespace gradc {
                 if (m_left.is_exclusive() && m_left.shape() == m_target_shape) {
                     dispatch(target_device, BinaryOpInPlace::Sub, m_left, m_right);
 
-                    if (!m_right.requires_grad()) {m_right = Tensor<T>();}
-
                     return m_left;
                 }
                 else if (m_right.is_exclusive() && m_right.shape() == m_target_shape) {
                     dispatch(target_device, BinaryOpInPlace::ISub, m_right, m_left);
-
-                    if (!m_left.requires_grad()) {m_left = Tensor<T>();}
 
                     return m_right;
                 }
@@ -137,21 +118,16 @@ namespace gradc {
                 Tensor<T> result = Tensor<T>(m_target_shape, target_device, uninitialized);
                 dispatch(target_device, BinaryOp::Sub, result, m_left, m_right);
 
-                if (!m_left.requires_grad()) {m_left = Tensor<T>();}
-                if (!m_right.requires_grad()) {m_right = Tensor<T>();}
-
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad, bool retain_graph) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_left.requires_grad()) {
                     m_left.accumulate_grad(unbroadcast_grad(out_grad, m_left.shape()));
                 }
                 if (m_right.requires_grad()) {
                     m_right.accumulate_grad(unbroadcast_grad(out_grad, m_right.shape()), true);
                 }
-
-                if (!retain_graph) {m_left = Tensor<T>(); m_right = Tensor<T>();}
             }
 
             std::vector<TensorStateBase*> get_input_states() override {
@@ -177,14 +153,10 @@ namespace gradc {
                 if (m_left.is_exclusive() &&  m_left.shape() == m_target_shape && m_right.requires_grad() == false) {
                     dispatch(target_device, BinaryOpInPlace::Mul, m_left, m_right);
 
-                    m_right = Tensor<T>();
-
                     return m_left;
                 }
                 else if (m_right.is_exclusive() && m_right.shape() == m_target_shape && m_left.requires_grad() == false) {
                     dispatch(target_device, BinaryOpInPlace::Mul, m_right, m_left);
-
-                    m_left = Tensor<T>();
 
                     return m_right;
                 }
@@ -192,12 +164,10 @@ namespace gradc {
                 Tensor<T> result = Tensor<T>(m_target_shape, target_device, uninitialized);
                 dispatch(target_device, BinaryOp::Mul, result, m_left, m_right);
 
-                if (!m_left.requires_grad() && !m_right.requires_grad()) {m_left = Tensor<T>(); m_right = Tensor<T>();}
-
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad, bool retain_graph) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 Device target_device = m_left.device();
 
                 Tensor<T> scratchpad;
@@ -213,8 +183,6 @@ namespace gradc {
                     dispatch(target_device, BinaryOp::Mul, scratchpad, out_grad, m_left); // OOP dont gaf about what was there before. Right result.
                     m_right.accumulate_grad(unbroadcast_grad(scratchpad, m_right.shape())); 
                 }
-
-                if (!retain_graph) {m_left = Tensor<T>(); m_right = Tensor<T>();}
             }
 
             std::vector<TensorStateBase*> get_input_states() override {
@@ -240,14 +208,10 @@ namespace gradc {
                 if (m_left.is_exclusive() && m_left.shape() == m_target_shape && m_right.requires_grad() == false) {
                     dispatch(target_device, BinaryOpInPlace::Div, m_left, m_right);
 
-                    if (!m_left.requires_grad()) {m_right = Tensor<T>();}
-
                     return m_left;
                 }
                 else if (m_right.is_exclusive() && m_right.shape() == m_target_shape && m_left.requires_grad() == false && m_right.requires_grad() == false) {
                     dispatch(target_device, BinaryOpInPlace::IDiv, m_right, m_left);
-
-                    m_left = Tensor<T>(); m_right = Tensor<T>();
 
                     return m_right;
                 }
@@ -257,7 +221,7 @@ namespace gradc {
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad, bool retain_graph) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 Device target_device = m_left.device();
 
                 Tensor<T> scratchpad;
@@ -283,8 +247,6 @@ namespace gradc {
                         m_right.accumulate_grad(unbroadcast_grad(scratchpad, m_right.shape()), true);
                     }
                 }
-
-                if (!retain_graph) {m_left = Tensor<T>(); m_right = Tensor<T>();}
             }
 
             std::vector<TensorStateBase*> get_input_states() override {
@@ -311,20 +273,16 @@ namespace gradc {
                 Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
                 dispatch(target_device, UnaryOp::Exp, result, m_parent);
 
-                if (!m_parent.requires_grad()) {m_parent = Tensor<T>();}
-
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad, bool retain_graph) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
                     Device target_device = out_grad.device();
 
                     Tensor<T> exp_grad = Tensor<T>(m_parent.shape(), target_device, uninitialized);
                     dispatch(target_device, BinaryOp::BExp, exp_grad, out_grad, m_parent);
                     m_parent.accumulate_grad(exp_grad);
-
-                    if (!retain_graph) {m_parent = Tensor<T>();}
                 }
             }
 
@@ -353,10 +311,12 @@ namespace gradc {
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
-                    Tensor<T> log_grad = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                    dispatch(m_parent.device(), BinaryOp::BLog, log_grad, out_grad, m_parent);
+                    Device target_device = out_grad.device();
+
+                    Tensor<T> log_grad = Tensor<T>(m_parent.shape(),target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::BLog, log_grad, out_grad, m_parent);
                     m_parent.accumulate_grad(log_grad);
                 }
             }
@@ -375,21 +335,25 @@ namespace gradc {
 
             Tensor<T> realize() override {
                 m_parent.realize();
+                Device target_device = m_parent.device();
+
                 if (!m_parent.requires_grad() && m_parent.is_exclusive()) {
-                    dispatch(m_parent.device(), UnaryOpInPlace::Sin, m_parent);
+                    dispatch(target_device, UnaryOpInPlace::Sin, m_parent);
                     return m_parent;
                 }
 
-                Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                dispatch(m_parent.device(), UnaryOp::Sin, result, m_parent);
+                Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                dispatch(target_device, UnaryOp::Sin, result, m_parent);
 
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
-                    Tensor<T> sin_grad = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                    dispatch(m_parent.device(), BinaryOp::BSin, sin_grad, out_grad, m_parent);
+                    Device target_device = out_grad.device();
+
+                    Tensor<T> sin_grad = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::BSin, sin_grad, out_grad, m_parent);
                     m_parent.accumulate_grad(sin_grad);
                 }
             }
@@ -408,21 +372,25 @@ namespace gradc {
 
             Tensor<T> realize() override {
                 m_parent.realize();
+                Device target_device = m_parent.device();
+
                 if (!m_parent.requires_grad() && m_parent.is_exclusive()) {
-                    dispatch(m_parent.device(), UnaryOpInPlace::Cos, m_parent);
+                    dispatch(target_device, UnaryOpInPlace::Cos, m_parent);
                     return m_parent;
                 }
 
-                Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                dispatch(m_parent.device(), UnaryOp::Cos, result, m_parent);
+                Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                dispatch(target_device, UnaryOp::Cos, result, m_parent);
 
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
-                    Tensor<T> cos_grad = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                    dispatch(m_parent.device(), BinaryOp::BCos, cos_grad, out_grad, m_parent);
+                    Device target_device = out_grad.device();
+
+                    Tensor<T> cos_grad = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::BCos, cos_grad, out_grad, m_parent);
                     m_parent.accumulate_grad(cos_grad);
                 }
             }
@@ -441,21 +409,25 @@ namespace gradc {
 
             Tensor<T> realize() override {
                 m_parent.realize();
+                Device target_device = m_parent.device();
+
                 if (!m_parent.requires_grad() && m_parent.is_exclusive()) {
-                    dispatch(m_parent.device(), UnaryOpInPlace::Square, m_parent);
+                    dispatch(target_device, UnaryOpInPlace::Square, m_parent);
                     return m_parent;
                 }
 
-                Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                dispatch(m_parent.device(), UnaryOp::Square, result, m_parent);
+                Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                dispatch(target_device, UnaryOp::Square, result, m_parent);
 
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
-                    Tensor<T> square_grad = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                    dispatch(m_parent.device(), BinaryOp::BSquare, square_grad, out_grad, m_parent);
+                    Device target_device = out_grad.device();
+
+                    Tensor<T> square_grad = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::BSquare, square_grad, out_grad, m_parent);
                     m_parent.accumulate_grad(square_grad);
                 }
             }
@@ -474,21 +446,25 @@ namespace gradc {
 
             Tensor<T> realize() override {
                 m_parent.realize();
+                Device target_device = m_parent.device();
+
                 if (!m_parent.requires_grad() && m_parent.is_exclusive()) {
-                    dispatch(m_parent.device(), UnaryOpInPlace::Sqrt, m_parent);
+                    dispatch(target_device, UnaryOpInPlace::Sqrt, m_parent);
                     return m_parent;
                 }
 
-                Tensor<T> result = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                dispatch(m_parent.device(), UnaryOp::Sqrt, result, m_parent);
+                Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                dispatch(target_device, UnaryOp::Sqrt, result, m_parent);
 
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
-                    Tensor<T> sqrt_grad = Tensor<T>(m_parent.shape(), m_parent.device(), uninitialized);
-                    dispatch(m_parent.device(), BinaryOp::BSqrt, sqrt_grad, out_grad, m_parent);
+                    Device target_device = out_grad.device();
+
+                    Tensor<T> sqrt_grad = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::BSqrt, sqrt_grad, out_grad, m_parent);
                     m_parent.accumulate_grad(sqrt_grad);
                 }
             }
@@ -522,7 +498,7 @@ namespace gradc {
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) override {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
 
                 // dL/dx = out_grad @ W.T
                 // dL/dW = X.T @ out_grad
