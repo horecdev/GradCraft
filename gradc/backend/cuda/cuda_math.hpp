@@ -17,7 +17,7 @@ namespace gradc {
             template <typename T>
             static void apply_unary_in_place(Tensor<T>& source, UnaryOpInPlace op);
             template <typename T>
-            static void apply_reduction_operation(Tensor<T>& out, const Tensor<T>& source, const ReductionMetadata& reduction_metadata, ReduceOp op);
+            static void apply_reduction_operation(Tensor<T>& out, const Tensor<T>& source, const RedMeta& red_meta, ReduceOp op);
             template <typename T>
             static void apply_arg_extr_operation(Tensor<int64_t>& out, const Tensor<T>& source, int64_t dim, ArgExtrOp op);
             template <typename T> 

@@ -14,8 +14,8 @@ namespace gradc {
         }
         Device target_device = infer_assert_device(flat_logits, flat_targets);
 
-        ReductionMetadata softmax_red_meta = infer_reduction_metadata(flat_logits.shape(), {distrib_dim}, true);
-        ReductionMetadata loss_red_meta = infer_reduction_metadata(flat_logits.shape(), {0, 1}, false);
+        RedMeta softmax_red_meta = infer_red_meta(flat_logits.shape(), {distrib_dim}, true);
+        RedMeta loss_red_meta = infer_red_meta(flat_logits.shape(), {0, 1}, false);
         int64_t batch_size = distrib_dim == 1 ? flat_logits.m_shape[0] : flat_logits.m_shape[1];
         bool requires_grad = flat_logits.requires_grad() || flat_targets.requires_grad();
         Tensor<T> result = Tensor<T>(loss_red_meta.result_shape, requires_grad, lazy, target_device);
@@ -26,6 +26,10 @@ namespace gradc {
 
     template <typename T>
     Tensor<T> mse_loss(Tensor<T> preds, Tensor<T> targets) requires std::is_floating_point_v<T> {
+        if (preds.shape() != targets.shape()) {
+            throw std::runtime_error("preds and targets in MSELoss must be of the same shape.");
+        }
+        
         Device target_device = infer_assert_device(preds, targets);
 
         std::vector<int64_t> all_axes;
@@ -34,7 +38,7 @@ namespace gradc {
             all_axes.push_back(i);
         }
 
-        ReductionMetadata mse_red_meta = infer_reduction_metadata(preds.shape(), all_axes, false);
+        RedMeta mse_red_meta = infer_red_meta(preds.shape(), all_axes, false);
         bool requires_grad = preds.requires_grad() || targets.requires_grad();
         Tensor<T> result = Tensor<T>(mse_red_meta.result_shape, requires_grad, lazy, target_device);
         result.m_state->m_creation_op = std::make_unique<MSELossNode<T>>(std::move(preds), std::move(targets), std::move(mse_red_meta));

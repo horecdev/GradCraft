@@ -231,7 +231,7 @@ namespace gradc {
         }
 
         template <typename T, typename Func>
-        static void apply_reduction_operation(Tensor<T>& out, const Tensor<T>& source, const ReductionMetadata& reduction_metadata, T init_value, Func op) {
+        static void apply_reduction_operation(Tensor<T>& out, const Tensor<T>& source, const RedMeta& red_meta, T init_value, Func op) {
             const int64_t n_dim = std::ssize(source.m_shape);
             if (n_dim == 0) {
                 throw std::runtime_error("Tried reducing a 0-Dimensional Tensor.");
@@ -262,7 +262,7 @@ namespace gradc {
 
                 for (int64_t i = 0; i < n_dim; ++i) {
                     in_strided_idx += odometer[i] * source.m_strides[i];
-                    out_strided_idx += odometer[i] * reduction_metadata.temp_strides[i];
+                    out_strided_idx += odometer[i] * red_meta.temp_strides[i];
                 }
 
                 (out.m_state->m_storage->m_data)[out_strided_idx] = op((out.m_state->m_storage->m_data)[out_strided_idx], (source.m_state->m_storage->m_data)[in_strided_idx]);

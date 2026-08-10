@@ -91,7 +91,7 @@ namespace gradc {
     };
 
     // METADATA
-    struct ReductionMetadata{
+    struct RedMeta{
         std::vector<int64_t> temp_shape;
         std::vector<int64_t> temp_strides;
         std::vector<int64_t> result_shape;

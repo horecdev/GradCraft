@@ -118,7 +118,7 @@ namespace gradc {
         return true;
     }
 
-    inline ReductionMetadata infer_reduction_metadata(const std::vector<int64_t>& source_shape, const std::vector<int64_t>& red_axes, bool keepdims) {
+    inline RedMeta infer_red_meta(const std::vector<int64_t>& source_shape, const std::vector<int64_t>& red_axes, bool keepdims) {
         const int64_t n_dim = std::ssize(source_shape);
         std::vector<int64_t> positive_red_axes;
         positive_red_axes.reserve(n_dim);
@@ -174,11 +174,11 @@ namespace gradc {
                     collapsed_result_strides.push_back(result_strides[i]);
                 }
             }
-            return ReductionMetadata(temp_shape, temp_strides, collapsed_result_shape, collapsed_result_strides, result_vol, reduced_vol);
+            return RedMeta(temp_shape, temp_strides, collapsed_result_shape, collapsed_result_strides, result_vol, reduced_vol);
         }
 
         else {
-            return ReductionMetadata(temp_shape, temp_strides, result_shape, result_strides, result_vol, reduced_vol);
+            return RedMeta(temp_shape, temp_strides, result_shape, result_strides, result_vol, reduced_vol);
         }
         
     }

@@ -20,7 +20,7 @@ namespace gradc {
             return raw_grad;
         }
 
-        ReductionMetadata red_meta = infer_reduction_metadata(raw_grad.m_shape, broadcast_axes, false);
+        RedMeta red_meta = infer_red_meta(raw_grad.m_shape, broadcast_axes, false);
         Tensor<T> reduced = Tensor<T>(orig_shape, raw_grad.device(), uninitialized);
         dispatch(raw_grad.device(), ReduceOp::Sum, red_meta, reduced, raw_grad);
         return reduced; 

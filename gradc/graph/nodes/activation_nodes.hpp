@@ -195,10 +195,10 @@ namespace gradc {
     class SoftmaxNode : public Node<T> {
         private:
             Tensor<T> m_logits;
-            ReductionMetadata m_reduction_metadata;
+            RedMeta m_red_meta;
             Tensor<T> m_probs;
         public:
-            SoftmaxNode(Tensor<T> logits, ReductionMetadata reduction_metadata) : m_logits(std::move(logits)), m_reduction_metadata(std::move(reduction_metadata)) {}
+            SoftmaxNode(Tensor<T> logits, RedMeta red_meta) : m_logits(std::move(logits)), m_red_meta(std::move(red_meta)) {}
 
             Tensor<T> realize() override {
                 m_logits.realize();
@@ -213,8 +213,8 @@ namespace gradc {
                     probs = Tensor<T>(m_logits.shape(), target_device, uninitialized);
                 }
 
-                Tensor<T> max_logits = Tensor<T>(m_reduction_metadata.temp_shape, target_device, uninitialized);
-                dispatch(target_device, ReduceOp::Max, m_reduction_metadata, max_logits, m_logits);
+                Tensor<T> max_logits = Tensor<T>(m_red_meta.temp_shape, target_device, uninitialized);
+                dispatch(target_device, ReduceOp::Max, m_red_meta, max_logits, m_logits);
                 dispatch(target_device, BinaryOp::Sub, probs, m_logits, max_logits);
                 // probs is now X - max
 
@@ -222,7 +222,7 @@ namespace gradc {
                 // (X - max).exp()
                 
                 Tensor<T>& logits_sum = max_logits;
-                dispatch(target_device, ReduceOp::Sum, m_reduction_metadata, logits_sum, probs);
+                dispatch(target_device, ReduceOp::Sum, m_red_meta, logits_sum, probs);
                 dispatch(target_device, BinaryOpInPlace::Div, probs, logits_sum);
                 // probs is now true probs
 
@@ -241,8 +241,8 @@ namespace gradc {
                     Tensor<T> y_mul_grad = Tensor<T>(out_grad.shape(), target_device, uninitialized);
                     dispatch(target_device, BinaryOp::Mul, y_mul_grad, out_grad, m_probs);
 
-                    Tensor<T> sum_y_mul_grad = Tensor<T>(m_reduction_metadata.temp_shape, target_device, uninitialized);
-                    dispatch(target_device, ReduceOp::Sum, m_reduction_metadata, sum_y_mul_grad, y_mul_grad);
+                    Tensor<T> sum_y_mul_grad = Tensor<T>(m_red_meta.temp_shape, target_device, uninitialized);
+                    dispatch(target_device, ReduceOp::Sum, m_red_meta, sum_y_mul_grad, y_mul_grad);
                     dispatch(target_device, BinaryOp::Sub, y_mul_grad, out_grad, sum_y_mul_grad);
                     dispatch(target_device, BinaryOpInPlace::Mul, y_mul_grad, m_probs);
 

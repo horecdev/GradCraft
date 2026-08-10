@@ -436,7 +436,7 @@ namespace gradc {
     }
 
     template <typename T>
-    void CUDAMath::apply_reduction_operation(Tensor<T>& out, const Tensor<T>& source, const ReductionMetadata& reduction_metadata, ReduceOp op) {
+    void CUDAMath::apply_reduction_operation(Tensor<T>& out, const Tensor<T>& source, const RedMeta& red_meta, ReduceOp op) {
         cudaSetDevice(out.device().index);
         int64_t total_elems = source.volume();
         int64_t threads = 256;
@@ -454,7 +454,7 @@ namespace gradc {
         }
 
         CUDAMeta source_shape = to_cuda_meta(source.m_shape);
-        CUDAMeta out_strides = to_cuda_meta(reduction_metadata.temp_strides);
+        CUDAMeta out_strides = to_cuda_meta(red_meta.temp_strides);
         CUDAMeta source_strides = to_cuda_meta(source.m_strides);
 
         cuda_mapper::map_red<T>(op, [&](auto functor, T init_value) {
@@ -609,7 +609,7 @@ namespace gradc {
         template void CUDAMath::apply_binary_in_place<T>(Tensor<T>&, const Tensor<T>&, BinaryOpInPlace); \
         template void CUDAMath::apply_unary_out_of_place<T>(Tensor<T>&, const Tensor<T>&, UnaryOp); \
         template void CUDAMath::apply_unary_in_place<T>(Tensor<T>&, UnaryOpInPlace); \
-        template void CUDAMath::apply_reduction_operation<T>(Tensor<T>&, const Tensor<T>&, const ReductionMetadata&, ReduceOp); \
+        template void CUDAMath::apply_reduction_operation<T>(Tensor<T>&, const Tensor<T>&, const RedMeta&, ReduceOp); \
         template void CUDAMath::apply_arg_extr_operation<T>(Tensor<int64_t>&, const Tensor<T>&, int64_t, ArgExtrOp);
 
     #define INSTANTIATE_CAST(OutT, InT) \

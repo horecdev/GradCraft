@@ -13,22 +13,22 @@ namespace gradc {
     class SumNode : public Node<T> {
         private:
             Tensor<T> m_parent;
-            ReductionMetadata m_reduction_metadata;
+            RedMeta m_red_meta;
         public:
-            SumNode(Tensor<T> parent, ReductionMetadata reduction_metadata) : m_parent(std::move(parent)), m_reduction_metadata(std::move(reduction_metadata)) {}
+            SumNode(Tensor<T> parent, RedMeta red_meta) : m_parent(std::move(parent)), m_red_meta(std::move(red_meta)) {}
 
             Tensor<T> realize() override {
                 m_parent.realize();
                 Device target_device = m_parent.device();
                 
-                Tensor<T> result = Tensor<T>(m_reduction_metadata.result_shape, target_device, uninitialized);
-                dispatch(target_device, ReduceOp::Sum, m_reduction_metadata, result, m_parent);
+                Tensor<T> result = Tensor<T>(m_red_meta.result_shape, target_device, uninitialized);
+                dispatch(target_device, ReduceOp::Sum, m_red_meta, result, m_parent);
                 return result;
             }
 
             void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
-                    m_parent.accumulate_grad(Tensor<T>(m_parent.shape(), m_reduction_metadata.temp_strides, 0, out_grad._get_storage(), false));
+                    m_parent.accumulate_grad(Tensor<T>(m_parent.shape(), m_red_meta.temp_strides, 0, out_grad._get_storage(), false));
                 }
             }
 
@@ -41,17 +41,17 @@ namespace gradc {
     class MeanNode : public Node<T> {
         private:
             Tensor<T> m_parent;
-            ReductionMetadata m_reduction_metadata;
+            RedMeta m_red_meta;
         public:
-            MeanNode(Tensor<T> parent, ReductionMetadata reduction_metadata) : m_parent(std::move(parent)), m_reduction_metadata(std::move(reduction_metadata)) {}
+            MeanNode(Tensor<T> parent, RedMeta red_meta) : m_parent(std::move(parent)), m_red_meta(std::move(red_meta)) {}
 
             Tensor<T> realize() override {
                 m_parent.realize();
                 Device target_device = m_parent.device();
 
-                Tensor<T> summed = Tensor<T>(m_reduction_metadata.result_shape, target_device, uninitialized);
-                dispatch(target_device, ReduceOp::Sum, m_reduction_metadata, summed, m_parent);
-                dispatch(target_device, BinaryOpInPlace::Div, summed, Tensor<T>(static_cast<T>(m_reduction_metadata.reduced_vol), target_device));
+                Tensor<T> summed = Tensor<T>(m_red_meta.result_shape, target_device, uninitialized);
+                dispatch(target_device, ReduceOp::Sum, m_red_meta, summed, m_parent);
+                dispatch(target_device, BinaryOpInPlace::Div, summed, Tensor<T>(static_cast<T>(m_red_meta.reduced_vol), target_device));
                 return summed;
             }
 
@@ -59,8 +59,8 @@ namespace gradc {
                 if (m_parent.requires_grad()) {
                     Device target_device = out_grad.device();
                     Tensor<T> divided_grad = Tensor<T>(out_grad.shape(), target_device, uninitialized);
-                    dispatch(target_device, BinaryOp::Div, divided_grad, out_grad, Tensor<T>(static_cast<T>(m_reduction_metadata.reduced_vol), target_device));
-                    Tensor<T> strided_mean_grad = Tensor<T>(m_parent.shape(), m_reduction_metadata.temp_strides, 0, divided_grad._get_storage(), false);
+                    dispatch(target_device, BinaryOp::Div, divided_grad, out_grad, Tensor<T>(static_cast<T>(m_red_meta.reduced_vol), target_device));
+                    Tensor<T> strided_mean_grad = Tensor<T>(m_parent.shape(), m_red_meta.temp_strides, 0, divided_grad._get_storage(), false);
                     m_parent.accumulate_grad(strided_mean_grad);
                 }
             }
@@ -74,20 +74,20 @@ namespace gradc {
     class MaxNode : public Node<T> {
         private:
             Tensor<T> m_parent;
-            ReductionMetadata m_reduction_metadata;
+            RedMeta m_red_meta;
             Tensor<T> m_result;
         public:
-            MaxNode(Tensor<T> parent, ReductionMetadata reduction_metadata) : m_parent(std::move(parent)), m_reduction_metadata(std::move(reduction_metadata)) {}
+            MaxNode(Tensor<T> parent, RedMeta red_meta) : m_parent(std::move(parent)), m_red_meta(std::move(red_meta)) {}
             
             Tensor<T> realize() override {
                 m_parent.realize();
                 Device target_device = m_parent.device();
 
-                Tensor<T> result = Tensor<T>(m_reduction_metadata.result_shape, target_device, uninitialized);
-                dispatch(target_device, ReduceOp::Max, m_reduction_metadata, result, m_parent);
+                Tensor<T> result = Tensor<T>(m_red_meta.result_shape, target_device, uninitialized);
+                dispatch(target_device, ReduceOp::Max, m_red_meta, result, m_parent);
 
                 if (m_parent.requires_grad()) {
-                    m_result = Tensor<T>(m_reduction_metadata.result_shape, target_device, uninitialized); // create a deep copy of result
+                    m_result = Tensor<T>(m_red_meta.result_shape, target_device, uninitialized); // create a deep copy of result
                     dispatch(target_device, UnaryOp::Identity, m_result, result);
                 }
                 return result;
@@ -97,10 +97,10 @@ namespace gradc {
                 if (m_parent.requires_grad()) {
                     Device target_device = out_grad.device();
 
-                    Tensor<T> reshaped_result = lobotomized_reshape_view(m_result, m_reduction_metadata.temp_shape);
+                    Tensor<T> reshaped_result = lobotomized_reshape_view(m_result, m_red_meta.temp_shape);
                     Tensor<T> broadcast_result = lobotomized_broadcast_view(reshaped_result, m_parent.shape());
 
-                    Tensor<T> reshaped_grad = lobotomized_reshape_view(out_grad, m_reduction_metadata.temp_shape);
+                    Tensor<T> reshaped_grad = lobotomized_reshape_view(out_grad, m_red_meta.temp_shape);
                     Tensor<T> broadcast_grad = lobotomized_broadcast_view(out_grad, m_parent.shape());
                     
                     Tensor<T> mask = Tensor<T>(m_parent.shape(), target_device, uninitialized);
@@ -126,20 +126,20 @@ namespace gradc {
     class MinNode : public Node<T> {
         private:
             Tensor<T> m_parent;
-            ReductionMetadata m_reduction_metadata;
+            RedMeta m_red_meta;
             Tensor<T> m_result;
         public:
-            MinNode(Tensor<T> parent, ReductionMetadata reduction_metadata) : m_parent(std::move(parent)), m_reduction_metadata(std::move(reduction_metadata)) {}
+            MinNode(Tensor<T> parent, RedMeta red_meta) : m_parent(std::move(parent)), m_red_meta(std::move(red_meta)) {}
             
             Tensor<T> realize() override {
                 m_parent.realize();
                 Device target_device = m_parent.device();
 
-                Tensor<T> result = Tensor<T>(m_reduction_metadata.result_shape, target_device, uninitialized);
-                dispatch(target_device, ReduceOp::Min, m_reduction_metadata, result, m_parent);
+                Tensor<T> result = Tensor<T>(m_red_meta.result_shape, target_device, uninitialized);
+                dispatch(target_device, ReduceOp::Min, m_red_meta, result, m_parent);
 
                 if (m_parent.requires_grad()) {
-                    m_result = Tensor<T>(m_reduction_metadata.result_shape, target_device, uninitialized); // create a deep copy of result
+                    m_result = Tensor<T>(m_red_meta.result_shape, target_device, uninitialized); // create a deep copy of result
                     dispatch(target_device, UnaryOp::Identity, m_result, result);
                 }
                 return result;
@@ -149,10 +149,10 @@ namespace gradc {
                 if (m_parent.requires_grad()) {
                     Device target_device = out_grad.device();
 
-                    Tensor<T> reshaped_result = lobotomized_reshape_view(m_result, m_reduction_metadata.temp_shape);
+                    Tensor<T> reshaped_result = lobotomized_reshape_view(m_result, m_red_meta.temp_shape);
                     Tensor<T> broadcast_result = lobotomized_broadcast_view(reshaped_result, m_parent.shape());
 
-                    Tensor<T> reshaped_grad = lobotomized_reshape_view(out_grad, m_reduction_metadata.temp_shape);
+                    Tensor<T> reshaped_grad = lobotomized_reshape_view(out_grad, m_red_meta.temp_shape);
                     Tensor<T> broadcast_grad = lobotomized_broadcast_view(out_grad, m_parent.shape());
                     
                     Tensor<T> mask = Tensor<T>(m_parent.shape(), target_device, uninitialized);

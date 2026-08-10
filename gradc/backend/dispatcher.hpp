@@ -84,13 +84,13 @@ namespace gradc {
     }
 
     template <typename T>
-    inline void dispatch(Device device, ReduceOp op, ReductionMetadata& reduction_metadata, Tensor<T>& out, const Tensor<T>& in) {
+    inline void dispatch(Device device, ReduceOp op, RedMeta& red_meta, Tensor<T>& out, const Tensor<T>& in) {
         if (device.is_cpu()) {
-            cpu_mapper::map_red<T>(op, [&](auto functor, T init_value) {CPUBackend::apply_reduction_operation(out,in, reduction_metadata, init_value, functor);});
+            cpu_mapper::map_red<T>(op, [&](auto functor, T init_value) {CPUBackend::apply_reduction_operation(out,in, red_meta, init_value, functor);});
         }
 
         else if (device.is_cuda()) {
-            CUDAMath::apply_reduction_operation(out, in, reduction_metadata, op);
+            CUDAMath::apply_reduction_operation(out, in, red_meta, op);
         }
     }
 

@@ -11,9 +11,9 @@
 namespace gradc {
     template <typename T>
     Tensor<T> Tensor<T>::sum(const std::vector<int64_t>& red_axes, bool keepdims) const {
-        ReductionMetadata reduction_metadata = infer_reduction_metadata(m_shape, red_axes, keepdims);
-        Tensor result = Tensor(reduction_metadata.result_shape, m_requires_grad, lazy, this->device());
-        result.m_state->m_creation_op = std::make_unique<SumNode<T>>(*this, std::move(reduction_metadata));
+        RedMeta red_meta = infer_red_meta(m_shape, red_axes, keepdims);
+        Tensor result = Tensor(red_meta.result_shape, m_requires_grad, lazy, this->device());
+        result.m_state->m_creation_op = std::make_unique<SumNode<T>>(*this, std::move(red_meta));
 
         return result;
     }
@@ -22,18 +22,18 @@ namespace gradc {
     template <typename OutT>
     Tensor<OutT> Tensor<T>::mean(const std::vector<int64_t>& red_axes, bool keepdims) const {
         Tensor<OutT> promoted_self = this->template cast<OutT>(); // first: cast source into right type. Then just add MeanNode.
-        ReductionMetadata reduction_metadata = infer_reduction_metadata(promoted_self.m_shape, red_axes, keepdims);
-        Tensor<OutT> result = Tensor<OutT>(reduction_metadata.result_shape, m_requires_grad, lazy, this->device());
-        result.m_state->m_creation_op = std::make_unique<MeanNode<OutT>>(std::move(promoted_self), std::move(reduction_metadata));
+        RedMeta red_meta = infer_red_meta(promoted_self.m_shape, red_axes, keepdims);
+        Tensor<OutT> result = Tensor<OutT>(red_meta.result_shape, m_requires_grad, lazy, this->device());
+        result.m_state->m_creation_op = std::make_unique<MeanNode<OutT>>(std::move(promoted_self), std::move(red_meta));
 
         return result;
     }
 
     template <typename T>
     Tensor<T> Tensor<T>::max(const std::vector<int64_t>& red_axes, bool keepdims) const {
-        ReductionMetadata reduction_metadata = infer_reduction_metadata(m_shape, red_axes, keepdims);
-        Tensor<T> result = Tensor<T>(reduction_metadata.result_shape, m_requires_grad, lazy, this->device());
-        result.m_state->m_creation_op = std::make_unique<MaxNode<T>>(*this, std::move(reduction_metadata));
+        RedMeta red_meta = infer_red_meta(m_shape, red_axes, keepdims);
+        Tensor<T> result = Tensor<T>(red_meta.result_shape, m_requires_grad, lazy, this->device());
+        result.m_state->m_creation_op = std::make_unique<MaxNode<T>>(*this, std::move(red_meta));
 
         return result;
     }
@@ -41,9 +41,9 @@ namespace gradc {
     template <typename T>
     Tensor<int64_t> Tensor<T>::argmax(int64_t dim, bool keepdims) {
         std::vector<int64_t> red_axes = std::vector<int64_t>({dim});
-        ReductionMetadata reduction_metadata = infer_reduction_metadata(m_shape, red_axes, keepdims);
-        Tensor<int64_t> result = Tensor<int64_t>(reduction_metadata.result_shape, m_requires_grad, lazy, this->device());
-        result.m_state->m_creation_op = std::make_unique<ArgMaxNode>(*this, std::move(reduction_metadata.result_shape), dim);
+        RedMeta red_meta = infer_red_meta(m_shape, red_axes, keepdims);
+        Tensor<int64_t> result = Tensor<int64_t>(red_meta.result_shape, m_requires_grad, lazy, this->device());
+        result.m_state->m_creation_op = std::make_unique<ArgMaxNode>(*this, std::move(red_meta.result_shape), dim);
 
         return result;
     }
@@ -51,9 +51,9 @@ namespace gradc {
     template <typename T>
     Tensor<int64_t> Tensor<T>::argmin(int64_t dim, bool keepdims) {
         std::vector<int64_t> red_axes = std::vector<int64_t>({dim});
-        ReductionMetadata reduction_metadata = infer_reduction_metadata(m_shape, red_axes, keepdims);
-        Tensor<int64_t> result = Tensor<int64_t>(reduction_metadata.result_shape, m_requires_grad, lazy, this->device());
-        result.m_state->m_creation_op = std::make_unique<ArgMinNode>(*this, std::move(reduction_metadata.result_shape), dim);
+        RedMeta red_meta = infer_red_meta(m_shape, red_axes, keepdims);
+        Tensor<int64_t> result = Tensor<int64_t>(red_meta.result_shape, m_requires_grad, lazy, this->device());
+        result.m_state->m_creation_op = std::make_unique<ArgMinNode>(*this, std::move(red_meta.result_shape), dim);
         
         return result;
     }
