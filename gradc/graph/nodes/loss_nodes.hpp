@@ -5,11 +5,6 @@
 #include "../node.hpp"
 
 namespace gradc {
-
-    template <typename T>
-    class MSELossNode : public Node<T> {
-        
-    };
     
     template <typename T>
     class SoftmaxCrossEntropyLossNode : public Node<T> {
@@ -58,7 +53,7 @@ namespace gradc {
                 dispatch(target_device, ReduceOp::Sum, m_loss_red_meta, loss, loss_elems);
                 dispatch(target_device, BinaryOpInPlace::Div, loss, Tensor<T>(-static_cast<T>(m_batch_size), target_device));
 
-                if (m_flat_logits.requires_grad()) {
+                if (m_flat_logits.requires_grad() || m_flat_targets.requires_grad()) {
                     m_probs = probs; // probs (or m_flat_logits alias) is not ever edited here or anywhere else
                 }
 
@@ -67,9 +62,9 @@ namespace gradc {
             }
 
             void backward(const Tensor<T>& out_grad, bool retain_graph) override {
-                if (m_flat_logits.requires_grad()) {
-                    Device target_device = out_grad.device();
+                Device target_device = out_grad.device();
 
+                if (m_flat_logits.requires_grad()) {
                     Tensor<T> dx = Tensor<T>(m_flat_logits.shape(), out_grad.device(), uninitialized);
                     dispatch(target_device, BinaryOp::Sub, dx, m_probs, m_flat_targets);
                     dispatch(target_device, BinaryOpInPlace::Mul, dx, out_grad);
@@ -85,12 +80,33 @@ namespace gradc {
                 }
 
                 if (m_flat_targets.requires_grad()) {
-                    throw std::runtime_error("flat_targets cannot require grad in SoftmaxCrossEntropy");
+
+                    Tensor<T> d_targets = Tensor<T>(m_flat_targets.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::Add, d_targets, m_probs, Tensor<T>(m_eps, target_device));
+                    dispatch(target_device, UnaryOpInPlace::Log, d_targets);
+
+                    Tensor<T> scale = Tensor<T>(out_grad.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::Mul, scale, out_grad, Tensor<T>(static_cast<T>(-1.0 / m_batch_size), target_device));
+
+                    dispatch(target_device, BinaryOpInPlace::Mul, d_targets, scale);
+    
+                    m_flat_targets.accumulate_grad(d_targets); // -1/B * log(probs + eps) * out_grad
+                }
+
+                if (!retain_graph) {
+                    m_probs = Tensor<T>();
                 }
             }
 
             std::vector<TensorStateBase*> get_input_states() override {
                 return {m_flat_logits._get_state_base(), m_flat_targets._get_state_base()};
             }
+    };
+
+    template <typename T>
+    class MSELossNode : public Node<T> {
+        private:
+            Tensor<T> m_preds;
+            Tensor<T> m_targets;
     };
 }

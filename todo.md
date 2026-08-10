@@ -84,17 +84,12 @@ DONE free memory from cached results in all nodes during the backward pass when 
 DONE MinNode
 DONE ArgMax, ArgMin Node (backward pass crash)
 DONE retain_graph bool flag across Tensor backward, tensorstate, base Node class
-- target_device in every node backward/forward
-- Free copied mem for bwd if retain_graph = false during backward pass
-DONE go through activation nodes
-DONE go through loss nodes
-- go through math nodes
-- go through memory nodes
-- go through normalization nodes
-- go through reduce nodes
-- go through view nodes
+DONE target_device in every node backward/forward
+DONE Free copied mem for bwd if retain_graph = false during backward pass
+- Promote to common in MSELoss, SoftmaxCrossEntropy (targets and logits / preds)
 - MSELossNode
-- SoftmaxCrossEntropyNode restricted for floats
+DONE SoftmaxCrossEntropyNode restricted for floats
+- SoftmaxCEN bwd for targets one-hot encoded
 - DropoutNode
 - Im2ColNode (backward pass crash)
 - Parameter (with requires_grad = true)
