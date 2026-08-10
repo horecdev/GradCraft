@@ -134,22 +134,24 @@ namespace gradc {
             void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) {
                 Device target_device = out_grad.device();
 
-                T factor = static_cast<T>(2.0) / static_cast<T>(m_mse_red_meta.reduced_vol);
-                Tensor<T> scale = Tensor<T>(out_grad.shape(), target_device, uninitialized);
-                dispatch(target_device, BinaryOp::Mul, scale, out_grad, Tensor<T>(factor, target_device));
-
-                if (m_preds.requires_grad()) {     
+                if (m_preds.requires_grad() || m_targets.requires_grad()) {
+                    T factor = static_cast<T>(2.0) / static_cast<T>(m_mse_red_meta.reduced_vol);
                     Tensor<T> dx = Tensor<T>(m_preds.shape(), target_device, uninitialized);
                     dispatch(target_device, BinaryOp::Sub, dx, m_preds, m_targets);
-                    dispatch(target_device, BinaryOpInPlace::Mul, dx, scale);
+                    dispatch(target_device, BinaryOpInPlace::Mul, dx, out_grad);
+                    dispatch(target_device, BinaryOpInPlace::Mul, dx, Tensor<T>(factor, target_device));
 
-                    m_preds.accumulate_grad(dx);
+                    if (m_preds.requires_grad()) {
+                        m_preds.accumulate_grad(dx, false);
+                    }
+                    if (m_targets.requires_grad()) {
+                        m_preds.accumulate_grad(dx, true);
+                    }
                 }
+            }
 
-                if (m_targets.requires_grad()) {
-
-                }
-
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_preds._get_state_base(), m_targets._get_state_base()};
             }
     };
 }
