@@ -578,25 +578,25 @@ namespace gradc {
 
     template <typename T>
     requires std::is_floating_point_v<T>
-    void CUDAMath::apply_batched_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const NMMMeta& nmm_meta) {
+    void CUDAMath::apply_batched_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const NMMMeta& blas_meta) {
         T* p_out = out._get_storage()->data() + out.m_offset;
         const T* p_left = left._get_storage()->data() + left.m_offset;
         const T* p_right = right._get_storage()->data() + right.m_offset;
 
         cublasHandle_t handle = get_cublas_handle();
-        cublasOperation_t op_left = (nmm_meta.left_op == MatrixTensorOp::Normal) ? CUBLAS_OP_N : CUBLAS_OP_T;
-        cublasOperation_t op_right = (nmm_meta.right_op == MatrixTensorOp::Normal) ? CUBLAS_OP_N : CUBLAS_OP_T;
+        cublasOperation_t op_left = (blas_meta.left_op == MatrixTensorOp::Normal) ? CUBLAS_OP_N : CUBLAS_OP_T;
+        cublasOperation_t op_right = (blas_meta.right_op == MatrixTensorOp::Normal) ? CUBLAS_OP_N : CUBLAS_OP_T;
 
-        T typed_alpha = static_cast<T>(nmm_meta.alpha);
-        T typed_beta = static_cast<T>(nmm_meta.beta);
+        T typed_alpha = static_cast<T>(blas_meta.alpha);
+        T typed_beta = static_cast<T>(blas_meta.beta);
 
         // row major = transposed col major
         // AB = B^T A^T so just swap. col major cublas will treat them as transposed
         if constexpr (std::is_same_v<T, float>) {
-            cublasSgemm(handle, op_right, op_left, nmm_meta.N, nmm_meta.M, nmm_meta.K, &typed_alpha, p_right, nmm_meta.ldb, p_left, nmm_meta.lda, &typed_beta, p_out, nmm_meta.ldc);
+            cublasSgemm(handle, op_right, op_left, blas_meta.N, blas_meta.M, blas_meta.K, &typed_alpha, p_right, blas_meta.ldb, p_left, blas_meta.lda, &typed_beta, p_out, blas_meta.ldc);
         }
         else if constexpr (std::is_same_v<T, double>) {
-            cublasDgemm(handle, op_right, op_left, nmm_meta.N, nmm_meta.M, nmm_meta.K, &typed_alpha, p_right, nmm_meta.ldb, p_left, nmm_meta.lda, &typed_beta, p_out, nmm_meta.ldc);
+            cublasDgemm(handle, op_right, op_left, blas_meta.N, blas_meta.M, blas_meta.K, &typed_alpha, p_right, blas_meta.ldb, p_left, blas_meta.lda, &typed_beta, p_out, blas_meta.ldc);
         }
     }
 

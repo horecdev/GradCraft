@@ -62,7 +62,7 @@ namespace gradc {
     }
 
     template <typename T>
-    void Tensor<T>::accumulate_grad_matmul(const Tensor<T>& left, const Tensor<T>& right, NMMMeta& nmm_meta, const std::vector<int64_t>& orig_shape) requires std::is_floating_point_v<T> {
+    void Tensor<T>::accumulate_grad_matmul(const Tensor<T>& left, const Tensor<T>& right, NMMMeta& blas_meta, const std::vector<int64_t>& orig_shape) requires std::is_floating_point_v<T> {
         // why pass orig_shape?
         // what goes into matmul is flat. m_left and m_right. They have wrong shapes, but they share the same tensor state as before flattening.
         // They share states because the swaps were done via mutating member variables m_shape and m_strides, not .reshape() etc.
@@ -74,12 +74,12 @@ namespace gradc {
 
         if (!m_state->m_grad.has_value()) {
             Tensor<T> local_grad = Tensor<T>(orig_shape, target_device, uninitialized);
-            nmm_meta.beta = static_cast<T>(0.0);
-            dispatch_batched_gemm(target_device, local_grad, left, right, nmm_meta);
+            blas_meta.beta = static_cast<T>(0.0);
+            dispatch_batched_gemm(target_device, local_grad, left, right, blas_meta);
             m_state->m_grad = std::move(local_grad);
         }
         else {
-            dispatch_batched_gemm(target_device, m_state->m_grad.value(), left, right, nmm_meta);
+            dispatch_batched_gemm(target_device, m_state->m_grad.value(), left, right, blas_meta);
         }
     }
 

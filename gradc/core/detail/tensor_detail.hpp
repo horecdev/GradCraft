@@ -202,24 +202,59 @@ namespace gradc {
             left_locally_contig = left.contiguous();
             std::vector<int64_t> left_locally_contig_batch_shape(left_locally_contig.shape().begin(), left_locally_contig.shape().end() - 2);
             std::vector<int64_t> left_locally_contig_batch_strides(left_locally_contig.strides().begin(), left_locally_contig.strides().end() - 2);
-            FusedView locally_contig_fuse = fuse_dimensions(left_locally_contig_batch_shape, {&left_locally_contig_batch_strides});
+            FusedView left_locally_contig_fuse = fuse_dimensions(left_locally_contig_batch_shape, {&left_locally_contig_batch_strides});
 
-            // PICK UP FROM HERE: LOCALLY_CONTIG_FUSE HOLDS FUSED BATCH DIM AND ITS STRIDE (X, B, T, H) -> (X*B, T, H)
-            left_locally_contig.m_shape = locally_contig_fuse.shared_shape;
-            left_locally_contig.m_strides = locally_contig_fuse.strides[0];
-            left_locally_contig.m_shape.push_back(left.shape().back());
-            left_locally_contig.m_strides.push_back(left.strides().back());
+            left_locally_contig.m_shape = left_locally_contig_fuse.shared_shape; // now its just B
+            left_locally_contig.m_strides = left_locally_contig_fuse.strides[0]; // also just B
+            left_locally_contig.m_shape.push_back(left.shape()[left_n_dim - 2]);
+            left_locally_contig.m_shape.push_back(left.shape()[left_n_dim - 1]); // now its B, T, C
+            left_locally_contig.m_strides.push_back(left.strides()[left_n_dim - 2]);
+            left_locally_contig.m_strides.push_back(left.strides()[left_n_dim - 1]);
         }
         else {
             left_locally_contig = left;
-            left_locally_contig.m_shape = initial_fuse_result.shared_shape;
-            left_locally_contig.m_strides = initial_fuse_result.strides[0];
-            left_locally_contig.m_shape.push_back(left.shape().back());
-            left_locally_contig.m_strides.push_back(left.strides().back());
+            left_locally_contig.m_shape = init_left_fuse.shared_shape;
+            left_locally_contig.m_strides = init_left_fuse.strides[0];
+            left_locally_contig.m_shape.push_back(left.shape()[left_n_dim - 2]);
+            left_locally_contig.m_shape.push_back(left.shape()[left_n_dim - 1]);
+            left_locally_contig.m_strides.push_back(left.strides()[left_n_dim - 2]);
+            left_locally_contig.m_strides.push_back(left.strides()[left_n_dim - 1]);
         }
-        // after this step we know for SURE that left is 2 dimensional (B * T, C) and right is (C, H)
+        // left now left is 3D (B, T, C)
 
-        // Now it has to be either transposed or not transposed. If none of the dimensions are 1, force contiguity (on both)
+        // repeat for right:
+
+        std::vector<int64_t> right_batch_shape = std::vector<int64_t>(right.shape().begin(), right.shape().end() - 2);
+        std::vector<int64_t> right_batch_strides = std::vector<int64_t>(right.strides().begin(), right.strides().end() - 2);
+        FusedView init_right_fuse = fuse_dimensions(right_batch_shape, {&right_batch_strides});
+
+        Tensor<T> right_locally_contig;
+        if (std::ssize(init_right_fuse.shared_shape) != 1) { 
+            right_locally_contig = right.contiguous();
+            std::vector<int64_t> right_locally_contig_batch_shape(right_locally_contig.shape().begin(), right_locally_contig.shape().end() - 2);
+            std::vector<int64_t> right_locally_contig_batch_strides(right_locally_contig.strides().begin(), right_locally_contig.strides().end() - 2);
+            FusedView right_locally_contig_fuse = fuse_dimensions(right_locally_contig_batch_shape, {&right_locally_contig_batch_strides});
+
+            right_locally_contig.m_shape = right_locally_contig_fuse.shared_shape; 
+            right_locally_contig.m_strides = right_locally_contig_fuse.strides[0];
+            right_locally_contig.m_shape.push_back(right.shape()[right_n_dim - 2]);
+            right_locally_contig.m_shape.push_back(right.shape()[right_n_dim - 1]);
+            right_locally_contig.m_strides.push_back(right.strides()[right_n_dim - 2]);
+            right_locally_contig.m_strides.push_back(right.strides()[right_n_dim - 1]);
+        }
+        else {
+            right_locally_contig = right;
+            right_locally_contig.m_shape = init_right_fuse.shared_shape;
+            right_locally_contig.m_strides = init_right_fuse.strides[0];
+            right_locally_contig.m_shape.push_back(right.shape()[right_n_dim - 2]);
+            right_locally_contig.m_shape.push_back(right.shape()[right_n_dim - 1]);
+            right_locally_contig.m_strides.push_back(right.strides()[right_n_dim - 2]);
+            right_locally_contig.m_strides.push_back(right.strides()[right_n_dim - 1]);
+        }
+
+        // now both tensors are B, T, C. 
+
+        // START OFF FROM HERE (MORE CONTIGUITY FORCING IF NONE OF THE T, C STRIDES ARE 1, INFERING LDA, TRANSPOSALS)
 
         std::vector<int64_t> result_shape = left.shape();
         result_shape[n_dim - 1] = right.shape()[1];
