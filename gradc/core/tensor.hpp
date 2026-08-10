@@ -49,7 +49,7 @@ namespace gradc {
             void backward(bool retain_graph = false);
 
             void accumulate_grad(const Tensor<T>& incoming_grad, bool is_sub = false);
-            void accumulate_grad_matmul(const Tensor<T>& left, const Tensor<T>& right, BLASGEMMMeta& blas_meta, const std::vector<int64_t>& orig_shape) requires std::is_floating_point_v<T>;
+            void accumulate_grad_matmul(const Tensor<T>& left, const Tensor<T>& right, NMMMeta& nmm_meta, const std::vector<int64_t>& orig_shape) requires std::is_floating_point_v<T>;
 
             void zero_grad();
 
@@ -205,7 +205,7 @@ namespace gradc {
             template <typename U, typename W> friend Tensor<U>& operator/=(Tensor<U>& main, Tensor<W> other);
 
             template <typename U>
-            friend auto infer_blas_meta(Tensor<U> left, Tensor<U> right, bool accumulate);
+            friend auto infer_nmm_meta(Tensor<U> left, Tensor<U> right, bool accumulate);
 
             template <typename U, typename W>
             requires (std::is_floating_point_v<U> && std::is_floating_point_v<W>)

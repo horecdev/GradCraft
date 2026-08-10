@@ -382,13 +382,13 @@ namespace gradc {
 
         bool requires_grad = p_left.requires_grad() || p_right.requires_grad();
 
-        std::pair<std::pair<Tensor<T>, Tensor<T>>, BLASGEMMMeta> gemm_prep = infer_blas_meta(std::move(p_left), std::move(p_right), false);
-        BLASGEMMMeta blas_meta = gemm_prep.second;
+        std::pair<std::pair<Tensor<T>, Tensor<T>>, NMMMeta> gemm_prep = infer_blas_meta(std::move(p_left), std::move(p_right), false);
+        NMMMeta blas_meta = gemm_prep.second;
         Tensor<T> safe_left = std::move(gemm_prep.first.first);
         Tensor<T> safe_right = std::move(gemm_prep.first.second);
 
         Tensor<PromotedT> result = Tensor<PromotedT>(blas_meta.result_shape, requires_grad, lazy, target_device);
-        result.m_state->m_creation_op = std::make_unique<MatMulNode<PromotedT>>(std::move(safe_left), std::move(safe_right), blas_meta, original_left_shape);
+        result.m_state->m_creation_op = std::make_unique<NormalMatMulNode<PromotedT>>(std::move(safe_left), std::move(safe_right), blas_meta, original_left_shape);
         return result;
     }
 

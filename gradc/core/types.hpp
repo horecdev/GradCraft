@@ -110,7 +110,7 @@ namespace gradc {
         Transposed
     };
 
-    struct BLASGEMMMeta {
+    struct NMMMeta {
         std::vector<int64_t> result_shape;
 
         float alpha;
@@ -127,6 +127,29 @@ namespace gradc {
         int64_t ldb;
         int64_t ldc;
     };
+
+    struct BMMMeta {
+        std::vector<int64_t> result_shape;
+
+        float alpha;
+        float beta;
+
+        int64_t M;
+        int64_t K;
+        int64_t N;
+        
+        MatrixTensorOp left_op;
+        MatrixTensorOp right_op;
+
+        int64_t lda;
+        int64_t ldb;
+        int64_t ldc;
+
+        int64_t stride_a;
+        int64_t stride_b;
+        int64_t stride_c;
+    };
+
 
     // SETTINGS
     struct PrintOptions {

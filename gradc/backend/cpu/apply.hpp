@@ -345,27 +345,27 @@ namespace gradc {
         
         template <typename T>
         requires std::is_floating_point_v<T>
-        static void apply_batched_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const BLASGEMMMeta& blas_meta) {
-            CBLAS_TRANSPOSE op_left = (blas_meta.left_op == MatrixTensorOp::Normal) ? CblasNoTrans : CblasTrans;
-            CBLAS_TRANSPOSE op_right = (blas_meta.right_op == MatrixTensorOp::Normal) ? CblasNoTrans : CblasTrans;
+        static void apply_batched_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const NMMMeta& nmm_meta) {
+            CBLAS_TRANSPOSE op_left = (nmm_meta.left_op == MatrixTensorOp::Normal) ? CblasNoTrans : CblasTrans;
+            CBLAS_TRANSPOSE op_right = (nmm_meta.right_op == MatrixTensorOp::Normal) ? CblasNoTrans : CblasTrans;
 
             T* p_out = out._get_storage()->data() + out.m_offset;
             const T* p_left = left._get_storage()->data() + left.m_offset;
             const T* p_right = right._get_storage()->data() + right.m_offset;
 
-            blasint blas_M = static_cast<blasint>(blas_meta.M);
-            blasint blas_N = static_cast<blasint>(blas_meta.N);
-            blasint blas_K = static_cast<blasint>(blas_meta.K);
+            blasint blas_M = static_cast<blasint>(nmm_meta.M);
+            blasint blas_N = static_cast<blasint>(nmm_meta.N);
+            blasint blas_K = static_cast<blasint>(nmm_meta.K);
 
-            blasint blas_lda = static_cast<blasint>(blas_meta.lda);
-            blasint blas_ldb = static_cast<blasint>(blas_meta.ldb);
-            blasint blas_ldc = static_cast<blasint>(blas_meta.ldc);
+            blasint blas_lda = static_cast<blasint>(nmm_meta.lda);
+            blasint blas_ldb = static_cast<blasint>(nmm_meta.ldb);
+            blasint blas_ldc = static_cast<blasint>(nmm_meta.ldc);
 
             if constexpr (std::is_same_v<T, float>) {
-                cblas_sgemm(CblasRowMajor, op_left, op_right, blas_M, blas_N, blas_K, blas_meta.alpha, p_left, blas_lda, p_right, blas_ldb, blas_meta.beta, p_out, blas_ldc);
+                cblas_sgemm(CblasRowMajor, op_left, op_right, blas_M, blas_N, blas_K, nmm_meta.alpha, p_left, blas_lda, p_right, blas_ldb, nmm_meta.beta, p_out, blas_ldc);
             }
             else if constexpr (std::is_same_v<T, double>) {
-                cblas_dgemm(CblasRowMajor, op_left, op_right, blas_M, blas_N, blas_K, blas_meta.alpha, p_left, blas_lda, p_right, blas_ldb, blas_meta.beta, p_out, blas_ldc);
+                cblas_dgemm(CblasRowMajor, op_left, op_right, blas_M, blas_N, blas_K, nmm_meta.alpha, p_left, blas_lda, p_right, blas_ldb, nmm_meta.beta, p_out, blas_ldc);
             }
         }
         

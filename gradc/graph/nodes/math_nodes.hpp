@@ -475,16 +475,16 @@ namespace gradc {
     };
 
     template <typename T>
-    class MatMulNode : public Node<T> {
+    class NormalMatMulNode : public Node<T> {
         private:
             Tensor<T> m_left;
             Tensor<T> m_right;
-            BLASGEMMMeta m_blas_meta;
+            NMMMeta m_blas_meta;
             // left, right are already 2D and good dims for BLAS. No contig nodes will be attached.
             std::vector<int64_t> m_left_original_shape;
 
         public:
-            MatMulNode<T>(Tensor<T> left, Tensor<T> right, BLASGEMMMeta blas_meta, std::vector<int64_t> left_original_shape) : m_left(std::move(left)), m_right(std::move(right)), m_blas_meta(std::move(blas_meta)), m_left_original_shape(std::move(left_original_shape)) {}
+            NormalMatMulNode<T>(Tensor<T> left, Tensor<T> right, NMMMeta blas_meta, std::vector<int64_t> left_original_shape) : m_left(std::move(left)), m_right(std::move(right)), m_blas_meta(std::move(blas_meta)), m_left_original_shape(std::move(left_original_shape)) {}
             
             Tensor<T> realize() override {
                 Device target_device = m_left.device(); 
@@ -514,16 +514,16 @@ namespace gradc {
                 // p_out is m_left.grad. It is contiguous, of shape (B, T, K). infer function will infer ldc to be K
 
                 // GRAD FLAT BELOW IS NOT MODIFIED. IT GETS BASICALLY REPLICATED INSIDE ANOTHER TENSOR AND RETURNED. ITS BECAUSE ITS CONTIGUOUS AND 2D ALREADY
-                std::pair<std::pair<Tensor<T>, Tensor<T>>, BLASGEMMMeta> dleft_gemm_prep = infer_blas_meta(std::move(grad_flat), std::move(W_T), true);
-                BLASGEMMMeta dleft_blas_meta = dleft_gemm_prep.second;
+                std::pair<std::pair<Tensor<T>, Tensor<T>>, NMMMeta> dleft_gemm_prep = infer_blas_meta(std::move(grad_flat), std::move(W_T), true);
+                NMMMeta dleft_blas_meta = dleft_gemm_prep.second;
                 grad_flat = std::move(dleft_gemm_prep.first.first);
                 W_T = std::move(dleft_gemm_prep.first.second);
 
                 // For dL/dW you do (K, M) @ (M, N) = (K, N)
 
                 // HERE GRAD_FLAT IS ALSO NOT MODIFIED. 
-                std::pair<std::pair<Tensor<T>, Tensor<T>>, BLASGEMMMeta> dright_gemm_prep = infer_blas_meta(std::move(X_T), std::move(grad_flat), true);
-                BLASGEMMMeta dright_blas_meta = dright_gemm_prep.second;
+                std::pair<std::pair<Tensor<T>, Tensor<T>>, NMMMeta> dright_gemm_prep = infer_blas_meta(std::move(X_T), std::move(grad_flat), true);
+                NMMMeta dright_blas_meta = dright_gemm_prep.second;
                 X_T = std::move(dright_gemm_prep.first.first);
                 grad_flat = std::move(dright_gemm_prep.first.second);
 
@@ -534,5 +534,10 @@ namespace gradc {
             std::vector<TensorStateBase*> get_input_states() override {
                 return {m_left._get_state_base(), m_right._get_state_base()};
             }
+    };
+
+    template <typename T>
+    class BatchedMatMulnode : public Node<T> {
+
     };
 } 

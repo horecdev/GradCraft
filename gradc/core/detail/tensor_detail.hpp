@@ -84,7 +84,7 @@ namespace gradc {
     }
 
     template <typename T>
-    inline auto infer_blas_meta(Tensor<T> left, Tensor<T> right, bool accumulate) { // takes left, right by value. 
+    inline auto infer_blas_normal_meta(Tensor<T> left, Tensor<T> right, bool accumulate) { // takes left, right by value. 
         if (std::ssize(right.shape()) != 2) {
             throw std::runtime_error("B in A @ B must be 2 dimensional.");
         }
@@ -93,7 +93,7 @@ namespace gradc {
         }
         
         int64_t n_dim = std::ssize(left.shape());
-        BLASGEMMMeta blas_meta;
+        NMMMeta blas_meta;
         if (accumulate) {
             blas_meta.alpha = 1.0;
             blas_meta.beta = 1.0;
@@ -114,6 +114,97 @@ namespace gradc {
             std::vector<int64_t> left_locally_contig_shape_except_rightmost(left_locally_contig.shape().begin(), left_locally_contig.shape().end() - 1);
             std::vector<int64_t> left_locally_contig_strides_except_rightmost(left_locally_contig.strides().begin(), left_locally_contig.strides().end() - 1);
             FusedView locally_contig_fuse = fuse_dimensions(left_locally_contig_shape_except_rightmost, {&left_locally_contig_strides_except_rightmost});
+            left_locally_contig.m_shape = locally_contig_fuse.shared_shape;
+            left_locally_contig.m_strides = locally_contig_fuse.strides[0];
+            left_locally_contig.m_shape.push_back(left.shape().back());
+            left_locally_contig.m_strides.push_back(left.strides().back());
+        }
+        else {
+            left_locally_contig = left;
+            left_locally_contig.m_shape = initial_fuse_result.shared_shape;
+            left_locally_contig.m_strides = initial_fuse_result.strides[0];
+            left_locally_contig.m_shape.push_back(left.shape().back());
+            left_locally_contig.m_strides.push_back(left.strides().back());
+        }
+        // after this step we know for SURE that left is 2 dimensional (B * T, C) and right is (C, H)
+
+        // Now it has to be either transposed or not transposed. If none of the dimensions are 1, force contiguity (on both)
+
+        std::vector<int64_t> result_shape = left.shape();
+        result_shape[n_dim - 1] = right.shape()[1];
+
+        blas_meta.result_shape = result_shape;
+        blas_meta.M = left_locally_contig.shape()[0];
+        blas_meta.K = right.shape()[0];
+        blas_meta.N = right.shape()[1];
+
+        if (left_locally_contig.strides()[1] == 1 && left_locally_contig.strides()[0] > 0) { // blas does not accept negative leading dims
+            blas_meta.lda = left_locally_contig.strides()[0];
+            blas_meta.left_op = MatrixTensorOp::Normal;
+        }
+        else if (left_locally_contig.strides()[0] == 1 && left_locally_contig.strides()[1] > 0) { // transposed
+            blas_meta.lda = left.strides()[1];
+            blas_meta.left_op = MatrixTensorOp::Transposed;
+        }
+        else {
+            // you CAN flatten into 2D (say it comes in as 2D) but it doesnt have lda=1 or ldb=1
+            left_locally_contig = left_locally_contig.contiguous();
+            blas_meta.lda = left_locally_contig.strides()[0];
+            blas_meta.left_op = MatrixTensorOp::Normal;
+        }
+        // left_locally_contig has whole graph of left
+
+        Tensor<T> safe_right = right; // has whole story of right
+        if (right.strides()[1] == 1 && right.strides()[0] > 0) { // blas does not accept negative leading dims
+            blas_meta.ldb = right.strides()[0];
+            blas_meta.right_op = MatrixTensorOp::Normal;
+        }
+        else if (right.strides()[0] == 1 && right.strides()[1] > 0) { // transposed
+            blas_meta.ldb = right.strides()[1];
+            blas_meta.right_op = MatrixTensorOp::Transposed;
+        }
+        else {
+            safe_right = right.contiguous();
+            blas_meta.ldb = right.strides()[0];
+            blas_meta.right_op = MatrixTensorOp::Normal;
+        }
+
+        blas_meta.ldc = blas_meta.N;
+
+        return std::make_pair(std::make_pair(std::move(left_locally_contig), std::move(safe_right)), blas_meta);
+    }
+
+    template <typename T>
+    inline auto infer_blas_batched_meta(Tensor<T> left, Tensor<T> right, bool accumulate) {
+        if (std::ssize(left.shape()) <= 2 || std::ssize(right.shape()) <= 2) {
+            throw std::runtime_error("left and right shapes in infer_blas_batched_meta must be >= 3D");
+        }
+
+        int64_t left_n_dim = std::ssize(left.shape());
+        int64_t right_n_dim = std::ssize(left.shape());
+        BMMMeta blas_meta;
+
+        if (accumulate) {
+            blas_meta.alpha = 1.0;
+            blas_meta.beta = 1.0;
+        }
+        else {
+            blas_meta.alpha = 1.0;
+            blas_meta.beta = 0.0;
+        }
+
+        std::vector<int64_t> left_batch_shape = std::vector<int64_t>(left.shape().begin(), left.shape().end() - 2);
+        std::vector<int64_t> left_batch_strides = std::vector<int64_t>(left.strides().begin(), left.strides().end() - 2);
+        FusedView init_left_fuse = fuse_dimensions(left_batch_shape, {&left_batch_strides});
+
+        Tensor<T> left_locally_contig;
+        if (std::ssize(init_left_fuse.shared_shape) != 1) { // unable to fuse into single batch dim
+            left_locally_contig = left.contiguous();
+            std::vector<int64_t> left_locally_contig_batch_shape(left_locally_contig.shape().begin(), left_locally_contig.shape().end() - 2);
+            std::vector<int64_t> left_locally_contig_batch_strides(left_locally_contig.strides().begin(), left_locally_contig.strides().end() - 2);
+            FusedView locally_contig_fuse = fuse_dimensions(left_locally_contig_batch_shape, {&left_locally_contig_batch_strides});
+
+            // PICK UP FROM HERE: LOCALLY_CONTIG_FUSE HOLDS FUSED BATCH DIM AND ITS STRIDE (X, B, T, H) -> (X*B, T, H)
             left_locally_contig.m_shape = locally_contig_fuse.shared_shape;
             left_locally_contig.m_strides = locally_contig_fuse.strides[0];
             left_locally_contig.m_shape.push_back(left.shape().back());
