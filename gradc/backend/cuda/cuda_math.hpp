@@ -22,6 +22,9 @@ namespace gradc {
             static void apply_arg_extr_operation(Tensor<int64_t>& out, const Tensor<T>& source, int64_t dim, ArgExtrOp op);
             template <typename T> 
             requires std::is_floating_point_v<T>
-            static void apply_batched_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const NMMMeta& blas_meta);
+            static void apply_normal_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const NMMMeta& blas_meta);
+            template<typename T>
+            requires std::is_floating_point_v<T>
+            static void apply_batched_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const BMMMeta& blas_meta);
     };
 }

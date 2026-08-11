@@ -62,12 +62,29 @@ namespace gradc {
     }
 
     template <typename T>
-    void Tensor<T>::accumulate_grad_matmul(const Tensor<T>& left, const Tensor<T>& right, NMMMeta& blas_meta, const std::vector<int64_t>& orig_shape) requires std::is_floating_point_v<T> {
+    void Tensor<T>::accumulate_grad_normal_matmul(const Tensor<T>& left, const Tensor<T>& right, NMMMeta& blas_meta, const std::vector<int64_t>& orig_shape) requires std::is_floating_point_v<T> {
         // why pass orig_shape?
         // what goes into matmul is flat. m_left and m_right. They have wrong shapes, but they share the same tensor state as before flattening.
         // They share states because the swaps were done via mutating member variables m_shape and m_strides, not .reshape() etc.
         // (exception: can be forced to be contiguous. Then it is sharing tensor state with A.contiguous() and not A. But still, issue persists)
         // Since they share TensorState, initializing grad of flat tensor means initializing grad of A or A.contiguous() what makes it the wrong shape (flat) 
+        Device target_device = infer_assert_device(*this, left, right);
+
+        if (!m_requires_grad) {return;}
+
+        if (!m_state->m_grad.has_value()) {
+            Tensor<T> local_grad = Tensor<T>(orig_shape, target_device, uninitialized);
+            blas_meta.beta = static_cast<T>(0.0);
+            dispatch_normal_gemm(target_device, local_grad, left, right, blas_meta);
+            m_state->m_grad = std::move(local_grad);
+        }
+        else {
+            dispatch_normal_gemm(target_device, m_state->m_grad.value(), left, right, blas_meta);
+        }
+    }
+
+    template <typename T>
+    void Tensor<T>::accumulate_grad_batched_matmul(const Tensor<T>& left, const Tensor<T>& right, BMMMeta& blas_meta, const std::vector<int64_t>& orig_shape) requires std::is_floating_point_v<T> {
         Device target_device = infer_assert_device(*this, left, right);
 
         if (!m_requires_grad) {return;}

@@ -345,7 +345,7 @@ namespace gradc {
         
         template <typename T>
         requires std::is_floating_point_v<T>
-        static void apply_batched_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const NMMMeta& blas_meta) {
+        static void apply_normal_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const NMMMeta& blas_meta) {
             CBLAS_TRANSPOSE op_left = (blas_meta.left_op == MatrixTensorOp::Normal) ? CblasNoTrans : CblasTrans;
             CBLAS_TRANSPOSE op_right = (blas_meta.right_op == MatrixTensorOp::Normal) ? CblasNoTrans : CblasTrans;
 
@@ -362,10 +362,50 @@ namespace gradc {
             blasint blas_ldc = static_cast<blasint>(blas_meta.ldc);
 
             if constexpr (std::is_same_v<T, float>) {
-                cblas_sgemm(CblasRowMajor, op_left, op_right, blas_M, blas_N, blas_K, blas_meta.alpha, p_left, blas_lda, p_right, blas_ldb, blas_meta.beta, p_out, blas_ldc);
+                cblas_sgemm(CblasRowMajor, op_left, op_right, blas_M, blas_N, blas_K, 
+                    blas_meta.alpha, p_left, blas_lda, 
+                    p_right, blas_ldb, blas_meta.beta, p_out, blas_ldc);
             }
             else if constexpr (std::is_same_v<T, double>) {
-                cblas_dgemm(CblasRowMajor, op_left, op_right, blas_M, blas_N, blas_K, blas_meta.alpha, p_left, blas_lda, p_right, blas_ldb, blas_meta.beta, p_out, blas_ldc);
+                cblas_dgemm(CblasRowMajor, op_left, op_right, blas_M, blas_N, blas_K, 
+                    blas_meta.alpha, p_left, blas_lda, 
+                    p_right, blas_ldb, blas_meta.beta, p_out, blas_ldc);
+            }
+        }
+
+        template <typename T>
+        requires std::is_floating_point_v<T>
+        static void apply_batched_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const BMMMeta& blas_meta) {
+            CBLAS_TRANSPOSE op_left = (blas_meta.left_op == MatrixTensorOp::Normal) ? CblasNoTrans : CblasTrans;
+            CBLAS_TRANSPOSE op_right = (blas_meta.right_op == MatrixTensorOp::Normal) ? CblasNoTrans : CblasTrans;
+
+            T* p_out = out._get_storage()->data() + out.m_offset;
+            const T* p_left = left._get_storage()->data() + left.m_offset;
+            const T* p_right = right._get_storage()->data() + right.m_offset;
+
+            blasint blas_M = static_cast<blasint>(blas_meta.M);
+            blasint blas_N = static_cast<blasint>(blas_meta.N);
+            blasint blas_K = static_cast<blasint>(blas_meta.K);
+
+            blasint blas_lda = static_cast<blasint>(blas_meta.lda);
+            blasint blas_ldb = static_cast<blasint>(blas_meta.ldb);
+            blasint blas_ldc = static_cast<blasint>(blas_meta.ldc);
+
+            for (int64_t i = 0; i < blas_meta.batch_count; ++i) {
+                T* current_out = p_out + (i * blas_meta.stride_c);
+                const T* current_left = p_left + (i * blas_meta.stride_a);
+                const T* current_right = p_right + (i * blas_meta.stride_a);
+
+                if constexpr (std::is_same_v<T, float>) {
+                    cblas_sgemm(CblasRowMajor, op_left, op_right, blas_M, blas_N, blas_K, 
+                        blas_meta.alpha, current_left, blas_lda, 
+                        current_right, blas_ldb, blas_meta.beta, current_out, blas_ldc);
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    cblas_dgemm(CblasRowMajor, op_left, op_right, blas_M, blas_N, blas_K,
+                         blas_meta.alpha, current_left, blas_lda, 
+                         current_right, blas_ldb, blas_meta.beta, current_out, blas_ldc);
+                }
             }
         }
         

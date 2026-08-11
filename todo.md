@@ -90,6 +90,7 @@ DONE MSELossNode
 DONE SoftmaxCrossEntropyNode restricted for floats
 DONE SoftmaxCELN bwd for targets one-hot encoded
 DONE DropoutNode
+- Make normal matmul work for 2D @ 2D
 - BMMNode
 - infer bmm meta func and BMMMeta 
 - ExtractPathesNode (backward pass crash) - purely util, like argmin/argmax - Im2Col or smth

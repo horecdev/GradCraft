@@ -493,7 +493,7 @@ namespace gradc {
                 m_right.realize();
 
                 Tensor<T> result = Tensor<T>(m_blas_meta.result_shape, target_device, uninitialized);
-                dispatch_batched_gemm(target_device, result, m_left, m_right, m_blas_meta);
+                dispatch_normal_gemm(target_device, result, m_left, m_right, m_blas_meta);
 
                 return result;
             }
@@ -514,7 +514,7 @@ namespace gradc {
                 // p_out is m_left.grad. It is contiguous, of shape (B, T, K). infer function will infer ldc to be K
 
                 // GRAD FLAT BELOW IS NOT MODIFIED. IT GETS BASICALLY REPLICATED INSIDE ANOTHER TENSOR AND RETURNED. ITS BECAUSE ITS CONTIGUOUS AND 2D ALREADY
-                std::pair<std::pair<Tensor<T>, Tensor<T>>, NMMMeta> dleft_gemm_prep = infer_blas_meta(std::move(grad_flat), std::move(W_T), true);
+                std::pair<std::pair<Tensor<T>, Tensor<T>>, NMMMeta> dleft_gemm_prep = infer_blas_normal_meta(std::move(grad_flat), std::move(W_T), true);
                 NMMMeta dleft_blas_meta = dleft_gemm_prep.second;
                 grad_flat = std::move(dleft_gemm_prep.first.first);
                 W_T = std::move(dleft_gemm_prep.first.second);
@@ -522,13 +522,13 @@ namespace gradc {
                 // For dL/dW you do (K, M) @ (M, N) = (K, N)
 
                 // HERE GRAD_FLAT IS ALSO NOT MODIFIED. 
-                std::pair<std::pair<Tensor<T>, Tensor<T>>, NMMMeta> dright_gemm_prep = infer_blas_meta(std::move(X_T), std::move(grad_flat), true);
+                std::pair<std::pair<Tensor<T>, Tensor<T>>, NMMMeta> dright_gemm_prep = infer_blas_normal_meta(std::move(X_T), std::move(grad_flat), true);
                 NMMMeta dright_blas_meta = dright_gemm_prep.second;
                 X_T = std::move(dright_gemm_prep.first.first);
                 grad_flat = std::move(dright_gemm_prep.first.second);
 
-                m_left.accumulate_grad_matmul(grad_flat, W_T, dleft_blas_meta, m_left_original_shape);
-                m_right.accumulate_grad_matmul(X_T, grad_flat, dright_blas_meta, m_right.shape());
+                m_left.accumulate_grad_normal_matmul(grad_flat, W_T, dleft_blas_meta, m_left_original_shape);
+                m_right.accumulate_grad_normal_matmul(X_T, grad_flat, dright_blas_meta, m_right.shape());
             }
 
             std::vector<TensorStateBase*> get_input_states() override {
@@ -537,7 +537,58 @@ namespace gradc {
     };
 
     template <typename T>
-    class BatchedMatMulnode : public Node<T> {
+    class BatchedMatMulNode : public Node<T> {
+        private:
+            Tensor<T> m_left;
+            Tensor<T> m_right;
+            BMMMeta m_blas_meta;
+            // left, right are already 3D and good dims for BLAS. No contig nodes will be attached.
+            std::vector<int64_t> m_left_original_shape;
+            std::vector<int64_t> m_right_original_shape;
 
+        public:
+            BatchedMatMulNode<T>(Tensor<T> left, Tensor<T> right, BMMMeta blas_meta, std::vector<int64_t> left_original_shape, std::vector<int64_t> right_original_shape)
+             : m_left(std::move(left)), m_right(std::move(right)), m_blas_meta(std::move(blas_meta)), m_left_original_shape(std::move(left_original_shape)), m_right_original_shape(right_original_shape){}
+            
+            Tensor<T> realize() override {
+                Device target_device = m_left.device(); 
+
+                m_left.realize();
+                m_right.realize();
+
+                Tensor<T> result = Tensor<T>(m_blas_meta.result_shape, target_device, uninitialized);
+                dispatch_batched_gemm(target_device, result, m_left, m_right, m_blas_meta);
+
+                return result;
+            }
+
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
+                // grad can be 4D
+
+                // dL/dx = out_grad @ W.T
+                // dL/dW = X.T @ out_grad
+                Tensor<T> grad_batched = lobotomized_reshape_view(out_grad, {m_blas_meta.batch_count, m_blas_meta.M, m_blas_meta.N});
+                Tensor<T> W_T = lobotomized_transpose_view(m_right, 1, 2);
+                Tensor<T> X_T = lobotomized_transpose_view(m_left, 1, 2);
+
+                // GRAD BATCHED BELOW IS NOT MODIFIED. IT GETS MOVED AROUND BC ITS CONTIGUOUS
+                std::pair<std::pair<Tensor<T>, Tensor<T>>, BMMMeta> dleft_gemm_prep = infer_blas_batched_meta(std::move(grad_batched), std::move(W_T), true);
+                BMMMeta dleft_blas_meta = dleft_gemm_prep.second;
+                grad_batched = std::move(dleft_gemm_prep.first.first);
+                W_T = std::move(dleft_gemm_prep.first.second);
+
+                // GRAD BATCHED BELOW IS NOT MODIFIED.
+                std::pair<std::pair<Tensor<T>, Tensor<T>>, BMMMeta> dright_gemm_prep = infer_blas_batched_meta(std::move(X_T), std::move(grad_batched), true);
+                BMMMeta dright_blas_meta = dright_gemm_prep.second;
+                X_T = std::move(dright_gemm_prep.first.first);
+                grad_batched = std::move(dright_gemm_prep.first.second);
+
+                m_left.accumulate_grad_batched_matmul(grad_batched, W_T, dleft_blas_meta, m_left_original_shape);
+                m_right.accumulate_grad_batched_matmul(X_T, grad_batched, dright_blas_meta, m_right_original_shape);
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_left._get_state_base(), m_right._get_state_base()};
+            }
     };
 } 

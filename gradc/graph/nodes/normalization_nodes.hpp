@@ -24,8 +24,9 @@ namespace gradc {
             Tensor<T> realize() override {
                 Device target_device = m_parent.device();
 
+                bool can_mutate_parent = m_parent.is_exclusive();
                 Tensor<T> x_minus_mean;
-                if (m_parent.is_exclusive()) {
+                if (can_mutate_parent) {
                     x_minus_mean = m_parent;
                 }
                 else {
@@ -38,7 +39,7 @@ namespace gradc {
                 dispatch(target_device, ReduceOp::Sum, m_red_meta, mean, m_parent);
                 dispatch(target_device, BinaryOpInPlace::Div, mean, Tensor<T>(static_cast<T>(m_red_meta.reduced_vol), target_device));
                 
-                if (m_parent.is_exclusive()) {
+                if (can_mutate_parent) {
                     dispatch(target_device, BinaryOpInPlace::Sub, x_minus_mean, mean);
                 }
                 else {

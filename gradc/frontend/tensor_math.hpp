@@ -382,16 +382,38 @@ namespace gradc {
 
         bool requires_grad = p_left.requires_grad() || p_right.requires_grad();
 
-        std::pair<std::pair<Tensor<T>, Tensor<T>>, NMMMeta> gemm_prep = infer_blas_meta(std::move(p_left), std::move(p_right), false);
+        std::pair<std::pair<Tensor<T>, Tensor<T>>, NMMMeta> gemm_prep = infer_blas_normal_meta(std::move(p_left), std::move(p_right), false);
         NMMMeta blas_meta = gemm_prep.second;
         Tensor<T> safe_left = std::move(gemm_prep.first.first);
         Tensor<T> safe_right = std::move(gemm_prep.first.second);
 
         Tensor<PromotedT> result = Tensor<PromotedT>(blas_meta.result_shape, requires_grad, lazy, target_device);
-        result.m_state->m_creation_op = std::make_unique<NormalMatMulNode<PromotedT>>(std::move(safe_left), std::move(safe_right), blas_meta, original_left_shape);
+        result.m_state->m_creation_op = std::make_unique<NormalMatMulNode<PromotedT>>(std::move(safe_left), std::move(safe_right), std::move(blas_meta), std::move(original_left_shape));
         return result;
     }
 
+    template <typename T, typename U>
+    requires (std::is_floating_point_v<T> && std::is_floating_point_v<U>)
+    inline Tensor<T> bmm(Tensor<T> left, Tensor<U> right) {
+        Device target_device = infer_assert_device(left, right);
+        
+        using PromotedT = std::common_type_t<T, U>;
+        auto [p_left, p_right] = promote_to_common(std::move(left), std::move(right));
+
+        std::vector<int64_t> original_left_shape = p_left.shape();
+        std::vector<int64_t> original_right_shape = p_right.shape();
+
+        bool requires_grad = p_left.requires_grad() || p_right.requires_grad();
+
+        std::pair<std::pair<Tensor<T>, Tensor<T>>, BMMMeta> gemm_prep = infer_blas_batched_meta(std::move(p_left), std::move(p_right), false);
+        BMMMeta blas_meta = gemm_prep.second;
+        Tensor<T> safe_left = std::move(gemm_prep.first.first);
+        Tensor<T> safe_right = std::move(gemm_prep.first.second);
+
+        Tensor<PromotedT> result = Tensor<PromotedT>(blas_meta.result_shape, requires_grad, lazy, target_device); 
+        result.m_state->m_creation_op = std::make_unique<BatchedMatMulNode<PromotedT>>(std::move(safe_left), std::move(safe_right), std::move(blas_meta), std::move(original_left_shape), std::move(original_right_shape));
+        return result;
+    }
 
     #pragma endregion OTHER
 }

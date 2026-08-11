@@ -148,6 +148,8 @@ namespace gradc {
         int64_t stride_a;
         int64_t stride_b;
         int64_t stride_c;
+
+        int64_t batch_count;
     };
 
 

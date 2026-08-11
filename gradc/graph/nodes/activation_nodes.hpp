@@ -279,7 +279,7 @@ namespace gradc {
                 dispatch(target_device, BinaryOpInPlace::Mul, mask, Tensor<T>(static_cast<T>(1.0) / (static_cast<T>(1.0) - m_p), target_device));
 
                 if (m_parent.requires_grad()) {
-                    m_mask = mask;
+                    m_mask = mask; // must be in the middle cuz we got early return
                 }
 
                 if (m_parent.is_exclusive()) {
@@ -291,6 +291,8 @@ namespace gradc {
                 Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
                 dispatch(target_device, BinaryOp::Mul, result, m_parent, mask);
                 
+                
+
                 return result;
             }
 

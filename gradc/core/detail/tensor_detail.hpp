@@ -143,7 +143,7 @@ namespace gradc {
             blas_meta.left_op = MatrixTensorOp::Normal;
         }
         else if (left_locally_contig.strides()[0] == 1 && left_locally_contig.strides()[1] > 0) { // transposed
-            blas_meta.lda = left.strides()[1];
+            blas_meta.lda = left_locally_contig.strides()[1];
             blas_meta.left_op = MatrixTensorOp::Transposed;
         }
         else {
@@ -181,7 +181,7 @@ namespace gradc {
         }
 
         int64_t left_n_dim = std::ssize(left.shape());
-        int64_t right_n_dim = std::ssize(left.shape());
+        int64_t right_n_dim = std::ssize(right.shape());
         BMMMeta blas_meta;
 
         if (accumulate) {
@@ -252,51 +252,65 @@ namespace gradc {
             right_locally_contig.m_strides.push_back(right.strides()[right_n_dim - 1]);
         }
 
-        // now both tensors are B, T, C. 
+        // now both tensors are B, T, C. Both have ENTIRE story of left and right
 
         // START OFF FROM HERE (MORE CONTIGUITY FORCING IF NONE OF THE T, C STRIDES ARE 1, INFERING LDA, TRANSPOSALS)
 
+        if (left_locally_contig.shape()[0] != right_locally_contig.shape()[0]) {
+            throw std::runtime_error("Batch size mistmatch during BMM");
+        }
+
+        blas_meta.batch_count = left_locally_contig.shape()[0];
+        
         std::vector<int64_t> result_shape = left.shape();
-        result_shape[n_dim - 1] = right.shape()[1];
+        result_shape.back() = right.shape().back();
 
         blas_meta.result_shape = result_shape;
-        blas_meta.M = left_locally_contig.shape()[0];
-        blas_meta.K = right.shape()[0];
-        blas_meta.N = right.shape()[1];
+        blas_meta.M = left_locally_contig.shape()[1];
+        blas_meta.K = right_locally_contig.shape()[1];
+        blas_meta.N = right_locally_contig.shape()[2];
 
-        if (left_locally_contig.strides()[1] == 1 && left_locally_contig.strides()[0] > 0) { // blas does not accept negative leading dims
-            blas_meta.lda = left_locally_contig.strides()[0];
+        if (left_locally_contig.strides()[2] == 1 && left_locally_contig.strides()[1] > 0 && left_locally_contig.strides()[0] > 0) {
+            blas_meta.lda = left_locally_contig.strides()[1];
             blas_meta.left_op = MatrixTensorOp::Normal;
+            blas_meta.stride_a = left_locally_contig.strides()[0];
         }
-        else if (left_locally_contig.strides()[0] == 1 && left_locally_contig.strides()[1] > 0) { // transposed
-            blas_meta.lda = left.strides()[1];
+        else if (left_locally_contig.strides()[1] == 1 && left_locally_contig.strides()[2] > 0 && left_locally_contig.strides()[0] > 0) {
+            blas_meta.lda = left_locally_contig.strides()[2];
             blas_meta.left_op = MatrixTensorOp::Transposed;
+            blas_meta.stride_a = left_locally_contig.strides()[0];
         }
         else {
-            // you CAN flatten into 2D (say it comes in as 2D) but it doesnt have lda=1 or ldb=1
             left_locally_contig = left_locally_contig.contiguous();
-            blas_meta.lda = left_locally_contig.strides()[0];
+            blas_meta.lda = left_locally_contig.strides()[1];
             blas_meta.left_op = MatrixTensorOp::Normal;
+            blas_meta.stride_a = left_locally_contig.strides()[0];
         }
-        // left_locally_contig has whole graph of left
+        // left_locally_contig now is 100% viable for matmul 
 
-        Tensor<T> safe_right = right; // has whole story of right
-        if (right.strides()[1] == 1 && right.strides()[0] > 0) { // blas does not accept negative leading dims
-            blas_meta.ldb = right.strides()[0];
+        if (right_locally_contig.strides()[2] == 1 && right_locally_contig.strides()[1] > 0 && right_locally_contig.strides()[0] > 0) {
+            blas_meta.ldb = right_locally_contig.strides()[1];
             blas_meta.right_op = MatrixTensorOp::Normal;
+            blas_meta.stride_b = right_locally_contig.strides()[0];
         }
-        else if (right.strides()[0] == 1 && right.strides()[1] > 0) { // transposed
-            blas_meta.ldb = right.strides()[1];
+        else if (right_locally_contig.strides()[1] == 1 && right_locally_contig.strides()[2] > 0 && right_locally_contig.strides()[0] > 0) {
+            blas_meta.ldb = right_locally_contig.strides()[2];
             blas_meta.right_op = MatrixTensorOp::Transposed;
+            blas_meta.stride_b = right_locally_contig.strides()[0];
         }
         else {
-            safe_right = right.contiguous();
-            blas_meta.ldb = right.strides()[0];
+            right_locally_contig = right_locally_contig.contiguous();
+            blas_meta.ldb = right_locally_contig.strides()[1];
             blas_meta.right_op = MatrixTensorOp::Normal;
+            blas_meta.stride_b = right_locally_contig.strides()[0];
         }
+        // right_locally_contig now is 100% viable for matmul 
 
         blas_meta.ldc = blas_meta.N;
+        blas_meta.stride_c = blas_meta.M * blas_meta.N;
 
-        return std::make_pair(std::make_pair(std::move(left_locally_contig), std::move(safe_right)), blas_meta);
+        
+
+        return std::make_pair(std::make_pair(std::move(left_locally_contig), std::move(right_locally_contig)), blas_meta);
     }
 }
