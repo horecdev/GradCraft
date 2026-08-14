@@ -1,25 +1,35 @@
 #pragma once
 
-#include "tensor.hpp"
+#include "gradc/core/tensor.hpp"
 
 namespace gradc {
     
     template <typename T>
+    requires std::is_floating_point_v<T>
     class Parameter {
         private:
             Tensor<T> m_tensor;
+            bool m_no_decay = false;
         public:
-        // TODO: FIGURE OUT ALL THESE CONVERSIONS ON PARAMS, TURN PARAMETER INTO TENSOR WHEN FUNC TAKES BY VALUE
             Parameter() = default;
             Parameter(const Tensor<T>& tensor) : m_tensor(tensor) {m_tensor.set_requires_grad(true);} // copy tensor constructor
             Parameter(Tensor<T>&& tensor) : m_tensor(std::move(tensor)) {m_tensor.set_requires_grad(true);} // move tensor constructor
-            // NO NEED FOR ASSIGNMENT OPERATORS BECAUSE YOU WILL NEVER CREATE PARAMETER AND THEN ASSIGN IT A VALUE / CHANGE EXISTING VALUE
             
-            Parameter(Parameter<T>&& other) { // move constructor
-                m_tensor = std::move(other.m_tensor);
-            }
+            Parameter(Parameter<T>&& other) noexcept = default;
+            Parameter& operator=(Parameter<T>&& other) noexcept = default;
 
             Parameter(const Parameter<T>& other) = delete; // cannot copy a parameter - its useless we only care about underlying tensors.
+            Parameter& operator=(const Parameter<T>& other) = delete;
+
+            operator Tensor<T>() {
+                return m_tensor;
+            }
+            operator Tensor<T>() const {
+                return m_tensor;
+            }
+            
+            Tensor<T>& tensor() {return m_tensor;}
+            const Tensor<T>& tensor() const {return m_tensor;}
 
             std::optional<Tensor<T>> grad() const {
                 return m_tensor.grad();
@@ -29,12 +39,20 @@ namespace gradc {
                 m_tensor.zero_grad();
             }
 
-            bool requires_grad() {
+            bool requires_grad() const {
                 return m_tensor.requires_grad();
             }
 
             void set_requires_grad(bool value) {
                 m_tensor.set_requires_grad(value);
+            }
+
+            bool no_decay() const {
+                return m_no_decay;
+            }
+
+            bool set_no_decay(bool value) {
+                m_no_decay = value;
             }
     };
 }

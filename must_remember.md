@@ -48,3 +48,4 @@ Say X depends on A and B. A is exclusive in some way. topo_order was built, its 
 A->backward() runs but the tensor dereference crashes because it was wiped.
 24) On mutating parents in realize(): If its exclusive and its not used for the backward pass, you can even return it. You dont care about the storage. The key is
 to keep it the same object (can be without storage) to be able to call .accumulate_grad
+26) What goes out of .to() is ALWAYS CONTIGUOUS
