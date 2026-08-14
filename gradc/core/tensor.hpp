@@ -130,6 +130,10 @@ namespace gradc {
                 return vol;
             }
 
+            bool is_dense() {
+                return (volume() == m_state->m_storage->size()) && is_contiguous();
+            }
+
             // SETTERS
             void set_data(std::initializer_list<T> data);
             

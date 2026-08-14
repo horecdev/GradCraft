@@ -111,7 +111,7 @@ namespace gradc {
 
     template <typename T>
     Tensor<T> Tensor<T>::to(Device device) const {
-        if (device == this->device()) {return this->is_contiguous() ? *this : this->contiguous();}
+        if (device == this->device()) {return *this;}
 
         if (!this->is_contiguous()) {
             Tensor<T> forced_contiguous = this->contiguous(); // compact data before sending over PCIE bus (dont copy whole underlying array)

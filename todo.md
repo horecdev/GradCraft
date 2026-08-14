@@ -101,10 +101,11 @@ DONE zero_grad() in module
 DONE .to() in module
 DONE base dir in NN/ folder for nn stuff
 DONE Write initializers
-- Review state dict logic provided the .to() contiguity
+DONE Restrict parameters to be dense
+- Save checkpoint
+- Load checkpoint
 - Write linear layer
 - Write ReLU layer
-- Write loading/saving from - some file class
 - ExtractPathesNode (backward pass crash) - purely util, like argmin/argmax - Im2Col or smth
 - Compile
 - Parameter (with requires_grad = true)

@@ -10,10 +10,16 @@ namespace gradc {
         private:
             Tensor<T> m_tensor;
             bool m_no_decay = false;
+
+            void validate_dense_tensor() const {
+            if (!m_tensor.is_dense()) {
+                throw std::runtime_error("Parameters must be dense tensors (contiguous, volume == storage size).");
+            }
+        }
         public:
             Parameter() = default;
-            Parameter(const Tensor<T>& tensor) : m_tensor(tensor) {m_tensor.set_requires_grad(true);} // copy tensor constructor
-            Parameter(Tensor<T>&& tensor) : m_tensor(std::move(tensor)) {m_tensor.set_requires_grad(true);} // move tensor constructor
+            Parameter(const Tensor<T>& tensor) : m_tensor(tensor) {validate_dense_tensor(); m_tensor.set_requires_grad(true);} // copy tensor constructor
+            Parameter(Tensor<T>&& tensor) : m_tensor(std::move(tensor)) {validate_dense_tensor(); m_tensor.set_requires_grad(true);} // move tensor constructor
             
             Parameter(Parameter<T>&& other) noexcept = default;
             Parameter& operator=(Parameter<T>&& other) noexcept = default;

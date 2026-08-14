@@ -70,6 +70,9 @@ namespace gradc {
                 for (const auto& [param_name, param_ptr] : named_params) {
                     Tensor<T> moved_tensor = param_ptr->tensor().to(device); 
                     moved_tensor.realize();
+                    if (!moved_tensor.is_perfect()) { // cannot save frankensteins for any reason. 
+                        throw std::runtime_error("Cannot save '" + param_name + "'. Only tensors that are contiguous  && volume == storage size can be saved.");
+                    }
                     param_ptr->tensor() = moved_tensor.detach();
                     // returned state dict is totally detached (requires_grad = false, no graph)
                 }
@@ -89,7 +92,7 @@ namespace gradc {
                         param_ptr->tensor() = std::move(leaf_tensor);
                     } 
                     else {
-                        std::cout << "Warning: " + param_name + " is in the model, but couldn't find its counterpart in state_dict during loading." << std::endl;
+                        std::cout << "Warning: '" + param_name + "' is in the model, but couldn't find its counterpart in state_dict during loading." << std::endl;
                     }
                 }
             }
