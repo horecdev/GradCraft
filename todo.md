@@ -109,10 +109,18 @@ DONE Write linear layer
 DONE Write ReLU layer
 DONE Optimizer class to inherit from
 DONE Write SGD with dispatch in place if grad available.
-- Write SGDMomentum
+DONE Write SGDMomentum
 - Write RMSProp
 - Write Adam
 - Write AdamW
+- Pass param names map into optimizers that require saving (ptr -> name)
+DONE virtual functions inside base optimizer class that have default behavior (so SGD doenst crash)
+- assert devices on parameters in optimizer (base class memeber func)
+- Write saving optimizer state (state_dict(Device))
+- Write loading optimizer state (state_dict)
+- Write .to() for optimizers (remember to move m_lr and m_beta etc)
+- Write the checkpointing save for optims
+- Write the checkpointing load for optims
 - ExtractPathesNode (backward pass crash) - purely util, like argmin/argmax - Im2Col or smth
 - Compile
 - add multithreading with OpenMP (no writing mutexes and shit)
