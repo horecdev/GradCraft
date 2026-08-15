@@ -41,6 +41,10 @@ namespace gradc {
                 return m_tensor.grad();
             }
 
+            Device device() const {
+                return m_tensor.device();
+            }
+
             void zero_grad()  {
                 m_tensor.zero_grad();
             }

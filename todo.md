@@ -107,9 +107,12 @@ DONE Save checkpoint
 DONE Load checkpoint
 DONE Write linear layer
 DONE Write ReLU layer
-- Optimizer class to inherit from
-- Write SGD with dispatch in place if grad available.
+DONE Optimizer class to inherit from
+DONE Write SGD with dispatch in place if grad available.
 - Write SGDMomentum
+- Write RMSProp
+- Write Adam
+- Write AdamW
 - ExtractPathesNode (backward pass crash) - purely util, like argmin/argmax - Im2Col or smth
 - Compile
 - add multithreading with OpenMP (no writing mutexes and shit)
