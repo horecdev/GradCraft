@@ -112,8 +112,5 @@ namespace gradc {
                     param_ptr->tensor() = std::move(leaf_tensor); // parameter has the detached tensor
                 }
             }
-
-                
-
     };
 }

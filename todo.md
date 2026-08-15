@@ -92,6 +92,7 @@ DONE SoftmaxCELN bwd for targets one-hot encoded
 DONE DropoutNode
 DONE BMMNode
 DONE infer bmm meta func and BMMMeta 
+DONE Parameter class
 DONE no_decay in params
 DONE named_parameters() / parameters() function
 DONE load/get state dict from module
@@ -102,14 +103,15 @@ DONE .to() in module
 DONE base dir in NN/ folder for nn stuff
 DONE Write initializers
 DONE Restrict parameters to be dense
-- Save checkpoint
-- Load checkpoint
-- Write linear layer
-- Write ReLU layer
+DONE Save checkpoint
+DONE Load checkpoint
+DONE Write linear layer
+DONE Write ReLU layer
+- Optimizer class to inherit from
+- Write SGD with dispatch in place if grad available.
+- Write SGDMomentum
 - ExtractPathesNode (backward pass crash) - purely util, like argmin/argmax - Im2Col or smth
 - Compile
-- Parameter (with requires_grad = true)
-- Optimzier class - write RMSProp, Adam, AdamW, SGD
 - add multithreading with OpenMP (no writing mutexes and shit)
 - Create a diffusion transformer final proof project 
 - Create a big GPT for coding himself (finetune maybe?)
