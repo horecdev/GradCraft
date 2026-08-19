@@ -57,4 +57,25 @@ namespace gradc {
                 }
             }
     };
+
+    template <typename T>
+    class EmbedNode : public Node<T> {
+        private:
+            Tensor<int64_t> m_indices;
+            Tensor<T> m_embeddings;
+            std::vector<int64_t> m_result_shape;
+        public:
+            EmbedNode(Tensor<int64_t> indices, Tensor<T> embeddings, std::vector<int64_t> result_shape) : m_indices(std::move(indices)), m_embeddings(std::move(embeddings)), m_result_shape(std::move(result_shape)) {}
+
+            Tensor<T> realize() override {
+                Device target_device = m_indices.device();
+                Tensor<T> result = Tensor<T>(m_result_shape, target_device, uninitialized);
+
+                dispatch_embed(target_device, result, indices, embeddings);
+            }
+
+            void backward(const Tensor<T>& out_grad) {
+
+            }
+    }
 }

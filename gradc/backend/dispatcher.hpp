@@ -133,4 +133,14 @@ namespace gradc {
             CUDAMath::apply_batched_gemm(out, left, right, blas_meta);
         }
     }
+
+    template <typename T>
+    inline void dispatch_embed(Device device, Tensor<T>& out, const Tensor<int64_t>& indices, const Tensor<T>& embeddings) {
+        if (device.is_cpu()) {
+            CPUBackend::apply_embed(out, indices, embeddings);
+        }
+        else if (device.is_cuda()) {
+            CUDAMath::apply_embed(out, indices, embeddings);
+        }
+    }
 }

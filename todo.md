@@ -110,17 +110,22 @@ DONE Write ReLU layer
 DONE Optimizer class to inherit from
 DONE Write SGD with dispatch in place if grad available.
 DONE Write SGDMomentum
-- Write RMSProp
-- Write Adam
-- Write AdamW
-- Pass param names map into optimizers that require saving (ptr -> name)
+DONE Write RMSProp
+DONE Use .to() on scalars in optimizers
+DONE Write AdamW (weight decay math after main param update)
+DONE Func in optimizers to swap out params for params with new pointers (named)
+DONE Sync function so that optim state updates to device params are on
 DONE virtual functions inside base optimizer class that have default behavior (so SGD doenst crash)
-- assert devices on parameters in optimizer (base class memeber func)
-- Write saving optimizer state (state_dict(Device))
-- Write loading optimizer state (state_dict)
-- Write .to() for optimizers (remember to move m_lr and m_beta etc)
-- Write the checkpointing save for optims
-- Write the checkpointing load for optims
+DONE assert devices on parameters in optimizer (base class memeber func)
+DONE Write state_dict() for optims
+DONE Write load_state_dict(state_dict) for optims
+DONE update lr function for optimizers (make lr be this->m_lr)
+- embed operation (memcpy) both cpu and cuda
+- embed gather (backprop) += into right slots (cpu and cuda)
+- EmbedNode
+- embed frontend
+
+- .to_async or smth for .to() during training when reading memory. Keep your current cudaMemcpy not ASYNC, just make it async here (one time vs multi time calls)
 - ExtractPathesNode (backward pass crash) - purely util, like argmin/argmax - Im2Col or smth
 - Compile
 - add multithreading with OpenMP (no writing mutexes and shit)

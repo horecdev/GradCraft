@@ -76,12 +76,12 @@ namespace gradc {
                 return dict;
             }
 
-            void load_state_dict(const std::unordered_map<std::string, Tensor<T>>& dict) {
+            void load_state_dict(const std::unordered_map<std::string, Tensor<T>>& state_dict) {
                 // takes your map, does key search, runs .to() and detaches, moves the detached device-aware tensor into the param used across the network
                 auto current_named_params = named_parameters();
                 for (const auto& [param_name, param_ptr] : current_named_params) {
-                    auto it = dict.find(param_name);
-                    if (it != dict.end()) {
+                    auto it = state_dict.find(param_name);
+                    if (it != state_dict.end()) {
                         Tensor<T> moved_tensor = it->second.to(param_ptr->tensor().device());
                         moved_tensor.realize();
                         Tensor<T> leaf_tensor = moved_tensor.detach();
