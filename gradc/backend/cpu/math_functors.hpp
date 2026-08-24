@@ -79,7 +79,7 @@ namespace gradc::cpu_functors {
         template <typename T>
         struct BSqrt {
             T operator()(T grad, T x) const {
-                return static_cast<T>(0.5) / std::sqrt(x) * grad;
+                return static_cast<T>(0.5) / static_cast<T>(std::sqrt(x)) * grad;
             }
         };
 

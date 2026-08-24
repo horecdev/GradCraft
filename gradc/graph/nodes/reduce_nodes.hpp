@@ -174,7 +174,7 @@ namespace gradc {
     };
 
     template <typename T>
-    class ArgMaxNode : public Node<T> {
+    class ArgMaxNode : public Node<int64_t> {
         private:
             Tensor<T> m_parent;
             std::vector<int64_t> m_result_shape;
@@ -182,17 +182,17 @@ namespace gradc {
         public:
             ArgMaxNode(Tensor<T> parent, std::vector<int64_t> result_shape, int64_t dim) : m_parent(std::move(parent)), m_result_shape(std::move(result_shape)), m_dim(dim) {}
             
-            Tensor<T> realize() override {
+            Tensor<int64_t> realize() override {
                 m_parent.realize();
                 Device target_device = m_parent.device();
 
-                Tensor<T> result = Tensor<T>(m_result_shape,target_device, uninitialized);
+                Tensor<int64_t> result = Tensor<int64_t>(m_result_shape,target_device, uninitialized);
                 dispatch(target_device, ArgExtrOp::ArgMax, m_dim, result, m_parent);
 
                 return result;
             }
 
-            void backward([[maybe_unused]] const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
+            void backward([[maybe_unused]] const Tensor<int64_t>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
                     throw std::runtime_error("ArgMax parent cannot require grad");
                 }
@@ -204,7 +204,7 @@ namespace gradc {
     };
 
     template <typename T>
-    class ArgMinNode : public Node<T> {
+    class ArgMinNode : public Node<int64_t> {
         private:
             Tensor<T> m_parent;
             std::vector<int64_t> m_result_shape;
@@ -212,17 +212,17 @@ namespace gradc {
         public:
             ArgMinNode(Tensor<T> parent, std::vector<int64_t> result_shape, int64_t dim) : m_parent(std::move(parent)), m_result_shape(std::move(result_shape)), m_dim(dim) {}
             
-            Tensor<T> realize() override {
+            Tensor<int64_t> realize() override {
                 m_parent.realize();
                 Device target_device = m_parent.device();
 
-                Tensor<T> result = Tensor<T>(m_result_shape, target_device, uninitialized);
+                Tensor<int64_t> result = Tensor<int64_t>(m_result_shape, target_device, uninitialized);
                 dispatch(target_device, ArgExtrOp::ArgMin, m_dim, result, m_parent);
 
                 return result;
             }
 
-            void backward([[maybe_unused]] const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
+            void backward([[maybe_unused]] const Tensor<int64_t>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_parent.requires_grad()) {
                     throw std::runtime_error("ArgMin parent cannot require grad");
                 }

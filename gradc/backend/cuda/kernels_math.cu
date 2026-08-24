@@ -658,7 +658,7 @@ namespace gradc {
             
             int64_t token_id = p_indices[indices_offset + token_pos];
 
-            atomicAdd(&p_dembeds[token_id * embed_vol + embed_dim_idx], p_out_grad[linear_idx]);
+            cuda_functors::RED::Sum<T>().atomic(&p_dembeds[token_id * embed_vol + embed_dim_idx], p_out_grad[linear_idx]);
         }
     }
 
@@ -687,7 +687,7 @@ namespace gradc {
 
             int64_t token_id = p_indices[idx_strided_idx];
 
-            atomicAdd(&p_dembeds[token_id * embed_vol + embed_dim_idx], p_out_grad[linear_idx]);
+            cuda_functors::RED::Sum<T>().atomic(&p_dembeds[token_id * embed_vol + embed_dim_idx], p_out_grad[linear_idx]);
         }
     }
 
@@ -786,7 +786,9 @@ namespace gradc {
         template void CUDAMath::apply_unary_out_of_place<T>(Tensor<T>&, const Tensor<T>&, UnaryOp); \
         template void CUDAMath::apply_unary_in_place<T>(Tensor<T>&, UnaryOpInPlace); \
         template void CUDAMath::apply_reduction_operation<T>(Tensor<T>&, const Tensor<T>&, const RedMeta&, ReduceOp); \
-        template void CUDAMath::apply_arg_extr_operation<T>(Tensor<int64_t>&, const Tensor<T>&, int64_t, ArgExtrOp);
+        template void CUDAMath::apply_arg_extr_operation<T>(Tensor<int64_t>&, const Tensor<T>&, int64_t, ArgExtrOp); \
+        template void CUDAMath::apply_embed<T>(Tensor<T>&, const Tensor<int64_t>&, const Tensor<T>&, int64_t); \
+        template void CUDAMath::apply_scatter_add(Tensor<T>&, const Tensor<int64_t>&, const Tensor<T>&, int64_t);
 
     #define INSTANTIATE_CAST(OutT, InT) \
         template void CUDAMath::apply_cast_out_of_place<OutT, InT>(Tensor<OutT>&, const Tensor<InT>&);

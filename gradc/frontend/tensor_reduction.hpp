@@ -43,7 +43,7 @@ namespace gradc {
         std::vector<int64_t> red_axes = std::vector<int64_t>({dim});
         RedMeta red_meta = infer_red_meta(m_shape, red_axes, keepdims);
         Tensor<int64_t> result = Tensor<int64_t>(red_meta.result_shape, m_requires_grad, lazy, this->device());
-        result.m_state->m_creation_op = std::make_unique<ArgMaxNode>(*this, std::move(red_meta.result_shape), dim);
+        result.m_state->m_creation_op = std::make_unique<ArgMaxNode<T>>(*this, std::move(red_meta.result_shape), dim);
 
         return result;
     }
@@ -53,7 +53,7 @@ namespace gradc {
         std::vector<int64_t> red_axes = std::vector<int64_t>({dim});
         RedMeta red_meta = infer_red_meta(m_shape, red_axes, keepdims);
         Tensor<int64_t> result = Tensor<int64_t>(red_meta.result_shape, m_requires_grad, lazy, this->device());
-        result.m_state->m_creation_op = std::make_unique<ArgMinNode>(*this, std::move(red_meta.result_shape), dim);
+        result.m_state->m_creation_op = std::make_unique<ArgMinNode<T>>(*this, std::move(red_meta.result_shape), dim);
         
         return result;
     }

@@ -432,7 +432,7 @@ namespace gradc {
                 return;
             }
 
-            FusedView fused = fuse_dimensions(indices.m_shape, {indices.m_strides});
+            FusedView fused = fuse_dimensions(indices.m_shape, {&indices.m_strides});
             std::vector<int64_t>* idx_strides = &fused.strides[0] ;
 
             const int64_t n_dim = std::ssize(fused.shared_shape);
@@ -496,7 +496,7 @@ namespace gradc {
                 return;
             }
 
-            FusedView fused = fuse_dimensions(indices.m_shape, {indices.m_strides});
+            FusedView fused = fuse_dimensions(indices.m_shape, {&indices.m_strides});
             std::vector<int64_t>* idx_strides = &fused.strides[0] ;
 
             const int64_t n_dim = std::ssize(fused.shared_shape);

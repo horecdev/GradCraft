@@ -309,8 +309,6 @@ namespace gradc {
         blas_meta.ldc = blas_meta.N;
         blas_meta.stride_c = blas_meta.M * blas_meta.N;
 
-        
-
         return std::make_pair(std::make_pair(std::move(left_locally_contig), std::move(right_locally_contig)), blas_meta);
     }
 }
