@@ -461,7 +461,41 @@ namespace gradc {
             }
         }
 
-        static void apply_scatter_add() {}
+        template <typename T>
+        static void apply_scatter_add(Tensor<T>& dembeddings, const Tensor<T>& indices, const Tensor<T>& out_grad, int64_t embed_vol) {
+            // core: goes over [B, T] of "indices". Takes [C, H] grad/smth else from "out_grad" at this place (B, T, C, H). Accumulates the [C, H] at dembeddings[idx]
+            // premises: dembeddings and out_grad must be dense.
+
+            if (std::ssize(indices.m_shape) == 0) {
+                // out is [C, H]. Can += over at the index. out is [distrib, C, H]
+                int64_t token_id = indices.item();
+                T* p_dembeddings = dembeddings._get_storage()->data() + token_id * embed_vol;
+                T* p_out_grad = out_grad._get_storage()->data();
+
+                for (int64_t i = 0; i < embed_vol; ++i) {
+                    p_dembeddings[i] += p_out_grad[i];
+                }
+                return;
+            }
+            if (indices.is_contiguous()) {
+                int64_t indices_size = indices.volume();
+
+                T* base_p_dembeddings = dembeddings._get_storage()->data();
+                int64_t* p_indices = indices._get_storage()->data() + indices.offset();
+                T* base_p_out_grad = out_grad._get_storage()->data();
+                
+                for (int64_t i = 0; i < indices_size; ++i) {
+                    T* p_dembeddings = base_p_dembeddings + p_indices[i] * embed_vol;
+                    T* p_out_grad = base_p_out_grad + i * embed_vol;
+                    for (int64_t j = 0; j < embed_vol; ++j) {
+                        p_dembeddings[j] = p_out_grad[j];
+                    }
+                }
+                
+                return;
+            }
+            
+        }
         
     };
 
