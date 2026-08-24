@@ -574,6 +574,150 @@ namespace gradc {
 
     #pragma endregion REDUCTIONS
 
+    #pragma region EMBEDDINGS
+
+    template <typename T>
+    __global__ void embed_kernel_fast(
+        T* p_out, int64_t* p_indices, T* p_embeds, 
+        int64_t indices_offset, int64_t out_vol, int64_t embed_vol
+    ) {
+        int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
+        if (linear_idx < out_vol) {
+            int64_t token_pos = linear_idx / embed_vol;
+            int64_t embed_dim_idx = linear_idx % embed_vol;
+            
+            int64_t token_id = p_indices[indices_offset + token_pos];
+
+            p_out[linear_idx] = p_embeds[token_id * embed_vol + embed_dim_idx];
+        }
+    }
+
+    template <typename T>
+    __global__ void embed_kernel(
+        T* p_out, int64_t* p_indices, T* p_embeds, 
+        CUDAMeta indices_shape, CUDAMeta indices_strides,
+        int64_t indices_offset, int64_t out_vol, int64_t embed_vol
+    ) {
+        int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        if (linear_idx < out_vol) {
+            int64_t token_pos = linear_idx / embed_vol; // linear idx in the indices
+            int64_t embed_dim_idx = linear_idx % embed_vol;
+
+            int64_t temp_idx = token_pos;
+
+            int64_t idx_strided_idx = indices_offset;
+
+            for (int64_t i = indices_shape.size - 1; i >= 0; --i) {
+                int64_t coord = temp_idx % indices_shape.data[i];
+                temp_idx /= indices_shape.data[i];
+
+                idx_strided_idx += coord * indices_strides.data[i];
+            }
+
+            int64_t token_id = p_indices[idx_strided_idx];
+
+            p_out[linear_idx] = p_embeds[token_id * embed_vol + embed_dim_idx];
+        }
+    }
+
+    template <typename T>
+    void CUDAMath::apply_embed(Tensor<T>& out, const Tensor<int64_t>& indices, const Tensor<T>& embeddings, int64_t embed_vol) {
+        // OUT MUST BE DENSE. EMBEDDINGS MUST BE DENSE.
+        cudaSetDevice(out.device().index);
+        int64_t out_vol = out.volume();
+        int64_t threads = 256;
+        int64_t blocks = (out_vol + threads - 1) / threads;
+
+        T* p_out = out._get_storage()->data();
+        int64_t* p_indices = indices._get_storage()->data();
+        T* p_embeds = embeddings._get_storage()->data();
+
+        if (indices.is_contiguous()) {
+            embed_kernel_fast<<<blocks, threads>>>(p_out, p_indices, p_embeds, indices.m_offset, out_vol, embed_vol);
+            return;
+        }
+
+        FusedView fused = fuse_dimensions(indices.m_shape, {&indices.m_strides});
+        
+        CUDAMeta gpu_shape = to_cuda_meta(fused.shared_shape);
+        CUDAMeta gpu_indices_strides = to_cuda_meta(fused.strides[0]);
+
+        embed_kernel<<<blocks, threads>>>(p_out, p_indices, p_embeds, gpu_shape, gpu_indices_strides, indices.m_offset, out_vol, embed_vol);
+    }
+
+    template <typename T>
+    __global__ void embed_scatter_add_kernel_fast(
+        T* p_out, int64_t* p_indices, T* p_embeds, 
+        int64_t indices_offset, int64_t out_vol, int64_t embed_vol
+    ) {
+        int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
+        if (linear_idx < out_vol) {
+            int64_t token_pos = linear_idx / embed_vol;
+            int64_t embed_dim_idx = linear_idx % embed_vol;
+            
+            int64_t token_id = p_indices[indices_offset + token_pos];
+
+            p_out[linear_idx] = p_embeds[token_id * embed_vol + embed_dim_idx];
+        }
+    }
+
+    template <typename T>
+    __global__ void embed_scatter_add_kernel(
+        T* p_out, int64_t* p_indices, T* p_embeds, 
+        CUDAMeta indices_shape, CUDAMeta indices_strides,
+        int64_t indices_offset, int64_t out_vol, int64_t embed_vol
+    ) {
+        int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        if (linear_idx < out_vol) {
+            int64_t token_pos = linear_idx / embed_vol; // linear idx in the indices
+            int64_t embed_dim_idx = linear_idx % embed_vol;
+
+            int64_t temp_idx = token_pos;
+
+            int64_t idx_strided_idx = indices_offset;
+
+            for (int64_t i = indices_shape.size - 1; i >= 0; --i) {
+                int64_t coord = temp_idx % indices_shape.data[i];
+                temp_idx /= indices_shape.data[i];
+
+                idx_strided_idx += coord * indices_strides.data[i];
+            }
+
+            int64_t token_id = p_indices[idx_strided_idx];
+
+            p_out[linear_idx] = p_embeds[token_id * embed_vol + embed_dim_idx];
+        }
+    }
+
+    template <typename T>
+    void CUDAMath::apply_embed_scatter_add(Tensor<T>& out, const Tensor<int64_t>& indices, const Tensor<T>& embeddings, int64_t embed_vol) {
+        // OUT MUST BE DENSE. EMBEDDINGS MUST BE DENSE.
+        cudaSetDevice(out.device().index);
+        int64_t out_vol = out.volume();
+        int64_t threads = 256;
+        int64_t blocks = (out_vol + threads - 1) / threads;
+
+        T* p_out = out._get_storage()->data();
+        int64_t* p_indices = indices._get_storage()->data();
+        T* p_embeds = embeddings._get_storage()->data();
+
+        if (indices.is_contiguous()) {
+            embed_kernel_fast<<<blocks, threads>>>(p_out, p_indices, p_embeds, indices.m_offset, out_vol, embed_vol);
+            return;
+        }
+
+        FusedView fused = fuse_dimensions(indices.m_shape, {&indices.m_strides});
+        
+        CUDAMeta gpu_shape = to_cuda_meta(fused.shared_shape);
+        CUDAMeta gpu_indices_strides = to_cuda_meta(fused.strides[0]);
+
+        embed_kernel<<<blocks, threads>>>(p_out, p_indices, p_embeds, gpu_shape, gpu_indices_strides, indices.m_offset, out_vol, embed_vol);
+    }
+
+    #pragma endregion EMBEDDINGS
+
     #pragma region MATRIX MULTIPLY
 
     template <typename T>

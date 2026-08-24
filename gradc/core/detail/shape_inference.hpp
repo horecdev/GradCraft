@@ -260,4 +260,22 @@ namespace gradc {
 
         return result;
     }
+
+    inline std::pair<std::vector<int64_t>, int64_t> infer_embedding_shape(const std::vector<int64_t>& indices_shape, const std::vector<int64_t>& embeddings_shape) {
+        const int64_t idx_n_dim = std::ssize(indices_shape);
+        const int64_t emb_n_dim = std::ssize(embeddings_shape);
+        std::vector<int64_t> result;
+        result.reserve(idx_n_dim + emb_n_dim - 1);
+        int64_t embed_vol;
+
+        for (int64_t i = 0; i < idx_n_dim; ++i) {
+            result.push_back(indices_shape[i]);
+        }
+        for (int64_t i = 1; i < emb_n_dim; ++i) {
+            result.push_back(embeddings_shape[i]);
+            embed_vol *= embeddings_shape[i];
+        }
+
+        return std::make_pair(std::move(result), embed_vol);
+    }
 }

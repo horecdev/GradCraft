@@ -17,3 +17,4 @@ namespace gradc {
         return result;
     }
 }
+

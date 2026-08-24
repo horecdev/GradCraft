@@ -26,5 +26,7 @@ namespace gradc {
             template<typename T>
             requires std::is_floating_point_v<T>
             static void apply_batched_gemm(Tensor<T>& out, const Tensor<T>& left, const Tensor<T>& right, const BMMMeta& blas_meta);
+            template <typename T>
+            static void apply_embed(Tensor<T>& out, const Tensor<int64_t>& indices, const Tensor<T>& embeddings, int64_t embed_vol);
     };
 }

@@ -179,6 +179,10 @@ namespace gradc {
 
             Tensor dropout(T p) const requires std::is_floating_point_v<T>;
 
+            // EMBEDDINGS
+
+            Tensor embed(Tensor<int64_t> indices, Tensor<T> embeddings);
+
 
             // LOSSES
             template <typename U> friend Tensor<U> softmax_crossentropy(Tensor<U> flat_logits, Tensor<U> flat_targets, int64_t distrib_dim, U eps) requires std::is_floating_point_v<U>;
