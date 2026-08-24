@@ -145,7 +145,7 @@ namespace gradc {
                 for (auto& [name, mean] : m_first_moment) {
                     Tensor<T> moved_mean = mean.to(target_device);
                     moved_mean.realize();
-                    mean = moved_var.detach();
+                    mean = moved_mean.detach();
                 }
 
                 for (auto& [name, var] : m_second_moment) {
@@ -205,9 +205,9 @@ namespace gradc {
                     }
                 }
 
-                auto it = state_dict.find("beta1_exp");
-                if (it != state_dict.end()) {
-                    Tensor<T> moved_beta = it->second.to(target_device);
+                auto it1 = state_dict.find("beta1_exp");
+                if (it1 != state_dict.end()) {
+                    Tensor<T> moved_beta = it1->second.to(target_device);
                     moved_beta.realize();
                     m_beta1_exp = moved_beta.detach();
                 }
@@ -215,9 +215,9 @@ namespace gradc {
                     throw std::runtime_error("Tried loading AdamW optimizer with state_dict without key 'beta1_exp");
                 }
 
-                auto it = state_dict.find("beta2_exp");
-                if (it != state_dict.end()) {
-                    Tensor<T> moved_beta = it->second.to(target_device);
+                auto it2 = state_dict.find("beta2_exp");
+                if (it2 != state_dict.end()) {
+                    Tensor<T> moved_beta = it2->second.to(target_device);
                     moved_beta.realize();
                     m_beta2_exp = moved_beta.detach();
                 }

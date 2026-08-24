@@ -23,7 +23,7 @@ namespace gradc {
                         continue;
                     }
                     Tensor<T> grad_mul_lr = Tensor<T>(p_ptr->tensor().shape(), target_device, uninitialized);
-                    dispatch(target_device, BinaryOp::Mul, grad_mul_lr, p_ptr->grad().value(), Tensor<T>(m_lr, target_device));
+                    dispatch(target_device, BinaryOp::Mul, grad_mul_lr, p_ptr->grad().value(), Tensor<T>(this->m_lr, target_device));
                     dispatch(target_device, BinaryOpInPlace::Sub, p_ptr->tensor(), grad_mul_lr);
                 }
             }   

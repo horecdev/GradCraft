@@ -38,7 +38,7 @@ namespace gradc {
 
     template <typename T, typename Func>
     __global__ void binary_out_of_place_kernel(
-        T* p_out, const T* p_left, const T* p_right, 
+        T* __restrict__ p_out, const T* __restrict__ p_left, const T* __restrict__ p_right, 
         CUDAMeta shared_shape, 
         CUDAMeta out_strides, CUDAMeta left_strides, CUDAMeta right_strides,
         int64_t out_offset, int64_t left_offset, int64_t right_offset,
@@ -69,7 +69,7 @@ namespace gradc {
 
     template <typename T, typename Func>
     __global__ void binary_out_of_place_kernel_fast(
-        T* p_out, const T* p_left, const T* p_right, 
+        T* __restrict__ p_out, const T* __restrict__ p_left, const T* __restrict__ p_right, 
         int64_t out_offset, int64_t left_offset, int64_t right_offset,
         int64_t total_elements, Func op) {
 
@@ -132,7 +132,7 @@ namespace gradc {
 
     template <typename T, typename Func>
     __global__ void binary_in_place_kernel_fast(
-        T* p_left, const T* p_right, 
+        T* __restrict__ p_left, const T* __restrict__ p_right, 
         int64_t left_offset, int64_t right_offset,
         int64_t total_elements, Func op) {
 
@@ -145,7 +145,7 @@ namespace gradc {
 
     template <typename T, typename Func>
     __global__ void binary_in_place_kernel(
-        T* p_left, const T* p_right, 
+        T* __restrict__ p_left, const T* __restrict__ p_right, 
         CUDAMeta shared_shape, 
         CUDAMeta left_strides, CUDAMeta right_strides,
         int64_t left_offset, int64_t right_offset,
@@ -216,7 +216,7 @@ namespace gradc {
 
     template <typename OutT, typename InT, typename Func>
     __global__ void unary_out_of_place_kernel(
-        OutT* p_out, const InT* p_source, 
+        OutT* __restrict__ p_out, const InT* __restrict__ p_source, 
         CUDAMeta shared_shape, 
         CUDAMeta out_strides, CUDAMeta source_strides,
         int64_t out_offset, int64_t source_offset,
@@ -245,7 +245,7 @@ namespace gradc {
 
     template <typename OutT, typename InT, typename Func>
     __global__ void unary_out_of_place_kernel_fast(
-        OutT* p_out, const InT* p_source, 
+        OutT* __restrict__ p_out, const InT* __restrict__ p_source, 
         int64_t out_offset, int64_t source_offset,
         int64_t total_elements, Func op) {
 
@@ -312,7 +312,7 @@ namespace gradc {
 
     template <typename T, typename Func>
     __global__ void unary_in_place_kernel(
-        T* p_source, 
+        T* __restrict__ p_source, 
         CUDAMeta shared_shape, 
         CUDAMeta source_strides,
         int64_t source_offset,
@@ -339,7 +339,7 @@ namespace gradc {
 
     template <typename T, typename Func>
     __global__ void unary_in_place_kernel_fast(
-        T* p_source, 
+        T* __restrict__ p_source, 
         int64_t source_offset,
         int64_t total_elements, Func op) {
 
@@ -377,7 +377,7 @@ namespace gradc {
 
     template <typename T, typename Func>
     __global__ void reduction_kernel(
-        T* p_out, const T* p_source, 
+        T* __restrict__ p_out, const T* __restrict__ p_source, 
         CUDAMeta source_shape, 
         CUDAMeta out_strides, CUDAMeta source_strides,
         int64_t source_offset,
@@ -406,7 +406,7 @@ namespace gradc {
 
     template <typename T, typename Func> 
     __global__ void reduction_kernel_whole(
-        T* p_out, const T* p_source, 
+        T* __restrict__ p_out, const T* __restrict__ p_source, 
         int64_t source_offset, T init_value,
         int64_t total_elements, Func op) {
         
@@ -465,7 +465,7 @@ namespace gradc {
 
     template <typename T, typename Func>
     __global__ void argextr_kernel_whole(
-        int64_t* p_out, const T* p_source, 
+        int64_t* __restrict__ p_out, const T* __restrict__ p_source, 
         int64_t source_offset, T init_value,
         int64_t total_elements, Func op) {
 
@@ -511,7 +511,7 @@ namespace gradc {
 
     template <typename T, typename Func>
     __global__ void argextr_kernel(
-        int64_t* p_out, const T* p_source, 
+        int64_t* __restrict__ p_out, const T* __restrict__ p_source, 
         CUDAMeta source_shape, CUDAMeta source_strides,
         int64_t source_offset, int64_t dim, T init_value,
         int64_t out_elems, Func op) {
@@ -578,7 +578,7 @@ namespace gradc {
 
     template <typename T>
     __global__ void embed_kernel_fast(
-        T* p_out, int64_t* p_indices, T* p_embeds, 
+        T* __restrict__ p_out, int64_t* __restrict__ p_indices, T* __restrict__ p_embeds, 
         int64_t indices_offset, int64_t out_vol, int64_t embed_vol
     ) {
         int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -594,7 +594,7 @@ namespace gradc {
 
     template <typename T>
     __global__ void embed_kernel(
-        T* p_out, int64_t* p_indices, T* p_embeds, 
+        T* __restrict__ p_out, int64_t* __restrict__ p_indices, T* __restrict__ p_embeds, 
         CUDAMeta indices_shape, CUDAMeta indices_strides,
         int64_t indices_offset, int64_t out_vol, int64_t embed_vol
     ) {
@@ -648,7 +648,7 @@ namespace gradc {
 
     template <typename T>
     __global__ void scatter_add_kernel_fast(
-        T* p_dembeds, int64_t* p_indices, T* p_out_grad, 
+        T* __restrict__ p_dembeds, int64_t* __restrict__ p_indices, T* __restrict__ p_out_grad, 
         int64_t indices_offset, int64_t out_grad_vol, int64_t embed_vol
     ) {
         int64_t linear_idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -664,7 +664,7 @@ namespace gradc {
 
     template <typename T>
     __global__ void scatter_add_kernel(
-        T* p_dembeds, int64_t* p_indices, T* p_out_grad, 
+        T* __restrict__ p_dembeds, int64_t* __restrict__ p_indices, T* __restrict__ p_out_grad, 
         CUDAMeta indices_shape, CUDAMeta indices_strides,
         int64_t indices_offset, int64_t out_grad_vol, int64_t embed_vol
     ) {

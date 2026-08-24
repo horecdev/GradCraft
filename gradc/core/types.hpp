@@ -38,7 +38,12 @@ namespace gradc {
         constexpr Device(DeviceType type = DeviceType::CPU, int32_t index = -1) : type(type), index(index) {}
 
         constexpr bool operator==(const Device& other) const {
-            return (type == other.type && index == other.index);
+            if (this->type == DeviceType::CPU) {
+                return other.type == DeviceType::CPU;
+            }
+            else {
+                return (type == other.type && index == other.index);
+            }
         }
 
         constexpr bool operator!=(const Device& other) const {

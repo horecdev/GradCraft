@@ -8,7 +8,7 @@
 namespace gradc {
 
     template <typename T>
-    Tensor<T> softmax_crossentropy(Tensor<T> flat_logits, Tensor<T> flat_targets, int64_t distrib_dim, T eps = static_cast<T>(1e-5)) requires std::is_floating_point_v<T> {
+    Tensor<T> softmax_crossentropy(Tensor<T> flat_logits, Tensor<T> flat_targets, int64_t distrib_dim, T eps) requires std::is_floating_point_v<T> {
         if (std::ssize(flat_logits.shape()) != std::ssize(flat_targets.shape()) || std::ssize(flat_logits.shape()) != 2) {
             throw std::runtime_error("softmax_crossentropy accepts only 2D tensors");
         }

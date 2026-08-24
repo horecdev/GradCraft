@@ -31,7 +31,7 @@ namespace gradc {
             }
 
             // returns state dict moved to a specified device
-            virtual std::unordered_map<std::string, Tensor<T>> state_dict(Device device) {
+            virtual std::unordered_map<std::string, Tensor<T>> state_dict([[maybe_unused]] Device device) {
                 return {};
             }
 
@@ -43,7 +43,7 @@ namespace gradc {
             }
 
             // used to move different device param pointers into the optimizer, therefore updating its device
-            void update_param_ptrs(unordered_map<std::string, Parameter<T>*> new_param_ptrs) {
+            void update_param_ptrs(std::unordered_map<std::string, Parameter<T>*> new_param_ptrs) {
                 m_named_params = std::move(new_param_ptrs);
                 this->assert_valid_params();
             }
