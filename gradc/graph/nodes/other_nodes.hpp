@@ -37,8 +37,6 @@ namespace gradc {
                 Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
                 dispatch(target_device, BinaryOp::Mul, result, m_parent, mask);
                 
-                
-
                 return result;
             }
 
@@ -56,29 +54,42 @@ namespace gradc {
                     m_mask = Tensor<T>();
                 }
             }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_parent._get_state_base()};
+            }
     };
 
     template <typename T>
     class EmbedNode : public Node<T> {
         private:
             Tensor<int64_t> m_indices;
-            Tensor<T> m_embeddings;
+            Tensor<T> m_embeds;
             std::vector<int64_t> m_result_shape;
             int64_t m_embed_vol;
         public:
-            EmbedNode(Tensor<int64_t> indices, Tensor<T> embeddings, std::vector<int64_t> result_shape, int64_t embed_vol) : m_indices(std::move(indices)), m_embeddings(std::move(embeddings)), m_result_shape(std::move(result_shape)), m_embed_vol(embed_vol) {}
+            EmbedNode(Tensor<int64_t> indices, Tensor<T> embeds, std::vector<int64_t> result_shape, int64_t embed_vol) : m_indices(std::move(indices)), m_embeds(std::move(embeds)), m_result_shape(std::move(result_shape)), m_embed_vol(embed_vol) {}
 
             Tensor<T> realize() override {
                 Device target_device = m_indices.device();
                 Tensor<T> result = Tensor<T>(m_result_shape, target_device, uninitialized);
 
-                dispatch_embed(target_device, result, m_indices, m_embeddings, m_embed_vol);
+                dispatch_embed(target_device, result, m_indices, m_embeds, m_embed_vol);
 
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) {
+                if (m_embeds.requires_grad()) {
+                    m_embeds.accumulate_grad_embeds(m_indices, out_grad, m_embed_vol);
+                }
+                if (m_indices.requires_grad()) {
+                    throw std::runtime_error("Indices in EmbedNode cannot require grad.");
+                }
+            }
 
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_embeds._get_state_base(), m_indices};
             }
     };
 }

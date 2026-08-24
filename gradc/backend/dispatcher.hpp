@@ -135,12 +135,22 @@ namespace gradc {
     }
 
     template <typename T>
-    inline void dispatch_embed(Device device, Tensor<T>& out, const Tensor<int64_t>& indices, const Tensor<T>& embeddings, int64_t embed_vol) {
+    inline void dispatch_embed(Device device, Tensor<T>& out, const Tensor<int64_t>& indices, const Tensor<T>& embeds, int64_t embed_vol) {
         if (device.is_cpu()) {
-            CPUBackend::apply_embed(out, indices, embeddings, embed_vol);
+            CPUBackend::apply_embed(out, indices, embeds, embed_vol);
         }
         else if (device.is_cuda()) {
-            CUDAMath::apply_embed(out, indices, embeddings, embed_vol);
+            CUDAMath::apply_embed(out, indices, embeds, embed_vol);
+        }
+    }
+
+    template <typename T>
+    inline void dispatch_scatter_add(Device device, Tensor<T>& dembeds, const Tensor<int64_t>& indices, const Tensor<T>& out_grad, int64_t embed_vol) {
+        if (device.is_cpu()) {
+            CPUBackend::apply_scatter_add(dembeds, indices, out_grad, embed_vol);
+        }
+        else if (device.is_cuda()) {
+            CUDAMath::apply_scatter_add(dembeds, indices, out_grad, embed_vol);
         }
     }
 }

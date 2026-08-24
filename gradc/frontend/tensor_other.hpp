@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../core/tensor.hpp"
-#include "../graph/nodes/normalization_nodes.hpp"
 #include "../graph/nodes/other_nodes.hpp"
 
 #include <memory>
@@ -17,16 +16,17 @@ namespace gradc {
     }
 
     template <typename T>
-    Tensor<T> Tensor<T>::embed(Tensor<int64_t> indices, Tensor<T> embeddings) {
-        Device target_device = infer_assert_device(indices, embeddings);
-        if (!embeddings.is_dense()) {
+    Tensor<T> embed(Tensor<int64_t> indices, Tensor<T> embeds) {
+        Device target_device = infer_assert_device(indices, embeds);
+        if (!embeds.is_dense()) {
             throw std::runtime_error("Embeddings must be dense.");
         }
 
-        std::pair<std::vector<int64_t>, int64_t> embed_data = infer_embedding_shape(indices.shape(), embeddings.shape());
+        auto [embed_shape, embed_vol] = infer_embed_shape(indices.shape(), embeds.shape());
 
-        Tensor<T> result = Tensor<T>(std::move(embed_data.first), target_device, lazy);
-        result.m_state->m_creation_op = std::make_unique<EmbedNode<T>>(std::move(indices), std::move(embeddings), embed_data.second);
+        Tensor<T> result = Tensor<T>(embed_shape, target_device, lazy);
+        result.m_state->m_creation_op = std::make_unique<EmbedNode<T>>(std::move(indices), std::move(embeds), std::move(embed_shape), embed_vol);
+        // do not set requires_grad. Its false by default.
 
         return result;
     }

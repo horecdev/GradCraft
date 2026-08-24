@@ -410,23 +410,23 @@ namespace gradc {
         }
 
         template <typename T>
-        static void apply_embed(Tensor<T>& out, const Tensor<int64_t>& indices, const Tensor<T>& embeddings, int64_t embed_vol) {
+        static void apply_embed(Tensor<T>& out, const Tensor<int64_t>& indices, const Tensor<T>& embeds, int64_t embed_vol) {
             // OUT MUST BE DENSE. EMBEDDINGS MUST BE DENSE. INDICES CAN BE WHATEVER
             if (std::ssize(indices.m_shape) == 0) { // indices is a scalar
-                memcpy(out._get_storage()->data(), embeddings._get_storage()->data() + indices.item() * embed_vol, embed_vol * sizeof(T));
+                memcpy(out._get_storage()->data(), embeds._get_storage()->data() + indices.item() * embed_vol, embed_vol * sizeof(T));
                 return;
             }
 
             if (indices.is_contiguous()) {
                 int64_t indices_size = indices.volume();
 
-                T* base_p_out = out._get_storage()->data();
-                int64_t* p_indices = indices._get_storage()->data() + indices.offset();
-                T* base_p_embeds = embeddings._get_storage()->data();
+                T* __restrict base_p_out = out._get_storage()->data();
+                const int64_t* p_indices = indices._get_storage()->data() + indices.offset();
+                const T* __restrict base_p_embeds = embeds._get_storage()->data();
                 
                 for (int64_t i = 0; i < indices_size; ++i) {
-                    T* p_embeds = base_p_embeds + p_indices[i] * embed_vol; // jump to the start of the embedding
-                    T* p_out = base_p_out + i * embed_vol;
+                    const T* __restrict p_embeds = base_p_embeds + p_indices[i] * embed_vol; // jump to the start of the embedding
+                    T* __restrict p_out = base_p_out + i * embed_vol;
                     memcpy(p_out, p_embeds, embed_vol * sizeof(T));
                 }
                 return;
@@ -446,8 +446,8 @@ namespace gradc {
                 }
                 
                 int64_t token_id = (indices.m_state->m_storage->m_data)[idx_strided_idx];
-                T* p_embed = embeddings._get_storage()->data() + token_id * embed_vol;
-                T* p_out = out._get_storage()->data() + flat_out_idx * embed_vol;
+                const T* __restrict p_embed = embeds._get_storage()->data() + token_id * embed_vol;
+                T* __restrict p_out = out._get_storage()->data() + flat_out_idx * embed_vol;
                 memcpy(p_out, p_embed, embed_vol * sizeof(T));
 
                 ++flat_out_idx;
@@ -462,39 +462,70 @@ namespace gradc {
         }
 
         template <typename T>
-        static void apply_scatter_add(Tensor<T>& dembeddings, const Tensor<T>& indices, const Tensor<T>& out_grad, int64_t embed_vol) {
-            // core: goes over [B, T] of "indices". Takes [C, H] grad/smth else from "out_grad" at this place (B, T, C, H). Accumulates the [C, H] at dembeddings[idx]
-            // premises: dembeddings and out_grad must be dense.
+        static void apply_scatter_add(Tensor<T>& dembeds, const Tensor<int64_t>& indices, const Tensor<T>& out_grad, int64_t embed_vol) {
+            // core: goes over [B, T] of "indices". Takes [C, H] grad/smth else from "out_grad" at this place (B, T, C, H). Accumulates the [C, H] at dembeds[idx]
+            // premises: dembeds and out_grad must be dense.
 
             if (std::ssize(indices.m_shape) == 0) {
                 // out is [C, H]. Can += over at the index. out is [distrib, C, H]
                 int64_t token_id = indices.item();
-                T* p_dembeddings = dembeddings._get_storage()->data() + token_id * embed_vol;
-                T* p_out_grad = out_grad._get_storage()->data();
+                T* __restrict p_dembeds = dembeds._get_storage()->data() + token_id * embed_vol;
+                const T* __restrict p_out_grad = out_grad._get_storage()->data();
 
                 for (int64_t i = 0; i < embed_vol; ++i) {
-                    p_dembeddings[i] += p_out_grad[i];
+                    p_dembeds[i] += p_out_grad[i];
                 }
                 return;
             }
+
             if (indices.is_contiguous()) {
                 int64_t indices_size = indices.volume();
 
-                T* base_p_dembeddings = dembeddings._get_storage()->data();
-                int64_t* p_indices = indices._get_storage()->data() + indices.offset();
-                T* base_p_out_grad = out_grad._get_storage()->data();
+                T* __restrict base_p_dembeds = dembeds._get_storage()->data();
+                const int64_t* p_indices = indices._get_storage()->data() + indices.offset();
+                const T* __restrict base_p_out_grad = out_grad._get_storage()->data();
                 
                 for (int64_t i = 0; i < indices_size; ++i) {
-                    T* p_dembeddings = base_p_dembeddings + p_indices[i] * embed_vol;
-                    T* p_out_grad = base_p_out_grad + i * embed_vol;
+                    T* __restrict p_dembeds = base_p_dembeds + p_indices[i] * embed_vol;
+                    const T* __restrict p_out_grad = base_p_out_grad + i * embed_vol;
                     for (int64_t j = 0; j < embed_vol; ++j) {
-                        p_dembeddings[j] = p_out_grad[j];
+                        p_dembeds[j] += p_out_grad[j]; // add not eq
                     }
                 }
-                
+
                 return;
             }
-            
+
+            FusedView fused = fuse_dimensions(indices.m_shape, {indices.m_strides});
+            std::vector<int64_t>* idx_strides = &fused.strides[0] ;
+
+            const int64_t n_dim = std::ssize(fused.shared_shape);
+            int64_t flat_out_grad_idx = 0;
+            std::vector<int64_t> odometer(n_dim, 0);
+            while (odometer[0] < fused.shared_shape[0]) {
+                int64_t idx_strided_idx = indices.m_offset;
+
+                for (int64_t i = 0; i < n_dim; ++i) {
+                    idx_strided_idx += odometer[i] * (*idx_strides)[i];
+                }
+                
+                int64_t token_id = (indices.m_state->m_storage->m_data)[idx_strided_idx];
+                T* __restrict p_dembed = dembeds._get_storage()->data() + token_id * embed_vol;
+                const T* __restrict p_out_grad = out_grad._get_storage()->data() + flat_out_grad_idx * embed_vol;
+                
+                for (int64_t i = 0; i < embed_vol; ++i) {
+                    p_dembed[i] += p_out_grad[i];
+                }
+
+                ++flat_out_grad_idx;
+                ++odometer[n_dim - 1];
+                int64_t i = n_dim - 1;
+                while ((odometer[i] == fused.shared_shape[i]) && i > 0) {
+                    odometer[i] = 0;
+                    ++odometer[i - 1];
+                    --i;
+                }
+            }
         }
         
     };

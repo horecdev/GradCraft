@@ -51,6 +51,7 @@ namespace gradc {
             void accumulate_grad(const Tensor<T>& incoming_grad, bool is_sub = false);
             void accumulate_grad_normal_matmul(const Tensor<T>& left, const Tensor<T>& right, NMMMeta& blas_meta, const std::vector<int64_t>& orig_shape) requires std::is_floating_point_v<T>;
             void accumulate_grad_batched_matmul(const Tensor<T>& left, const Tensor<T>& right, BMMMeta& blas_meta, const std::vector<int64_t>& orig_shape) requires std::is_floating_point_v<T>;
+            void  accumulate_grad_embeds(const Tensor<int64_t>& indices, const Tensor<T>& out_grad, int64_t embed_vol);
 
             void zero_grad();
 
@@ -181,7 +182,7 @@ namespace gradc {
 
             // EMBEDDINGS
 
-            Tensor embed(Tensor<int64_t> indices, Tensor<T> embeddings);
+            template <typename U> friend Tensor<U> embed(Tensor<int64_t> indices, Tensor<U> embeds);
 
 
             // LOSSES

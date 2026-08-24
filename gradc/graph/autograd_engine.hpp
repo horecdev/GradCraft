@@ -101,6 +101,22 @@ namespace gradc {
     }
 
     template <typename T>
+    void Tensor<T>::accumulate_grad_embeds(const Tensor<int64_t>& indices, const Tensor<T>& out_grad, int64_t embed_vol) {
+        Device target_device = infer_assert_device(*this, indices, out_grad);
+
+        if (!m_requires_grad) {return;}
+
+        if (!m_state->m_grad.has_value()) {
+            Tensor<T> local_grad = Tensor<T>(m_shape, T(0), target_device);
+            dispatch_scatter_add(target_device, local_grad, indices, out_grad, embed_vol);
+            m_state->m_grad = std::move(local_grad);
+        }
+        else {
+            dispatch_scatter_add(target_device, m_state->m_grad.value(), indices, out_grad, embed_vol);
+        }
+    }
+
+    template <typename T>
     void Tensor<T>::backward(bool retain_graph) {
         std::vector<TensorStateBase*> topo_order = AutogradEngine::build_topo(m_state.get());
 

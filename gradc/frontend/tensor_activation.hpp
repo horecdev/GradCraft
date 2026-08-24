@@ -49,12 +49,4 @@ namespace gradc {
 
         return result;
     }
-
-    template <typename T>
-    Tensor<T> Tensor<T>::dropout(T p) const requires std::is_floating_point_v<T> {
-        Tensor result = Tensor(this->shape(), m_requires_grad, lazy, this->device());
-        result.m_state->m_creation_op = std::make_unique<DropoutNode<T>>(*this, p);
-
-        return result;
-    }
 }

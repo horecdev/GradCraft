@@ -124,9 +124,10 @@ DONE write helper to infer shapes of embedding and embed vol
 DONE write frontend for embeds
 DONE write CPU apply embed and CUDA version + add into dispatcher
 DONE write the embed node forward pass
-- write the backprop for cpu and cuda + add into dispatcher
-- write the backward for EmbedNode and wrap it up
-- Write the Embedding module
+DONE write the backprop for cpu and cuda + add into dispatcher
+DONE write the backward for EmbedNode and wrap it up (integrate a .accum into tensor class)
+DONE Write the Embedding module
+- add __restrict to cuda
 - .to_async or smth for .to() during training when reading memory. Keep your current cudaMemcpy not ASYNC, just make it async here (one time vs multi time calls)
 - ExtractPathesNode (backward pass crash) - purely util, like argmin/argmax - Im2Col or smth
 - Compile
