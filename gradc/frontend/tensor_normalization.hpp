@@ -8,7 +8,7 @@
 namespace gradc {
 
     template <typename T>
-    Tensor<T> layernorm(Tensor<T> parent, Tensor<T> gamma, Tensor<T> beta, const std::vector<int64_t>& axes, T eps = static_cast<T>(1e-5)) requires std::is_floating_point_v<T> {
+    Tensor<T> layernorm(Tensor<T> parent, Tensor<T> gamma, Tensor<T> beta, const std::vector<int64_t>& axes, T eps) requires std::is_floating_point_v<T> {
         Device target_device = infer_assert_device(parent, gamma, beta);
         RedMeta red_meta = infer_red_meta(parent.shape(), axes, true);
         std::vector<int64_t> norm_shape = get_normalized_shape(parent.shape(), axes);

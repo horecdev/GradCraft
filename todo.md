@@ -133,15 +133,22 @@ DONE add __restrict__ to cuda
 DONE Blast again
 DONE LayerNorm module
 DONE Dropout module
-- SPDA frontend
-- Multi Head aAttention!! 
-- make_leaf() method
+DONE SPDA frontend free function
+DONE Multi Head Attention!! 
+DONE make_leaf() method
+DONE Compile. Benchmark.
+- .to_async or smth for .to() during training when reading memory. Keep your current cudaMemcpy not ASYNC, just make it async here (one time vs multi time calls)
+- Grand test park for every fking feature on CPU (catch bugs)
+- Same for the GPU
+- make SDPANode only for CUDA
+- add cuDNN SDPA frontend
+- plug in cuDNN
 - implement int64_t num_params func
 - fused layernorm (benchmark)
 - flash attention (benchmark)
 - Transformer block
 - Write all the activations as modules (SiLU, GeLU, )
-- .to_async or smth for .to() during training when reading memory. Keep your current cudaMemcpy not ASYNC, just make it async here (one time vs multi time calls)
+
 - ExtractPathesNode (backward pass crash) - purely util, like argmin/argmax - Im2Col or smth
 - Compile
 - add multithreading with OpenMP (no writing mutexes and shit)

@@ -17,7 +17,7 @@ namespace gradc {
             Tensor<T> m_causal_mask; // register this as??? how tf do you move 
             
         public:
-            MultiHeadAttention(int64_t embed_dim, int64_t num_heads, bool is_causal, int64_t max_seq_len, Initializer<T> proj_w_init, Initializer<T> proj_b_init)
+            MultiHeadAttention(int64_t embed_dim, int64_t num_heads, bool is_causal, int64_t max_seq_len, const Initializer<T>& proj_w_init, const Initializer<T>& proj_b_init)
              : m_q_proj(Linear<T>(embed_dim, embed_dim, proj_w_init, proj_b_init)), m_k_proj(Linear<T>(embed_dim, embed_dim, proj_w_init, proj_b_init)), 
                 m_v_proj(Linear<T>(embed_dim, embed_dim, proj_w_init, proj_b_init)), m_out_proj(Linear<T>(embed_dim, embed_dim, proj_w_init, proj_b_init)) 
             {
@@ -26,7 +26,7 @@ namespace gradc {
                 }
 
                 m_num_heads = num_heads;
-                m_head_dim = embed_dim % num_heads;
+                m_head_dim = embed_dim / num_heads;
 
                 this->register_module("q_proj", &m_q_proj);
                 this->register_module("k_proj", &m_k_proj);
@@ -34,7 +34,7 @@ namespace gradc {
                 this->register_module("out_proj", &m_out_proj);
 
                 if (is_causal) {
-                    Tensor<T> m_causal_mask = Tensor<T>::upper_triangular(max_seq_len, std::numeric_limits<T>::lowest());
+                    m_causal_mask = Tensor<T>::upper_triangular(max_seq_len, std::numeric_limits<T>::lowest());
                 }
             }
 
@@ -58,8 +58,8 @@ namespace gradc {
 
                 Tensor<T> active_mask = m_causal_mask[Slice(0, seq_len), Slice(0, seq_len)];
 
-                Tensor<T> attn = scaled_dot_product_attention(Q, K, V); // [B, num_heads, T, head_dim]
-                attn = attn.permute(0, 2, 1, 3).reshape(B, seq_len, m_num_heads * m_head_dim); // [B, T, C]
+                Tensor<T> attn = scaled_dot_product_attention_naive(Q, K, V); // [B, num_heads, T, head_dim]
+                attn = attn.permute({0, 2, 1, 3}).reshape({B, seq_len, m_num_heads * m_head_dim}); // [B, T, C]
                 return m_out_proj.forward(attn);
             }
     };

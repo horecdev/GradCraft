@@ -56,9 +56,9 @@ namespace gradc {
 
             void zero_grad();
 
-            bool is_exclusive();
+            bool is_exclusive() const;
 
-            Tensor detach();
+            Tensor detach() const ;
             Tensor<T>& make_leaf();
             
 
@@ -134,7 +134,7 @@ namespace gradc {
                 return vol;
             }
 
-            bool is_dense() {
+            bool is_dense() const {
                 return (volume() == m_state->m_storage->size()) && is_contiguous();
             }
 
@@ -283,7 +283,7 @@ namespace gradc { // here is what dereferences m_state, since before its created
     }
 
     template <typename T>
-    bool Tensor<T>::is_exclusive() {
+    bool Tensor<T>::is_exclusive() const {
         return m_state.use_count() == 1 && m_state->m_storage.use_count() == 1;
     }
 
@@ -317,7 +317,7 @@ namespace gradc { // here is what dereferences m_state, since before its created
     }
 
     template <typename T>
-    Tensor<T> Tensor<T>::detach() {
+    Tensor<T> Tensor<T>::detach() const {
         Tensor<T> result = Tensor<T>(m_shape, m_strides, m_offset, this->_get_storage(), false); // no grad, no creation_op. Lobotomized.
         return result;
     }

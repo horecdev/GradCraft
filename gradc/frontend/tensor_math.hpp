@@ -182,7 +182,7 @@ namespace gradc {
         }
 
         bool requires_grad = main.m_requires_grad || p_other.m_requires_grad;
-        std::shared_ptr<TensorState<T>> new_state = std::make_shared<TensorState<T>>(main._get_storage().size(), T(0), target_device, false);
+        std::shared_ptr<TensorState<T>> new_state = std::make_shared<TensorState<T>>(main._get_storage()->size(), T(0), target_device, false);
         new_state->m_creation_op = std::make_unique<AddNode<T>>(main, p_other, main.m_shape);
         main.m_state = std::move(new_state);
         main.m_requires_grad = requires_grad;
@@ -223,7 +223,7 @@ namespace gradc {
         }
 
         bool requires_grad = main.m_requires_grad || p_other.m_requires_grad;
-        std::shared_ptr<TensorState<T>> new_state = std::make_shared<TensorState<T>>(main._get_storage().size(), T(0), target_device, false);
+        std::shared_ptr<TensorState<T>> new_state = std::make_shared<TensorState<T>>(main._get_storage()->size(), T(0), target_device, false);
         new_state->m_creation_op = std::make_unique<SubNode<T>>(main, p_other, main.m_shape);
         main.m_state = std::move(new_state);
         main.m_requires_grad = requires_grad;
@@ -264,7 +264,7 @@ namespace gradc {
         }
 
         bool requires_grad = main.m_requires_grad || p_other.m_requires_grad;
-        std::shared_ptr<TensorState<T>> new_state = std::make_shared<TensorState<T>>(main._get_storage().size(), T(0), target_device, false);
+        std::shared_ptr<TensorState<T>> new_state = std::make_shared<TensorState<T>>(main._get_storage()->size(), T(0), target_device, false);
         new_state->m_creation_op = std::make_unique<MulNode<T>>(main, p_other, main.m_shape);
         main.m_state = std::move(new_state);
         main.m_requires_grad = requires_grad;
@@ -304,7 +304,7 @@ namespace gradc {
         }
 
         bool requires_grad = main.m_requires_grad || p_other.m_requires_grad;
-        std::shared_ptr<TensorState<T>> new_state = std::make_shared<TensorState<T>>(main._get_storage().size(), T(0), target_device, false);
+        std::shared_ptr<TensorState<T>> new_state = std::make_shared<TensorState<T>>(main._get_storage()->size(), T(0), target_device, false);
         new_state->m_creation_op = std::make_unique<DivNode<T>>(main, p_other, main.m_shape);
         main.m_state = std::move(new_state);
         main.m_requires_grad = requires_grad;

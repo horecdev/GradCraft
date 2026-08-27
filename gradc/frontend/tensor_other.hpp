@@ -32,7 +32,7 @@ namespace gradc {
 
     template <typename T>
     requires std::is_floating_point_v<T>
-    Tensor<T> scaled_dot_product_attention(Tensor<T> Q, Tensor<T> K, Tensor<T> V, std::optional<Tensor<T>> causal_mask = std::nullopt) {
+    Tensor<T> scaled_dot_product_attention_naive(Tensor<T> Q, Tensor<T> K, Tensor<T> V, std::optional<Tensor<T>> causal_mask = std::nullopt) {
         Device target_device = infer_assert_device(Q, K, V);
         // expected shape: [B, num_heads, T, head_dim]
         if (std::ssize(Q.shape()) != 4 || std::ssize(K.shape()) != 4 || std::ssize(V.shape()) != 4) {

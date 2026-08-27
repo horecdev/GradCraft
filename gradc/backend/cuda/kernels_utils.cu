@@ -121,6 +121,11 @@ namespace gradc {
     template void CUDAUtils::fill_arange<int32_t>(int32_t* ptr, int32_t start, int32_t step, int64_t size, Device device);
     template void CUDAUtils::fill_arange<int64_t>(int64_t* ptr, int64_t start, int64_t step, int64_t size, Device device);
 
+    template void CUDAUtils::upper_triangular<float>(float* ptr, int64_t size, float value, Device device);
+    template void CUDAUtils::upper_triangular<double>(double* ptr, int64_t size, double value, Device device);
+    template void CUDAUtils::upper_triangular<int32_t>(int32_t* ptr, int64_t size, int32_t value, Device device);
+    template void CUDAUtils::upper_triangular<int64_t>(int64_t* ptr, int64_t size, int64_t value, Device device);
+
     template void CUDAUtils::fill_normal<float>(float* ptr, float mean, float std, int64_t size, Device device);
     template void CUDAUtils::fill_normal<double>(double* ptr, double mean, double std, int64_t size, Device device);
 

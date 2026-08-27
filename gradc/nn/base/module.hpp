@@ -10,7 +10,7 @@ namespace gradc {
             std::vector<std::pair<std::string, Module<T>*>> m_submodules;
             std::vector<std::pair<std::string, Parameter<T>*>> m_parameters;
         public:
-            Module();
+            Module() : m_is_training(true) {}
 
             bool is_training() const {
                 return m_is_training;
@@ -38,7 +38,7 @@ namespace gradc {
                 m_parameters.push_back(std::make_pair(std::move(prefix), param));
             } 
             
-            std::vector<std::pair<std::string, Parameter<T>*>> named_parameters(std::string prefix) const {
+            std::vector<std::pair<std::string, Parameter<T>*>> named_parameters(std::string prefix = "") const {
                 std::vector<std::pair<std::string, Parameter<T>*>> result;
                 for (const auto& [param_name, param_ptr] : m_parameters) {
                     std::string full_param_name = prefix.empty() ? param_name : prefix + "." + param_name;
@@ -51,6 +51,8 @@ namespace gradc {
 
                     result.insert(result.end(), child_module_params.begin(), child_module_params.end());
                 }
+
+                return result;
             }
 
             std::vector<Parameter<T>*> parameters() {
