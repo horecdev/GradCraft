@@ -1,6 +1,6 @@
 #pragma once
 #include "../base/module.hpp"
-#include "initializers.hpp"
+#include "../base/initializers.hpp"
 
 namespace gradc {
     template <typename T>
@@ -21,4 +21,25 @@ namespace gradc {
                 return y;
             }
     };
+
+    template <typename T>
+    requires std::is_floating_point_v<T>
+    class Dropout : public Module<T> {
+        private:
+            T m_p;
+        public:
+            Dropout(T p) {
+                m_p = p;
+            }
+
+            Tensor<T> forward(Tensor<T> x) {
+                if (this->is_training()) {
+                    return x.dropout(m_p);
+                }
+                else {
+                    return x;
+                }
+            }
+    };
 }
+

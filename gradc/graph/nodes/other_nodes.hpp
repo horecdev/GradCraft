@@ -89,7 +89,13 @@ namespace gradc {
             }
 
             std::vector<TensorStateBase*> get_input_states() override {
-                return {m_embeds._get_state_base(), m_indices};
+                return {m_embeds._get_state_base(), m_indices._get_state_base()};
             }
+    };
+
+    template <typename T> // PLACEHOLDER FOR NOW
+    class SDPANode : public Node<T> {
+        private:
+            Tensor<T> m_wq;
     };
 }

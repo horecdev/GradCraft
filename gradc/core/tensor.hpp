@@ -19,6 +19,7 @@ namespace gradc {
     class CPUBackend;
     class CUDAMath;
     class CUDAUtils;
+
     
     template <typename T>
     class Tensor {
@@ -176,6 +177,11 @@ namespace gradc {
             Tensor gelu() const requires std::is_floating_point_v<T>;
             Tensor softmax(int64_t dim) const requires std::is_floating_point_v<T>;
 
+            // NORMALIZATION
+
+            template <typename U>
+            friend Tensor<U> layernorm(Tensor<U> parent, Tensor<U> gamma, Tensor<U> beta, const std::vector<int64_t>& axes, U eps) requires std::is_floating_point_v<U>;
+
             // REGULARIZATION
 
             Tensor dropout(T p) const requires std::is_floating_point_v<T>;
@@ -216,10 +222,15 @@ namespace gradc {
 
             template <typename U>
             friend auto infer_blas_normal_meta(Tensor<U> left, Tensor<U> right, bool accumulate);
+            template <typename U>
+            friend auto infer_blas_batched_meta(Tensor<U> left, Tensor<U> right, bool accumulate);
 
             template <typename U, typename W>
             requires (std::is_floating_point_v<U> && std::is_floating_point_v<W>)
             friend Tensor<U> matmul(Tensor<U> left, Tensor<W> right);
+            template <typename U, typename W>
+            requires (std::is_floating_point_v<U> && std::is_floating_point_v<W>)
+            friend Tensor<U> bmm(Tensor<U> left, Tensor<W> right);
 
 
             // REDUCTIONS

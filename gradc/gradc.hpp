@@ -19,7 +19,6 @@
 
 #include "nn/base/module.hpp" // IWYU pragma: keep
 #include "nn/base/parameter.hpp" // IWYU pragma: keep
-#include "nn/layers/activations.hpp" // IWYU pragma: keep
 #include "nn/layers/linear.hpp" // IWYU pragma: keep
 #include "nn/layers/normalization.hpp" // IWYU pragma: keep
 #include "nn/layers/other.hpp" // IWYU pragma: keep

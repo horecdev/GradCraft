@@ -1,2 +1,4 @@
 build/
 build/Debug
+main.cpp
+test.py

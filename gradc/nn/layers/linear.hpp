@@ -1,6 +1,6 @@
 #pragma once
 #include "../base/module.hpp"
-#include "initializers.hpp"
+#include "../base/initializers.hpp"
 
 namespace gradc {
     template <typename T>

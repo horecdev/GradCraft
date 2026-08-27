@@ -131,6 +131,14 @@ DONE Compile
 DONE Blast a giant test without __restrict__ on CUDA.
 DONE add __restrict__ to cuda
 DONE Blast again
+DONE LayerNorm module
+DONE Dropout module
+- SPDA frontend
+- Multi Head aAttention!! module
+- fused layernorm (benchmark)
+- flash attention (benchmark)
+- Transformer block
+- Write all the activations as modules (SiLU, GeLU, )
 - .to_async or smth for .to() during training when reading memory. Keep your current cudaMemcpy not ASYNC, just make it async here (one time vs multi time calls)
 - ExtractPathesNode (backward pass crash) - purely util, like argmin/argmax - Im2Col or smth
 - Compile

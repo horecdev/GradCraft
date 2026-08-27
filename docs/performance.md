@@ -1,2 +1,6 @@
-Test of CUDA without __restrict__: 144ms
-Test of CUDA with __restrict__: 134ms
+Test of CUDA elementwise without __restrict__: 144ms 
+Test of CUDA elementwise with __restrict__: 134ms
+Pytorch does it in like 125ms.
+
+GRADCRAFT VS PYTORCH
+1. Full transformer block:
