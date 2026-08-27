@@ -59,6 +59,7 @@ namespace gradc {
             bool is_exclusive();
 
             Tensor detach();
+            Tensor<T>& make_leaf();
             
 
             // LIFECYCLE 
@@ -81,6 +82,7 @@ namespace gradc {
             static Tensor ones(std::vector<int64_t> shape, Device device = Device(DeviceType::CPU));
             static Tensor full(std::vector<int64_t> shape, T fill_val, Device device = Device(DeviceType::CPU));
             static Tensor arange(T start, T stop, T step, Device device = Device(DeviceType::CPU));
+            static Tensor upper_triangular(int64_t size, T fill_val, Device device = Device(DeviceType::CPU));
 
             
             static Tensor normal(std::vector<int64_t> shape, T mean = T(0), T std = T(1), Device device = Device(DeviceType::CPU)) requires std::is_floating_point_v<T>;
@@ -318,6 +320,15 @@ namespace gradc { // here is what dereferences m_state, since before its created
     Tensor<T> Tensor<T>::detach() {
         Tensor<T> result = Tensor<T>(m_shape, m_strides, m_offset, this->_get_storage(), false); // no grad, no creation_op. Lobotomized.
         return result;
+    }
+
+    template <typename T>
+    Tensor<T>& Tensor<T>::make_leaf() {
+        this->m_state->m_creation_op = nullptr;
+        this->m_requires_grad = false;
+        this->m_state->m_is_realized = true;
+
+        return *this;
     }
 }
 

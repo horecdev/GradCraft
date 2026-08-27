@@ -113,6 +113,19 @@ namespace gradc {
     }
 
     template <typename T>
+    Tensor<T> Tensor<T>::upper_triangular(int64_t size, T fill_val, Device device) {
+        Tensor<T> result = Tensor<T>({size, size}, T(0), device);
+        T* ptr = result._get_storage()->data();
+        if (device.is_cpu()) {
+            CPUUtils::upper_triangular(ptr, size, fill_val);
+        }
+        else if (device.is_cuda()) {
+            CUDAUtils::upper_triangular(ptr, size, fill_val, device);
+        }
+        return result;
+    }
+
+    template <typename T>
      // compiler treats as signature, so must put in both declaration and out of line definition
     Tensor<T> Tensor<T>::normal(std::vector<int64_t> shape, T mean, T std, Device device) requires std::is_floating_point_v<T> {
         Tensor<T> result = Tensor<T>(shape, device, uninitialized);

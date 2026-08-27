@@ -134,7 +134,9 @@ DONE Blast again
 DONE LayerNorm module
 DONE Dropout module
 - SPDA frontend
-- Multi Head aAttention!! module
+- Multi Head aAttention!! 
+- make_leaf() method
+- implement int64_t num_params func
 - fused layernorm (benchmark)
 - flash attention (benchmark)
 - Transformer block

@@ -12,6 +12,16 @@ namespace gradc {
                 ptr[i] = start + step * static_cast<T>(i);
             }
         }
+
+        template <typename T>
+        static void upper_triangular(T* ptr, int64_t size, T fill_val) {
+            for (int64_t i = 0; i < size; ++i) {
+                for (int64_t j = i + 1; j < size; ++j) {
+                    ptr[i * size + j] = fill_val;
+                }
+            }
+        }
+
         template <typename T>
         static void fill_normal(T* ptr, T mean, T std, int64_t size) {
             thread_local static std::random_device rd;
@@ -23,6 +33,7 @@ namespace gradc {
                 ptr[i] = dist(gen);
             }
         }
+
         template <typename T>
         static void fill_uniform(T* ptr, T low, T high, int64_t size) {
             thread_local static std::random_device rd;

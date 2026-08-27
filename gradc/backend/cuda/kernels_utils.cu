@@ -39,6 +39,31 @@ namespace gradc {
     }
 
     template <typename T>
+    __global__ void upper_triangular_kernel(T* ptr, int64_t size, T fill_val) {
+        int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        if (idx < size * size) {
+            ptr[idx] = fill_val;
+
+            int64_t i = idx / size;
+            int64_t j = idx % size;
+
+            if (j > i) {
+                ptr[idx] = fill_val;
+            }
+        }
+    }
+
+    template <typename T>
+    void CUDAUtils::upper_triangular(T* ptr, int64_t size, T fill_val, Device device) {
+       cudaSetDevice(device.index);
+       int64_t threads = 256;
+       int64_t blocks = (size * size + threads - 1) / threads;
+
+       upper_triangular_kernel<<<blocks, threads>>>(ptr, size, fill_val);
+    }
+
+    template <typename T>
     void CUDAUtils::fill_normal(T* ptr, T mean, T std, int64_t size, Device device) {
         cudaSetDevice(device.index);
         curandGenerator_t gen;
