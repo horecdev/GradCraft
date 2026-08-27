@@ -137,9 +137,11 @@ DONE SPDA frontend free function
 DONE Multi Head Attention!! 
 DONE make_leaf() method
 DONE Compile. Benchmark.
+- AsyncToNode - uses unpageable cpu memory. Locks the memory on the CPU, queues up the transfer into CUDA, CPU moves to the next line
 - .to_async or smth for .to() during training when reading memory. Keep your current cudaMemcpy not ASYNC, just make it async here (one time vs multi time calls)
+DONE num_params() - get giant count
 - Grand test park for every fking feature on CPU (catch bugs)
-- Same for the GPU
+- Grand test park on the GPU
 - make SDPANode only for CUDA
 - add cuDNN SDPA frontend
 - plug in cuDNN

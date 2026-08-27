@@ -247,5 +247,10 @@ namespace gradc {
                 return {m_parent._get_state_base()};
             }
     };
+
+    template <typename T>
+    class AsyncToNode : public Node<T> {
+
+    };
 }
 

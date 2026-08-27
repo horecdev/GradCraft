@@ -114,5 +114,15 @@ namespace gradc {
                     param_ptr->tensor() = std::move(leaf_tensor); // parameter has the detached tensor
                 }
             }
+
+            int64_t num_params() {
+                int64_t total = 0;
+                auto params = parameters();
+                for (const Parameter<T>* p_ptr : params) {
+                    total += p_ptr->tensor()._get_storage()->size();
+                }
+
+                return total;
+            }
     };
 }
