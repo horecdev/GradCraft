@@ -394,7 +394,7 @@ namespace gradc {
             for (int64_t i = 0; i < blas_meta.batch_count; ++i) {
                 T* current_out = p_out + (i * blas_meta.stride_c);
                 const T* current_left = p_left + (i * blas_meta.stride_a);
-                const T* current_right = p_right + (i * blas_meta.stride_a);
+                const T* current_right = p_right + (i * blas_meta.stride_b);
 
                 if constexpr (std::is_same_v<T, float>) {
                     cblas_sgemm(CblasRowMajor, op_left, op_right, blas_M, blas_N, blas_K, 

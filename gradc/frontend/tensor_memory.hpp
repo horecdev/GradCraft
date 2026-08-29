@@ -134,6 +134,7 @@ namespace gradc {
             Tensor<T> forced_contiguous = this->contiguous();
             Tensor<T> result = Tensor<T>(m_shape, m_requires_grad, lazy, device);
             result.m_state->m_creation_op = std::make_unique<ToNodeAsync<T>>(*this, device, stream, event);
+            return result;
         }
         else {
             Tensor<T> result = Tensor<T>(m_shape, m_requires_grad, lazy, device);

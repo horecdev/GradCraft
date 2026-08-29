@@ -402,7 +402,7 @@ namespace gradc::cpu_functors {
         struct Sqrt {
             void operator()(T& x) const {
                 if constexpr (std::is_floating_point_v<T>) {
-                    x = static_cast<T>(std::cos(x));
+                    x = static_cast<T>(std::sqrt(x));
                 }
                 else {
                     throw std::runtime_error("UIP Sqrt CPU functor running on non-floating.");

@@ -126,7 +126,7 @@ namespace gradc {
                 dispatch(target_device, UnaryOpInPlace::Square, x_minus_y);
                 Tensor<T> loss = Tensor<T>(m_mse_red_meta.result_shape, target_device, uninitialized);
                 dispatch(target_device, ReduceOp::Sum, m_mse_red_meta, loss, x_minus_y);
-                dispatch(target_device, BinaryOpInPlace::Mul, loss, Tensor<T>(static_cast<T>(m_mse_red_meta.reduced_vol), target_device));
+                dispatch(target_device, BinaryOpInPlace::Div, loss, Tensor<T>(static_cast<T>(m_mse_red_meta.reduced_vol), target_device));
 
                 return loss;
             }
@@ -145,7 +145,7 @@ namespace gradc {
                         m_preds.accumulate_grad(dx, false);
                     }
                     if (m_targets.requires_grad()) {
-                        m_preds.accumulate_grad(dx, true);
+                        m_targets.accumulate_grad(dx, true);
                     }
                 }
             }

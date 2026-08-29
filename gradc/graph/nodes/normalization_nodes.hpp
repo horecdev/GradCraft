@@ -22,6 +22,10 @@ namespace gradc {
              : m_parent(std::move(parent)), m_gamma(std::move(gamma)), m_beta(std::move(beta)), m_red_meta(std::move(red_meta)), m_normalized_shape(std::move(normalized_shape)), m_eps(eps) {}
 
             Tensor<T> realize() override {
+                m_parent.realize();
+                m_gamma.realize();
+                m_beta.realize();
+
                 Device target_device = m_parent.device();
 
                 bool can_mutate_parent = m_parent.is_exclusive();
@@ -119,6 +123,8 @@ namespace gradc {
                     dispatch(target_device, BinaryOp::Mul, norm_mul_mean_dx_hat_mul_norm, m_z_scores, dx_hat_mul_normalized_z_scores_mean);
                     dispatch(target_device, BinaryOpInPlace::Sub, dx, norm_mul_mean_dx_hat_mul_norm);
                     dispatch(target_device, BinaryOpInPlace::Mul, dx, m_inv_std);
+
+                    m_parent.accumulate_grad(dx);
                 }
 
                 if (!retain_graph) {

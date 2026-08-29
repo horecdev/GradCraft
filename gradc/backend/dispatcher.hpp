@@ -14,14 +14,14 @@
 
 namespace gradc {
     template <typename T>
-    inline Device infer_assert_device(const std::vector<const Tensor<T>>& tensors) {
+    inline Device infer_assert_device(const std::vector<Tensor<T>>& tensors) {
         if (tensors.empty()) {
             throw std::runtime_error("Tried inferring device from an empty Tensor list.");
         }
         // supposes that input vector is NOT empty
-        Device target_device = *(tensors[0]).device();
+        Device target_device = tensors[0].device();
         for (int64_t i = 1; i < std::ssize(tensors); ++i) {
-            if (*(tensors[i]).device() != target_device) {
+            if (tensors[i].device() != target_device) {
                 throw std::runtime_error("Operation failed: all (2+) Tensors must be on the same device.");
             }
         }

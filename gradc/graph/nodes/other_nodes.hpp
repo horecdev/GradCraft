@@ -71,6 +71,9 @@ namespace gradc {
             EmbedNode(Tensor<int64_t> indices, Tensor<T> embeds, std::vector<int64_t> result_shape, int64_t embed_vol) : m_indices(std::move(indices)), m_embeds(std::move(embeds)), m_result_shape(std::move(result_shape)), m_embed_vol(embed_vol) {}
 
             Tensor<T> realize() override {
+                m_indices.realize();
+                m_embeds.realize();
+                
                 Device target_device = m_indices.device();
                 Tensor<T> result = Tensor<T>(m_result_shape, target_device, uninitialized);
 

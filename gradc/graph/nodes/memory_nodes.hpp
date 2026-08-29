@@ -280,9 +280,11 @@ namespace gradc {
             // lines below: make calculations stream wait till copying is finished
             cudaEventRecord(m_event, m_copy_stream); // the CPU drops a note on the copy_stream - when the copy belt finishes this task, flip a switch
             cudaStreamWaitEvent(0, m_event, 0); // make stream 0 (default) wait for the event to happen
+
+            return result;
         }
 
-        void backward(const Tensor<T>& out_grad) override { // honestly you never even call it. Why do you need grad on the CPU?
+        void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override { // honestly you never even call it. Why do you need grad on the CPU?
             if (m_parent.requires_grad()) {
                 Tensor<T> to_grad = Tensor<T>(out_grad.shape(), m_parent.device(), uninitialized);
                 int64_t bytes_to_copy = out_grad.volume() * sizeof(T);

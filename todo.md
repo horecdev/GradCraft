@@ -137,13 +137,17 @@ DONE SPDA frontend free function
 DONE Multi Head Attention!! 
 DONE make_leaf() method
 DONE Compile. Benchmark.
-- AsyncToNode - uses unpageable cpu memory. Locks the memory on the CPU, queues up the transfer into CUDA, CPU moves to the next line
-- .to_async frontend. only CPU to GPU
+DONE AsyncToNode - uses unpageable cpu memory. Locks the memory on the CPU, queues up the transfer into CUDA, CPU moves to the next line
+DONE .to_async frontend. only CPU to GPU
 DONE num_params() - get param count
-- Grand test park for every fking feature on CPU (catch bugs)
-- Grand test park on the GPU
+- Make tricks with all ops on matrices. Assert gradients are the same, assert math is the same as pytorch. All - exp, log, etc. Check off when everything is valid in every case.
+- Do it for both devices.
+- check named params on MHA module
+- overfit one batch of anything
+- save params, load and resume training. same with optimizer
+- test out all optimizers
 - make SDPANode only for CUDA
-- add cuDNN SDPA frontend
+- add cuDNN SDPA frontend (non-naive)
 - plug in cuDNN
 - fused layernorm (benchmark)
 - flash attention (benchmark)
