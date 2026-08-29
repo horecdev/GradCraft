@@ -124,6 +124,21 @@ namespace gradc {
             result.m_state->m_creation_op = std::make_unique<ToNode<T>>(*this, device);
             return result;
         }
-        
+    }
+
+    template<typename T>
+    Tensor<T> Tensor<T>::to_async(Device device, cudaStream_t stream, cudaEvent_t event) const {
+        if (device == this->device()) {return *this;}
+
+        if (!this->is_contiguous()) {
+            Tensor<T> forced_contiguous = this->contiguous();
+            Tensor<T> result = Tensor<T>(m_shape, m_requires_grad, lazy, device);
+            result.m_state->m_creation_op = std::make_unique<ToNodeAsync<T>>(*this, device, stream, event);
+        }
+        else {
+            Tensor<T> result = Tensor<T>(m_shape, m_requires_grad, lazy, device);
+            result.m_state->m_creation_op = std::make_unique<ToNodeAsync<T>>(*this, device, stream, event);
+            return result;
+        }
     }
 }

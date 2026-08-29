@@ -263,6 +263,7 @@ namespace gradc {
             template <typename TargetT> Tensor<TargetT> cast() const;
 
             Tensor to(Device device) const;
+            Tensor to_async(Device device, cudaStream_t stream, cudaEvent_t event) const;
 
     };      
 }

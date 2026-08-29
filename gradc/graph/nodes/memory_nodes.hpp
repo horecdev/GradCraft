@@ -210,6 +210,8 @@ namespace gradc {
             ToNode(Tensor<T> parent, Device target_device) : m_parent(std::move(parent)), m_target_device(target_device) {}
 
             Tensor<T> realize() override {
+                m_parent.realize();
+
                 Tensor<T> result = Tensor<T>(m_parent.shape(), m_target_device, uninitialized);
                 int64_t bytes_to_copy = m_parent.volume() * sizeof(T);
                 const T* src_ptr = m_parent._get_storage()->m_data + m_parent.offset();
@@ -249,8 +251,68 @@ namespace gradc {
     };
 
     template <typename T>
-    class AsyncToNode : public Node<T> {
+    class ToNodeAsync : public Node<T> {
+        private:
+            Tensor<T> m_parent;
+            Device m_target_device;
+            cudaStream_t m_copy_stream;
+            cudaEvent_t m_event;
+            T* m_src_ptr;
 
+        public:
+            ToNodeAsync(Tensor<T> parent, Device target_device, cudaStream_t copy_stream, cudaEvent_t event) : m_parent(std::move(parent)), m_target_device(target_device), m_copy_stream(copy_stream), m_event(event) {}
+
+        Tensor<T> realize() override {
+            m_parent.realize();
+
+            Tensor<T> result = Tensor<T>(m_parent.shape(), m_target_device, uninitialized);
+            int64_t bytes_to_copy = m_parent.volume() * sizeof(T);
+
+            T* src_ptr = m_parent._get_storage()->data() + m_parent.offset();
+            T* dst_ptr = result._get_storage()->data();
+
+            m_src_ptr = src_ptr;
+
+            cudaSetDevice(m_target_device.index);
+            cudaHostRegister(src_ptr, bytes_to_copy, cudaHostRegisterDefault); // pin CPU memory (synchronous, takes like 2ms. Doesnt sync stream with CPU)
+            cudaMemcpyAsync(dst_ptr, src_ptr, bytes_to_copy, cudaMemcpyHostToDevice, m_copy_stream); // async copy
+
+            // lines below: make calculations stream wait till copying is finished
+            cudaEventRecord(m_event, m_copy_stream); // the CPU drops a note on the copy_stream - when the copy belt finishes this task, flip a switch
+            cudaStreamWaitEvent(0, m_event, 0); // make stream 0 (default) wait for the event to happen
+        }
+
+        void backward(const Tensor<T>& out_grad) override { // honestly you never even call it. Why do you need grad on the CPU?
+            if (m_parent.requires_grad()) {
+                Tensor<T> to_grad = Tensor<T>(out_grad.shape(), m_parent.device(), uninitialized);
+                int64_t bytes_to_copy = out_grad.volume() * sizeof(T);
+                const T* src_ptr = out_grad._get_storage()->m_data; // always contiguous (no offset needed)
+                T* dst_ptr = to_grad._get_storage()->m_data;
+
+                cudaSetDevice(out_grad.device().index);
+                cudaHostRegister(dst_ptr, bytes_to_copy, cudaHostRegisterDefault);
+
+                cudaEventRecord(m_event, 0);
+                cudaStreamWaitEvent(m_copy_stream, m_event, 0); // wait for calculations stream (till gradient is calculated)
+
+                cudaMemcpyAsync(dst_ptr, src_ptr, bytes_to_copy, cudaMemcpyDeviceToHost, m_copy_stream);
+
+                cudaStreamSynchronize(m_copy_stream); // wait for copy_stream but copy_stream waits for default - wait till all math done (you need it so impossible to omit)
+                cudaHostUnregister(dst_ptr); // you can only unregister after sync. If no sync then CPU just unpins immediately after it pinned and shit blows up
+
+                m_parent.accumulate_grad(to_grad);
+            }
+        }
+
+        std::vector<TensorStateBase*> get_input_states() override {
+            return {m_parent._get_state_base()};
+        }
+
+        ~ToNodeAsync() {
+            cudaHostUnregister(m_src_ptr);
+            // you MUST unpin memory. The CPU does free it when it goes out of scope, but CUDA thinks it still has the memory registered AND has a direct DMA highway to it.
+            // If it goes back to mempool and gets handed again, cuda crashes because this exact thing is already registered.
+        }
     };
 }
 

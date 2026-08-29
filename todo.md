@@ -138,19 +138,16 @@ DONE Multi Head Attention!!
 DONE make_leaf() method
 DONE Compile. Benchmark.
 - AsyncToNode - uses unpageable cpu memory. Locks the memory on the CPU, queues up the transfer into CUDA, CPU moves to the next line
-- .to_async or smth for .to() during training when reading memory. Keep your current cudaMemcpy not ASYNC, just make it async here (one time vs multi time calls)
-DONE num_params() - get giant count
+- .to_async frontend. only CPU to GPU
+DONE num_params() - get param count
 - Grand test park for every fking feature on CPU (catch bugs)
 - Grand test park on the GPU
 - make SDPANode only for CUDA
 - add cuDNN SDPA frontend
 - plug in cuDNN
-- implement int64_t num_params func
 - fused layernorm (benchmark)
 - flash attention (benchmark)
 - Transformer block
-- Write all the activations as modules (SiLU, GeLU, )
-
 - ExtractPathesNode (backward pass crash) - purely util, like argmin/argmax - Im2Col or smth
 - Compile
 - add multithreading with OpenMP (no writing mutexes and shit)
