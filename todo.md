@@ -140,12 +140,12 @@ DONE Compile. Benchmark.
 DONE AsyncToNode - uses unpageable cpu memory. Locks the memory on the CPU, queues up the transfer into CUDA, CPU moves to the next line
 DONE .to_async frontend. only CPU to GPU
 DONE num_params() - get param count
-- Make tricks with all ops on matrices. Assert gradients are the same, assert math is the same as pytorch. All - exp, log, etc. Check off when everything is valid in every case.
-- Do it for both devices.
+DONE Make tricks with all ops on matrices. Assert gradients are the same, assert math is the same as pytorch. Both devices
+- overfit one batch of anything with every optimizer
 - check named params on MHA module
-- overfit one batch of anything
-- save params, load and resume training. same with optimizer
-- test out all optimizers
+- num_params method test
+- save params, load and resume training. same with 
+
 - make SDPANode only for CUDA
 - add cuDNN SDPA frontend (non-naive)
 - plug in cuDNN

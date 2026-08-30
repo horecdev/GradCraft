@@ -38,18 +38,18 @@ namespace gradc {
                 m_parameters.push_back(std::make_pair(std::move(prefix), param));
             } 
             
-            std::vector<std::pair<std::string, Parameter<T>*>> named_parameters(std::string prefix = "") const {
-                std::vector<std::pair<std::string, Parameter<T>*>> result;
+            std::unordered_map<std::string, Parameter<T>*> named_parameters(std::string prefix = "") const {
+                std::unordered_map<std::string, Parameter<T>*> result;
                 for (const auto& [param_name, param_ptr] : m_parameters) {
                     std::string full_param_name = prefix.empty() ? param_name : prefix + "." + param_name;
-                    result.push_back(std::make_pair(full_param_name, param_ptr));
+                    result[full_param_name] = param_ptr;
                 }
 
                 for (const auto& [module_name, module_ptr] : m_submodules) {
                     std::string full_module_prefix = prefix.empty() ? module_name : prefix + "." + module_name;
                     auto child_module_params = module_ptr->named_parameters(full_module_prefix);
 
-                    result.insert(result.end(), child_module_params.begin(), child_module_params.end());
+                    result.merge(child_module_params);
                 }
 
                 return result;
