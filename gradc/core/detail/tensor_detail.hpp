@@ -141,10 +141,19 @@ namespace gradc {
         if (left_locally_contig.strides()[1] == 1 && left_locally_contig.strides()[0] > 0) { // blas does not accept negative leading dims
             blas_meta.lda = left_locally_contig.strides()[0];
             blas_meta.left_op = MatrixTensorOp::Normal;
+
+            if (blas_meta.M == 1 && blas_meta.lda < blas_meta.K) { // purely for satisfying BLAS which says: lda > K. If not, fails.
+                // if shape == 1 then this lda will never even be used.
+                blas_meta.lda = blas_meta.K;
+            }
         }
         else if (left_locally_contig.strides()[0] == 1 && left_locally_contig.strides()[1] > 0) { // transposed
             blas_meta.lda = left_locally_contig.strides()[1];
             blas_meta.left_op = MatrixTensorOp::Transposed;
+
+            if (blas_meta.K == 1 && blas_meta.lda < blas_meta.M) { // same but now its [K, M] instead of [M, K]
+                blas_meta.lda = blas_meta.M;
+            }
         }
         else {
             // you CAN flatten into 2D (say it comes in as 2D) but it doesnt have lda=1 or ldb=1
@@ -158,10 +167,18 @@ namespace gradc {
         if (right.strides()[1] == 1 && right.strides()[0] > 0) { // blas does not accept negative leading dims
             blas_meta.ldb = right.strides()[0];
             blas_meta.right_op = MatrixTensorOp::Normal;
+
+            if (blas_meta.K == 1 && blas_meta.ldb < blas_meta.N) {
+                blas_meta.ldb = blas_meta.N;
+            }
         }
         else if (right.strides()[0] == 1 && right.strides()[1] > 0) { // transposed
             blas_meta.ldb = right.strides()[1];
             blas_meta.right_op = MatrixTensorOp::Transposed;
+
+            if (blas_meta.N == 1 && blas_meta.ldb < blas_meta.K) {
+                blas_meta.ldb = blas_meta.K;
+            }
         }
         else {
             safe_right = right.contiguous();
@@ -272,11 +289,17 @@ namespace gradc {
 
         if (left_locally_contig.strides()[2] == 1 && left_locally_contig.strides()[1] > 0 && left_locally_contig.strides()[0] > 0) {
             blas_meta.lda = left_locally_contig.strides()[1];
+            if (blas_meta.M == 1 && blas_meta.lda < blas_meta.K) {
+                blas_meta.lda = blas_meta.K;
+            }
             blas_meta.left_op = MatrixTensorOp::Normal;
             blas_meta.stride_a = left_locally_contig.strides()[0];
         }
         else if (left_locally_contig.strides()[1] == 1 && left_locally_contig.strides()[2] > 0 && left_locally_contig.strides()[0] > 0) {
             blas_meta.lda = left_locally_contig.strides()[2];
+            if (blas_meta.K == 1 && blas_meta.lda < blas_meta.M) {
+                blas_meta.lda = blas_meta.M;
+            }
             blas_meta.left_op = MatrixTensorOp::Transposed;
             blas_meta.stride_a = left_locally_contig.strides()[0];
         }
@@ -290,11 +313,17 @@ namespace gradc {
 
         if (right_locally_contig.strides()[2] == 1 && right_locally_contig.strides()[1] > 0 && right_locally_contig.strides()[0] > 0) {
             blas_meta.ldb = right_locally_contig.strides()[1];
+            if (blas_meta.K == 1 && blas_meta.ldb < blas_meta.N) {
+                blas_meta.ldb = blas_meta.N;
+            }
             blas_meta.right_op = MatrixTensorOp::Normal;
             blas_meta.stride_b = right_locally_contig.strides()[0];
         }
         else if (right_locally_contig.strides()[1] == 1 && right_locally_contig.strides()[2] > 0 && right_locally_contig.strides()[0] > 0) {
             blas_meta.ldb = right_locally_contig.strides()[2];
+            if (blas_meta.N == 1 & blas_meta.ldb < blas_meta.K) {
+                blas_meta.ldb = blas_meta.K;
+            }
             blas_meta.right_op = MatrixTensorOp::Transposed;
             blas_meta.stride_b = right_locally_contig.strides()[0];
         }

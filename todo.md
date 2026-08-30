@@ -141,6 +141,7 @@ DONE AsyncToNode - uses unpageable cpu memory. Locks the memory on the CPU, queu
 DONE .to_async frontend. only CPU to GPU
 DONE num_params() - get param count
 DONE Make tricks with all ops on matrices. Assert gradients are the same, assert math is the same as pytorch. Both devices
+DONE Fix the BLAS illegal parameter 8 on tensors with strides [1, 1]
 - overfit one batch of anything with every optimizer
 - check named params on MHA module
 - num_params method test
