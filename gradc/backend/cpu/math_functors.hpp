@@ -72,7 +72,7 @@ namespace gradc::cpu_functors {
         template <typename T>
         struct BSquare {
             T operator()(T grad, T x) const {
-                return grad * 2 * x;
+                return grad * static_cast<T>(2.0) * x;
             }
         };
 
@@ -86,7 +86,7 @@ namespace gradc::cpu_functors {
         template <typename T>
         struct BReLU {
             T operator()(T grad, T value) const {
-                return value > 0 ? grad : 0;
+                return value > static_cast<T>(0.0) ? grad : static_cast<T>(0.0);
             }
         };
 
@@ -110,7 +110,7 @@ namespace gradc::cpu_functors {
         struct BSiLU {
             T operator()(T grad, T x) const {
                 T sig_val = static_cast<T>(1.0) / (static_cast<T>(1.0) + static_cast<T>(std::exp(-x)));
-                return grad * (sig_val + x * sig_val * (1 - sig_val));
+                return grad * (sig_val + x * sig_val * (static_cast<T>(1.0) - sig_val));
             }
         };  
 
@@ -199,7 +199,7 @@ namespace gradc::cpu_functors {
         template <typename T>
         struct ReLU {
             T operator()(T x) const {
-                return x > 0 ? x : 0;
+                return x > static_cast<T>(0.0) ? x : static_cast<T>(0.0);
             }
         };
 
@@ -339,7 +339,7 @@ namespace gradc::cpu_functors {
         template <typename T>
         struct ReLU {
             void operator()(T& x) const {
-                x = x > 0 ? x : 0;
+                x = x > static_cast<T>(0.0) ? x : static_cast<T>(0.0);
             }
         };
 

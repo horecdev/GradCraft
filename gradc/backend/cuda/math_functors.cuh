@@ -45,7 +45,7 @@ namespace gradc::cuda_functors {
                 if constexpr (std::is_same_v<T, float>) {
                     return grad * expf(x);
                 }
-                else if constexpr (std::is_same_v<T, float>)  {
+                else if constexpr (std::is_same_v<T, double>)  {
                     return grad * exp(x);
                 }
                 else {
@@ -69,7 +69,7 @@ namespace gradc::cuda_functors {
                 if constexpr (std::is_same_v<T, float>) {
                     return grad * cosf(x);
                 }
-                else if constexpr (std::is_same_v<T, float>)  {
+                else if constexpr (std::is_same_v<T, double>)  {
                     return grad * cos(x);
                 }
                 else {
@@ -86,7 +86,7 @@ namespace gradc::cuda_functors {
                 if constexpr (std::is_same_v<T, float>) {
                     return -(grad * sinf(x));
                 }
-                else if constexpr (std::is_same_v<T, float>)  {
+                else if constexpr (std::is_same_v<T, double>)  {
                     return -(grad * sin(x));
                 }
                 else {
@@ -100,7 +100,7 @@ namespace gradc::cuda_functors {
         template <typename T>
         struct BSquare {
             __device__ T operator()(T grad, T x) const {
-                return grad * 2 * x;
+                return grad * static_cast<T>(2.0) * x;
             }
         };
 
@@ -123,21 +123,43 @@ namespace gradc::cuda_functors {
         template <typename T>
         struct BReLU {
             __device__ T operator()(T grad, T value) const {
-                return value > 0 ? grad : 0;
+                return value > static_cast<T>(0.0) ? grad : static_cast<T>(0.0);
             }
         };
 
         template <typename T>
         struct BSigmoid {
-            __device__ T operator()(T grad, T sig_val) const {
-                return grad * (sig_val) * (static_cast<T>(1.0) - sig_val);
+            __device__ T operator()(T grad, T x) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    T s = static_cast<T>(1.0) / (static_cast<T>(1.0f) + expf(-x));
+                    return grad * s * (1.0f - s);
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    T s = static_cast<T>(1.0) / (static_cast<T>(1.0) + exp(-x));
+                    return grad * s * (static_cast<T>(1.0) - s);
+                }
+                else {
+                    __trap();
+                    return T(0);
+                }
             }
         };
 
         template <typename T>
         struct BTanH {
-            __device__ T operator()(T grad, T tanh_val) const {
-                return grad * (static_cast<T>(1.0) - tanh_val * tanh_val);
+            __device__ T operator()(T grad, T x) const {
+                if constexpr (std::is_same_v<T, float>) {
+                    T t = tanhf(x);
+                    return grad * (static_cast<T>(1.0) - t * t);
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    T t = tanh(x);
+                    return grad * (static_cast<T>(1.0) - t * t);
+                }
+                else {
+                    __trap();
+                    return T(0);
+                }
             }
         };
 
@@ -150,7 +172,7 @@ namespace gradc::cuda_functors {
                 }
                 else if constexpr (std::is_same_v<T, double>) {
                     T sig_val = static_cast<T>(1.0) / (static_cast<T>(1.0) + exp(-x));
-                    return grad * (sig_val + x * sig_val * (1 - sig_val));
+                    return grad * (sig_val + x * sig_val * (static_cast<T>(1.0) - sig_val));
                 }
                 else {
                     __trap();
@@ -163,8 +185,8 @@ namespace gradc::cuda_functors {
         struct BGeLU {
             __device__ T operator()(T grad, T x) const {
                 if constexpr (std::is_same_v<T, float>) {
-                    T alpha = 0.7978845608;
-                    T beta = 0.044715;
+                    T alpha = static_cast<T>(0.7978845608);
+                    T beta = static_cast<T>(0.044715);
                     T x_sq = x * x;
                     T x_cu = x_sq * x;
                     T u = alpha * (x + beta * x_cu);
@@ -174,8 +196,8 @@ namespace gradc::cuda_functors {
                     return grad * local_grad;
                 }
                 else if constexpr (std::is_same_v<T, double>) {
-                    T alpha = 0.7978845608;
-                    T beta = 0.044715;
+                    T alpha = static_cast<T>(0.7978845608);
+                    T beta = static_cast<T>(0.044715);
                     T x_sq = x * x;
                     T x_cu = x_sq * x;
                     T u = alpha * (x + beta * x_cu);
@@ -261,7 +283,7 @@ namespace gradc::cuda_functors {
         template <typename T>
         struct ReLU {
             __device__ T operator()(T x) const {
-                return x > 0 ? x : 0;
+                return x > static_cast<T>(0.0) ? x : static_cast<T>(0.0);
             }
         };
 
@@ -356,10 +378,10 @@ namespace gradc::cuda_functors {
         struct Sigmoid {
             __device__ T operator()(T x) const {
                 if constexpr (std::is_same_v<T, float>) {
-                    return 1.0f / (1.0f + expf(-x));
+                    return static_cast<T>(1.0) / (static_cast<T>(1.0) + expf(-x));
                 }
                 else if constexpr (std::is_same_v<T, double>) {
-                    return 1.0 / (1.0 + exp(-x));
+                    return static_cast<T>(1.0) / (static_cast<T>(1.0) + exp(-x));
                 }
                 else {
                     __trap();
@@ -439,7 +461,7 @@ namespace gradc::cuda_functors {
         template <typename T>
         struct ReLU {
             __device__ void operator()(T& x) const {
-                x = x > 0 ? x : 0;
+                x = x > static_cast<T>(0.0) ? x : static_cast<T>(0.0);
             }
         };
 
@@ -534,10 +556,10 @@ namespace gradc::cuda_functors {
         struct Sigmoid {
             __device__ void operator()(T& x) const {
                 if constexpr (std::is_same_v<T, float>) {
-                    x = 1.0f / (1.0f + expf(-x));
+                    x = static_cast<T>(1.0) / (static_cast<T>(1.0) + expf(-x));
                 }
                 else if constexpr (std::is_same_v<T, double>) {
-                    x = 1.0 / (1.0 + exp(-x));
+                    x = static_cast<T>(1.0) / (static_cast<T>(1.0) + exp(-x));
                 }
                 else {
                     __trap();
@@ -673,7 +695,7 @@ namespace gradc::cuda_functors {
 
             __device__ void atomic(T* adress, T val) const {
                 if constexpr (std::is_integral_v<T>) {
-                    atomicMax(adress, val);
+                    atomicMin(adress, val);
                 }
                 
                 else if constexpr (std::is_same_v<T, float>) {
