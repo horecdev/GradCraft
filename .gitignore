@@ -2,3 +2,4 @@ build/
 build/Debug
 main.cpp
 test.py
+cudnn_frontend/

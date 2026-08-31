@@ -35,7 +35,10 @@ target_link_libraries(tensor PRIVATE
     cudnn
 )
 
-target_include_directories(tensor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(tensor PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/cudnn_frontend/include
+)
 
 if(MSVC)
     target_compile_options(tensor PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4>)

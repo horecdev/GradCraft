@@ -147,12 +147,19 @@ DONE XOR test on SGD
 DONE num_params method test
 DONE save params, load and resume training. same with all optimizers
 DONE install / integrate cuDNN
+- Install the cudnn_frontend
 - Write dispatch for layernorm cuDNN forward, backward
-- Make LayerNormNaiveNode and LayerNormCuDNNNode
-- layernorm(x, y, z) that dispatches the right one based on bool use_cudnn
+- Write CUDAMath implementations in cuDNN API
+- Write LayerNormNaiveNode and LayerNormCuDNNNode
+
+- Write dispatch for cuDNN SDPA forward, backward
+- Write CUDAMath for SDPA forward, backward
+- SDPANode only for CUDA
+- cudnn SDPA frotnend
+- Guard against negative strides in cuDNN SDPA and LayerNorm
 - make SDPANode only for CUDA
-- add cuDNN SDPA frontend (non-naive)
-- Add fused layernorm from cuDNN (+ frontend non-naive)
+- add cuDNN SDPA frontend
+
 - fused layernorm (benchmark)
 - flash attention (benchmark)
 - Transformer block

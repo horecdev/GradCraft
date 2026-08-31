@@ -139,7 +139,6 @@ namespace gradc {
     };
 
     template <typename T>
-    
     class LayerNormCuDNNNode : public Node<T> {
         private:
             Tensor<T> m_parent;
@@ -150,6 +149,23 @@ namespace gradc {
             
             Tensor<T> m_saved_mean;
             Tensor<T> m_saved_inv_var;
+        
+        public:
+            LayerNormCuDNNNode(Tensor<T> parent, Tensor<T> gamma, Tensor<T> beta, std::vector<int64_t> normalized_shape, T eps) 
+                : m_parent(std::move(parent)), m_gamma(std::move(gamma)), m_beta(std::move(beta)), m_normalized_shape(std::move(normalized_shape)), m_eps(eps) {}
+
+            Tensor<T> realize() override {
+                m_parent.realize();
+                m_gamma.realize();
+                m_beta.realize();
+
+                Device target_device = m_parent.device();
+
+                Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+
+            Tensor<T> realize() override {
+
+            }
     };
     
 }
