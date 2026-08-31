@@ -2,13 +2,10 @@ cmake_minimum_required(VERSION 3.25)
 set(CMAKE_TOOLCHAIN_FILE "C:/Development/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
 project(CalculationGraphEngine CXX CUDA)
 
-# Keep your C++ frontend on C++23
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Force CUDA compilation units (.cu files) to use C++20 standard internally 
-# This prevents CMake from looking for a broken "CUDA23" dialect
 set(CMAKE_CUDA_STANDARD 20)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
@@ -21,23 +18,26 @@ add_executable(tensor
     gradc/backend/cuda/kernels_utils.cu
 )
 
-# Find the CUDA toolkit installation
 find_package(CUDAToolkit REQUIRED)
 find_package(OpenBLAS REQUIRED)
 
-# Link the CUDA runtime so .cpp and .hpp files can see <cuda_runtime.h>
+set(CUDNN_ROOT "C:/Program Files/NVIDIA/CUDNN/v9.25")
+
+target_include_directories(tensor PRIVATE "${CUDNN_ROOT}/include/13.4")
+
+target_link_directories(tensor PRIVATE "${CUDNN_ROOT}/lib/13.4/x64")
+
 target_link_libraries(tensor PRIVATE 
     CUDA::cudart
     CUDA::cublas
     CUDA::curand
     OpenBLAS::OpenBLAS
+    cudnn
 )
 
-# Tell the compiler to look in the root directory, so "gradc/..." paths work
 target_include_directories(tensor PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(MSVC)
-    # Generator expressions prevent passing /fsanitize=address to nvcc
     target_compile_options(tensor PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4>)
     target_link_options(tensor PRIVATE /INCREMENTAL:NO)
 else()

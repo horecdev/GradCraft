@@ -144,7 +144,6 @@ DONE Make tricks with all ops on matrices. Assert gradients are the same, assert
 DONE Fix the BLAS illegal parameter 8 on tensors with strides [1, 1]
 DONE overfit one batch of anything with every optimizer
 DONE XOR test on SGD
-- check named params on MHA module
 DONE num_params method test
 DONE save params, load and resume training. same with all optimizers
 - install/configure cuDNN

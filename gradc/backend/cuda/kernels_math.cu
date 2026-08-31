@@ -6,6 +6,7 @@
 
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include <cudnn.h>
 
 namespace gradc {
     constexpr int MAX_DIMS = 8;
@@ -32,6 +33,15 @@ namespace gradc {
             }
         }
         return handle;
+    }
+
+    inline cudnnHandle_t get_cudnn_handle() {
+        static cudnnHandle_t handle = nullptr;
+        if (handle == nullptr) {
+            if (cudnnCreate(&handle) != CUDNN_STATUS_SUCCESS) {
+                throw std::runtime_error("cuDNN handle initialization failed.");
+            }
+        }
     }
 
     #pragma region BINARY OUT OF PLACE
