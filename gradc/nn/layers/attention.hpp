@@ -58,7 +58,7 @@ namespace gradc {
 
                 Tensor<T> active_mask = m_causal_mask[Slice(0, seq_len), Slice(0, seq_len)];
 
-                Tensor<T> attn = scaled_dot_product_attention_naive(Q, K, V); // [B, num_heads, T, head_dim]
+                Tensor<T> attn = sdpa_naive(Q, K, V); // [B, num_heads, T, head_dim]
                 attn = attn.permute({0, 2, 1, 3}).reshape({B, seq_len, m_num_heads * m_head_dim}); // [B, T, C]
                 return m_out_proj.forward(attn);
             }

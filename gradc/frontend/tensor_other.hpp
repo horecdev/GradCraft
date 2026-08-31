@@ -32,12 +32,44 @@ namespace gradc {
 
     template <typename T>
     requires std::is_floating_point_v<T>
-    Tensor<T> scaled_dot_product_attention_naive(Tensor<T> Q, Tensor<T> K, Tensor<T> V, std::optional<Tensor<T>> causal_mask = std::nullopt) {
+    // TODO: add scale param, rename QKV to lowercase, scale as nullopt, use value_or
+    Tensor<T> sdpa_naive(Tensor<T> Q, Tensor<T> K, Tensor<T> V, std::optional<Tensor<T>> causal_mask = std::nullopt) {
         Device target_device = infer_assert_device(Q, K, V);
         // expected shape: [B, num_heads, T, head_dim]
         if (std::ssize(Q.shape()) != 4 || std::ssize(K.shape()) != 4 || std::ssize(V.shape()) != 4) {
             throw std::runtime_error("SDPA expects 4D tensors.");
         }
+        
+        int64_t head_dim = Q.shape()[3];
+
+        Tensor<T> K_T = K.transpose(2, 3);
+
+        Tensor<T> scores = bmm(Q, K_T);
+
+        T scale_factor = static_cast<T>(1.0 / std::sqrt(head_dim));
+        scores *= scale_factor; // its [B, num_heads, T, T]. Mask is [T, T]
+
+        if (causal_mask.has_value()) {
+            scores += causal_mask.value();
+        }
+
+        Tensor<T> probs = scores.softmax(3); // along the last dim
+        Tensor<T> result = bmm(probs, V);
+        
+        return result;
+    }
+
+    template <typename T>
+    requires std::is_same_v<T, float>
+    // TODO: same, rename, implement, value_or (pass as param). DO NOT CREATE A MASTER FUNCTION TO DISPATCH NAIVE OR CUDNN. 
+    Tensor<T> sdpa_cudnn(Tensor<T> Q, Tensor<T> K, Tensor<T> V, std::optional<Tensor<T>> causal_mask = std::nullopt) {
+        Device target_device = infer_assert_device(Q, K, V);
+        // expected shape: [B, num_heads, T, head_dim]
+        if (std::ssize(Q.shape()) != 4 || std::ssize(K.shape()) != 4 || std::ssize(V.shape()) != 4) {
+            throw std::runtime_error("SDPA expects 4D tensors.");
+        }
+
+        Tensor<T> result = Tensor<T>()
         
         int64_t head_dim = Q.shape()[3];
 

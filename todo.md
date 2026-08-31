@@ -159,7 +159,7 @@ DONE Write LayerNormNaiveNode and LayerNormCuDNNNode
 - cudnn SDPA frotnend
 - Guard against negative strides in cuDNN SDPA and LayerNorm
 - make SDPANode only for CUDA
-- add cuDNN SDPA frontend
+- compare cuDNN vs naive layernorm and SDPA in inference / training
 
 - fused layernorm (benchmark)
 - flash attention (benchmark)
