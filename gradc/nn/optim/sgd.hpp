@@ -44,7 +44,7 @@ namespace gradc {
             Tensor<T> m_beta;
             std::unordered_map<std::string, Tensor<T>> m_velocities;
         public:
-            SGDMomentum(std::unordered_map<std::string, Parameter<T>*> named_params, T lr, T beta) {
+            SGDMomentum(std::unordered_map<std::string, Parameter<T>*> named_params, T lr, T beta = static_cast<T>(0.9)) {
                 this->m_named_params = std::move(named_params);
                 this->assert_valid_params();
                 Device target_device = this->optim_device();
@@ -67,7 +67,7 @@ namespace gradc {
                     // v[3] = B^2v1 + Bg2 + g3
                     // so on. Limit is (for constant g) g / (1 - beta). This means if grad is constant, speed limit = 10 x g
                     // You retain the DIRECTION of the grad. do W = W - lr * vel
-                    if (p_ptr->grad().has_value()) {
+                    if (!p_ptr->grad().has_value()) {
                         continue;
                     }
 

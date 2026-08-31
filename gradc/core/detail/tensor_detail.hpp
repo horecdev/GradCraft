@@ -271,8 +271,6 @@ namespace gradc {
 
         // now both tensors are B, T, C. Both have ENTIRE story of left and right
 
-        // START OFF FROM HERE (MORE CONTIGUITY FORCING IF NONE OF THE T, C STRIDES ARE 1, INFERING LDA, TRANSPOSALS)
-
         if (left_locally_contig.shape()[0] != right_locally_contig.shape()[0]) {
             throw std::runtime_error("Batch size mistmatch during BMM");
         }

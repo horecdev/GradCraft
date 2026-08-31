@@ -17,7 +17,7 @@ namespace gradc {
             std::unordered_map<std::string, Tensor<T>> m_first_moment;
             std::unordered_map<std::string, Tensor<T>> m_second_moment;
         public:
-            AdamW(std::unordered_map<std::string, Parameter<T>*> named_params, T lr, T beta1, T beta2, T weight_decay, T eps) {
+            AdamW(std::unordered_map<std::string, Parameter<T>*> named_params, T lr, T beta1 = static_cast<T>(0.9), T beta2 = static_cast<T>(0.999), T weight_decay = static_cast<T>(0.0), T eps = static_cast<T>(1e-7)) {
                 this->m_named_params = std::move(named_params);
                 this->assert_valid_params();
                 Device target_device = this->optim_device();
@@ -41,7 +41,7 @@ namespace gradc {
                 Device target_device = this->optim_device();
 
                 Tensor<T> penalty_factor = Tensor<T>(std::vector<int64_t>{}, target_device, uninitialized);
-                dispatch(target_device, BinaryOp::Mul, this->m_lr, m_weight_decay);
+                dispatch(target_device, BinaryOp::Mul, penalty_factor, this->m_lr, m_weight_decay);
                 dispatch(target_device, BinaryOpInPlace::ISub, penalty_factor, Tensor<T>(static_cast<T>(1.0), target_device));
 
                 Tensor<T> one_minus_beta1 = Tensor<T>(std::vector<int64_t>{}, target_device, uninitialized);
@@ -74,6 +74,10 @@ namespace gradc {
                     if (!p_ptr->grad().has_value()) {
                         continue;
                     }
+
+                    if (!p_ptr->no_decay()) {
+                        dispatch(target_device, BinaryOpInPlace::Mul, p_ptr->tensor(), penalty_factor);
+                    }
                     
                     // first update the mean and do the bias correction
                     Tensor<T>& mean = m_first_moment[name];
@@ -90,7 +94,7 @@ namespace gradc {
                     Tensor<T>& var = m_second_moment[name];
                     dispatch(target_device, BinaryOpInPlace::Mul, var, m_beta2);
 
-                    Tensor<T>& new_var_part = Tensor<T>(var.shape(), target_device, uninitialized);
+                    Tensor<T> new_var_part = Tensor<T>(var.shape(), target_device, uninitialized);
                     dispatch(target_device, UnaryOp::Square, new_var_part, p_ptr->grad().value());
                     dispatch(target_device, BinaryOpInPlace::Mul, new_var_part, one_minus_beta2);
                     dispatch(target_device, BinaryOpInPlace::Add, var, new_var_part);
@@ -103,11 +107,7 @@ namespace gradc {
                     dispatch(target_device, BinaryOpInPlace::Add, update, m_eps);
                     dispatch(target_device, BinaryOpInPlace::IDiv, update, this->m_lr);
                     dispatch(target_device, BinaryOpInPlace::Mul, update, mean_corrected);
-                    dispatch(target_device, BinaryOpInPlace::Sub, p_ptr->tensor(), update);
-
-                    if (!p_ptr->no_decay()) {
-                        dispatch(target_device, BinaryOpInPlace::Mul, p_ptr->tensor(), penalty_factor);
-                    }
+                    dispatch(target_device, BinaryOpInPlace::Sub, p_ptr->tensor(), update);   
                 }
             }
 
@@ -163,7 +163,7 @@ namespace gradc {
                     result[name + ".adamw_first"] = moved_mean.detach();
                 }
 
-                for (const auto& [name, var] : m_first_moment) {
+                for (const auto& [name, var] : m_second_moment) {
                     Tensor<T> moved_var = var.to(device);
                     moved_var.realize();
                     result[name + ".adamw_second"] = moved_var.detach();
@@ -212,7 +212,7 @@ namespace gradc {
                     m_beta1_exp = moved_beta.detach();
                 }
                 else {
-                    throw std::runtime_error("Tried loading AdamW optimizer with state_dict without key 'beta1_exp");
+                    throw std::runtime_error("Tried loading AdamW optimizer with state_dict without key 'beta1_exp'");
                 }
 
                 auto it2 = state_dict.find("beta2_exp");
@@ -222,7 +222,7 @@ namespace gradc {
                     m_beta2_exp = moved_beta.detach();
                 }
                 else {
-                    throw std::runtime_error("Tried loading AdamW optimizer with state_dict without key 'beta2_exp");
+                    throw std::runtime_error("Tried loading AdamW optimizer with state_dict without key 'beta2_exp'");
                 }
             }
     };

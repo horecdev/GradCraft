@@ -44,9 +44,12 @@ namespace gradc {
         }
 
         void backward(bool retain_graph) const override {
-            if (m_creation_op != nullptr) {
+            if (m_creation_op != nullptr && m_grad.has_value()) {
                 m_creation_op->backward(m_grad.value(), retain_graph);
             }
+            // if there is no has_value() check, any subgraph that does NOT require grad, blows up.
+            // If A has children B and C, and does require grad, but B and C dont, after ANode.backward() B and C grad remains std::nullopt
+            // Then B and C depend on some X, Y, Z. B, C do have an m_creation_op, but no grad. This backward crashes bc you access nullopt.value().
         }
 
         void clear_grad_if_non_leaf() override {

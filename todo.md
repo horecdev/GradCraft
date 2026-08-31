@@ -142,14 +142,15 @@ DONE .to_async frontend. only CPU to GPU
 DONE num_params() - get param count
 DONE Make tricks with all ops on matrices. Assert gradients are the same, assert math is the same as pytorch. Both devices
 DONE Fix the BLAS illegal parameter 8 on tensors with strides [1, 1]
-- overfit one batch of anything with every optimizer
+DONE overfit one batch of anything with every optimizer
+DONE XOR test on SGD
 - check named params on MHA module
-- num_params method test
-- save params, load and resume training. same with 
-
+DONE num_params method test
+DONE save params, load and resume training. same with all optimizers
+- install/configure cuDNN
 - make SDPANode only for CUDA
 - add cuDNN SDPA frontend (non-naive)
-- plug in cuDNN
+- Add fused layernorm from cuDNN (+ frontend non-naive)
 - fused layernorm (benchmark)
 - flash attention (benchmark)
 - Transformer block

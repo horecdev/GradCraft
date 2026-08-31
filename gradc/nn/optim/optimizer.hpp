@@ -36,7 +36,7 @@ namespace gradc {
             }
 
             // loads state dict into the same device parameters are on
-            virtual void load_state_dict(std::unordered_map<std::string, Tensor<T>> state_dict) {
+            virtual void load_state_dict(const std::unordered_map<std::string, Tensor<T>>& state_dict) {
                 if (!state_dict.empty()) {
                     std::cout << "Invoked non-empty load_state_dict() on a stateless optimizer" << std::endl;
                 }
