@@ -146,7 +146,10 @@ DONE overfit one batch of anything with every optimizer
 DONE XOR test on SGD
 DONE num_params method test
 DONE save params, load and resume training. same with all optimizers
-- install/configure cuDNN
+DONE install / integrate cuDNN
+- Write dispatch for layernorm cuDNN forward, backward
+- Make LayerNormNaiveNode and LayerNormCuDNNNode
+- layernorm(x, y, z) that dispatches the right one based on bool use_cudnn
 - make SDPANode only for CUDA
 - add cuDNN SDPA frontend (non-naive)
 - Add fused layernorm from cuDNN (+ frontend non-naive)

@@ -7,7 +7,7 @@
 namespace gradc {
 
     template <typename T>
-    class LayerNormNode : public Node<T> {
+    class LayerNormNaiveNode : public Node<T> {
         private:
             Tensor<T> m_parent;
             Tensor<T> m_gamma;
@@ -18,7 +18,7 @@ namespace gradc {
             Tensor<T> m_inv_std;
             Tensor<T> m_z_scores;
         public:
-            LayerNormNode(Tensor<T> parent, Tensor<T> gamma, Tensor<T> beta, RedMeta red_meta, std::vector<int64_t> normalized_shape, T eps)
+            LayerNormNaiveNode(Tensor<T> parent, Tensor<T> gamma, Tensor<T> beta, RedMeta red_meta, std::vector<int64_t> normalized_shape, T eps)
              : m_parent(std::move(parent)), m_gamma(std::move(gamma)), m_beta(std::move(beta)), m_red_meta(std::move(red_meta)), m_normalized_shape(std::move(normalized_shape)), m_eps(eps) {}
 
             Tensor<T> realize() override {
@@ -136,6 +136,20 @@ namespace gradc {
             std::vector<TensorStateBase*> get_input_states() override {
                 return {m_parent._get_state_base(), m_gamma._get_state_base(), m_beta._get_state_base()};
             }
+    };
+
+    template <typename T>
+    
+    class LayerNormCuDNNNode : public Node<T> {
+        private:
+            Tensor<T> m_parent;
+            Tensor<T> m_gamma;
+            Tensor<T> m_beta;
+            std::vector<int64_t> m_normalized_shape;
+            T m_eps;
+            
+            Tensor<T> m_saved_mean;
+            Tensor<T> m_saved_inv_var;
     };
     
 }

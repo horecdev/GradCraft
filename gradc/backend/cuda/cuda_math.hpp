@@ -30,5 +30,11 @@ namespace gradc {
             static void apply_embed(Tensor<T>& out, const Tensor<int64_t>& indices, const Tensor<T>& embeds, int64_t embed_vol);
             template <typename T>
             static void apply_scatter_add(Tensor<T>& dembeds, const Tensor<int64_t>& indices, const Tensor<T>& out_grad, int64_t embed_vol);
+            template <typename T>
+            requires std::is_floating_point_v<T>
+            static void apply_cudnn_layernorm_forward(Tensor<T>& out, Tensor<T>& saved_mean, Tensor<T>& saved_inv_var, const Tensor<T>& x, const Tensor<T>& gamma, const Tensor<T>& beta, T eps);
+            template <typename T>
+            requires std::is_floating_point_v<T>
+            static void apply_cudnn_layernorm_backward(Tensor<T>& dx, Tensor<T>& dgamma, Tensor<T>& dbeta, const Tensor<T>& out_grad, const Tensor<T>& x, const Tensor<T>& gamma, const Tensor<T>& saved_mean, const Tensor<T>& saved_inv_var);
     };
 }

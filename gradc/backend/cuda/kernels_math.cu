@@ -788,6 +788,22 @@ namespace gradc {
 
     #pragma endregion MATRIX MULTIPLY
 
+    #pragma region CUDNN LAYERNORM
+
+    template <typename T>
+    requires std::is_floating_point_v<T>
+    void CUDAMath::apply_cudnn_layernorm_forward(Tensor<T>& out, Tensor<T>& saved_mean, Tensor<T>& saved_inv_var, const Tensor<T>& x, const Tensor<T>& gamma, const Tensor<T>& beta, T eps) {
+    
+    }
+
+    template <typename T>
+    requires std::is_floating_point_v<T>
+    void CUDAMath::apply_cudnn_layernorm_backward(Tensor<T>& dx, Tensor<T>& dgamma, Tensor<T>& dbeta, const Tensor<T>& dy, const Tensor<T>& x, const Tensor<T>& gamma, const Tensor<T>& saved_mean, const Tensor<T>& saved_inv_var) {
+        
+    }
+
+    #pragma endregion CUDNN LAYERNORM
+
     #pragma region TEMPLATING
 
     #define INSTANTIATE_CUDA_MATH_SINGLE(T) \
@@ -813,6 +829,11 @@ namespace gradc {
         INSTANTIATE_CAST(int32_t, InT) \
         INSTANTIATE_CAST(int64_t, InT) 
 
+    #define INSTANTIATE_CUDNN_LAYERNORM(T) \
+        template void CUDAMath::apply_cudnn_layernorm_forward<T>(Tensor<T>&, Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, T); \
+        template void CUDAMath::apply_cudnn_layernorm_backward<T>(Tensor<T>&, Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&);
+    
+
     INSTANTIATE_CUDA_MATH_SINGLE(float)
     INSTANTIATE_CUDA_MATH_SINGLE(double)
     INSTANTIATE_CUDA_MATH_SINGLE(int32_t)
@@ -825,6 +846,9 @@ namespace gradc {
 
     INSTANTIATE_CUDA_MATMUL(float)
     INSTANTIATE_CUDA_MATMUL(double)
+
+    INSTANTIATE_CUDNN_LAYERNORM(float)
+    INSTANTIATE_CUDNN_LAYERNORM(double)
 
     #pragma endregion TEMPLATING
 }
