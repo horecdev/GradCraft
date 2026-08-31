@@ -182,7 +182,9 @@ namespace gradc {
             // NORMALIZATION
 
             template <typename U>
-            friend Tensor<U> layernorm(Tensor<U> parent, Tensor<U> gamma, Tensor<U> beta, const std::vector<int64_t>& axes, U eps) requires std::is_floating_point_v<U>;
+            friend Tensor<U> layernorm_naive(Tensor<U> parent, Tensor<U> gamma, Tensor<U> beta, const std::vector<int64_t>& axes, U eps) requires std::is_floating_point_v<U>;
+            template <typename U>
+            friend Tensor<U> layernorm_cudnn(Tensor<U> parent, Tensor<U> gamma, Tensor<U> beta, const std::vector<int64_t>& axes, U eps) requires std::is_floating_point_v<U>;
 
             // REGULARIZATION
 

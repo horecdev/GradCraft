@@ -172,7 +172,11 @@ namespace gradc {
                     save_intermediates = true;
                 }
 
-                dispatch_cudnn_layernorm_forward(target_device, result, m_saved_mean, m_saved_inv_var, m_parent, m_gamma, m_beta, m_eps, save_intermediates);
+                // cuDNN expects gamma, beta and dgamma, dbeta in normalized_shape
+                Tensor<T> gamma_reshaped = lobotomized_reshape_view(m_gamma, m_normalized_shape);
+                Tensor<T> beta_reshaped = lobotomized_reshape_view(m_beta, m_normalized_shape);
+
+                dispatch_cudnn_layernorm_forward(target_device, result, m_saved_mean, m_saved_inv_var, m_parent, gamma_reshaped, beta_reshaped, m_eps, save_intermediates);
 
                 return result;
             }
@@ -180,20 +184,23 @@ namespace gradc {
             void backward(const Tensor<T>& out_grad, bool retain_graph) override {
                 if (m_parent.requires_grad() || m_gamma.requires_grad() || m_beta.requires_grad()) {
                     Device target_device = out_grad.device();
-                    
-                    Tensor<T> dx = Tensor<T>(m_parent.shape(), target_device, uninitialized);
-                    Tensor<T> dgamma = Tensor<T>(dgamma.shape(), target_device, uninitialized);
-                    Tensor<T> dbeta = Tensor<T>(dbeta.shape(), target_device, uninitialized);
 
-                    dispatch_cudnn_layernorm_backward(target_device, dx, dgamma, dbeta, out_grad, m_parent, m_gamma, m_saved_mean, m_saved_inv_var);
+                    Tensor<T> dx = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                    Tensor<T> dgamma_reshaped = Tensor<T>(m_normalized_shape, target_device, uninitialized);
+                    Tensor<T> dbeta_reshaped = Tensor<T>(m_normalized_shape, target_device, uninitialized);
+                    Tensor<T> gamma_reshaped = lobotomized_reshape_view(m_gamma, m_normalized_shape);
+
+                    dispatch_cudnn_layernorm_backward(target_device, dx, dgamma_reshaped, dbeta_reshaped, out_grad, m_parent, gamma_reshaped, m_saved_mean, m_saved_inv_var);
 
                     if (m_parent.requires_grad()) {
                         m_parent.accumulate_grad(dx);
                     }
                     if (m_gamma.requires_grad()) {
+                        Tensor<T> dgamma = lobotomized_reshape_view(dgamma_reshaped, m_gamma.shape());
                         m_gamma.accumulate_grad(dgamma);
                     }
                     if (m_beta.requires_grad()) {
+                        Tensor<T> dbeta = lobotomized_reshape_view(dbeta_reshaped, m_beta.shape());
                         m_beta.accumulate_grad(dbeta);
                     }
 
@@ -202,6 +209,10 @@ namespace gradc {
                         m_saved_inv_var = Tensor<T>();
                     }
                 }
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_parent._get_state_base(), m_gamma._get_state_base(), m_beta._get_state_base()};
             }
     };
     

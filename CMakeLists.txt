@@ -32,6 +32,7 @@ target_link_libraries(tensor PRIVATE
     CUDA::cudart
     CUDA::cublas
     CUDA::curand
+    CUDA::nvrtc
     OpenBLAS::OpenBLAS
     cudnn
 )
