@@ -155,12 +155,12 @@ namespace gradc {
     }
 
     template <typename T>
-    inline void dispatch_cudnn_layernorm_forward(Device device, Tensor<T>& out, Tensor<T>& saved_mean, Tensor<T>& saved_inv_var, const Tensor<T>& x, const Tensor<T>& gamma, const Tensor<T>& beta, T eps) {
+    inline void dispatch_cudnn_layernorm_forward(Device device, Tensor<T>& out, Tensor<T>& saved_mean, Tensor<T>& saved_inv_var, const Tensor<T>& x, const Tensor<T>& gamma, const Tensor<T>& beta, T eps, bool save_intermediates) {
         if (device.is_cpu()) {
             throw std::runtime_error("cuDNN LayerNorm forward dispatch called on CPU");
         }
         else if (device.is_cuda()) {
-            CUDAMath::apply_cudnn_layernorm_forward(out, saved_mean, saved_inv_var, x, gamma, beta, eps);
+            CUDAMath::apply_cudnn_layernorm_forward(out, saved_mean, saved_inv_var, x, gamma, beta, eps, save_intermediates);
         }
     }
 

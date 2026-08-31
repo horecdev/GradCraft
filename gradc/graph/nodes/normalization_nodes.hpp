@@ -144,6 +144,8 @@ namespace gradc {
             Tensor<T> m_parent;
             Tensor<T> m_gamma;
             Tensor<T> m_beta;
+
+            RedMeta m_red_meta;
             std::vector<int64_t> m_normalized_shape;
             T m_eps;
             
@@ -151,8 +153,8 @@ namespace gradc {
             Tensor<T> m_saved_inv_var;
         
         public:
-            LayerNormCuDNNNode(Tensor<T> parent, Tensor<T> gamma, Tensor<T> beta, std::vector<int64_t> normalized_shape, T eps) 
-                : m_parent(std::move(parent)), m_gamma(std::move(gamma)), m_beta(std::move(beta)), m_normalized_shape(std::move(normalized_shape)), m_eps(eps) {}
+            LayerNormCuDNNNode(Tensor<T> parent, Tensor<T> gamma, Tensor<T> beta, RedMeta red_meta, std::vector<int64_t> normalized_shape, T eps) 
+                : m_parent(std::move(parent)), m_gamma(std::move(gamma)), m_beta(std::move(beta)), m_red_meta(std::move(red_meta)), m_normalized_shape(std::move(normalized_shape)), m_eps(eps) {}
 
             Tensor<T> realize() override {
                 m_parent.realize();
@@ -163,8 +165,43 @@ namespace gradc {
 
                 Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
 
-            Tensor<T> realize() override {
+                bool save_intermediates = false;
+                if (m_parent.requires_grad() || m_gamma.requires_grad() || m_beta.requires_grad()) {
+                    m_saved_mean = Tensor<T>(m_red_meta.temp_shape, target_device, uninitialized);
+                    m_saved_inv_var = Tensor<T>(m_red_meta.temp_shape, target_device, uninitialized);
+                    save_intermediates = true;
+                }
 
+                dispatch_cudnn_layernorm_forward(target_device, result, m_saved_mean, m_saved_inv_var, m_parent, m_gamma, m_beta, m_eps, save_intermediates);
+
+                return result;
+            }
+
+            void backward(const Tensor<T>& out_grad, bool retain_graph) override {
+                if (m_parent.requires_grad() || m_gamma.requires_grad() || m_beta.requires_grad()) {
+                    Device target_device = out_grad.device();
+                    
+                    Tensor<T> dx = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                    Tensor<T> dgamma = Tensor<T>(dgamma.shape(), target_device, uninitialized);
+                    Tensor<T> dbeta = Tensor<T>(dbeta.shape(), target_device, uninitialized);
+
+                    dispatch_cudnn_layernorm_backward(target_device, dx, dgamma, dbeta, out_grad, m_parent, m_gamma, m_saved_mean, m_saved_inv_var);
+
+                    if (m_parent.requires_grad()) {
+                        m_parent.accumulate_grad(dx);
+                    }
+                    if (m_gamma.requires_grad()) {
+                        m_gamma.accumulate_grad(dgamma);
+                    }
+                    if (m_beta.requires_grad()) {
+                        m_beta.accumulate_grad(dbeta);
+                    }
+
+                    if (!retain_graph) {
+                        m_saved_mean = Tensor<T>();
+                        m_saved_inv_var = Tensor<T>();
+                    }
+                }
             }
     };
     

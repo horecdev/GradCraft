@@ -16,6 +16,7 @@ add_executable(tensor
     gradc/gradc.hpp
     gradc/backend/cuda/kernels_math.cu
     gradc/backend/cuda/kernels_utils.cu
+    gradc/backend/cuda/cudnn_ops.cu
 )
 
 find_package(CUDAToolkit REQUIRED)
