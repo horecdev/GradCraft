@@ -173,4 +173,26 @@ namespace gradc {
             CUDAMath::apply_cudnn_layernorm_backward(dx, dgamma, dbeta, out_grad, x, gamma, saved_mean, saved_inv_var);
         }
     }
+
+    template <typename T>
+    inline void dispatch_cudnn_sdpa_forward(Device device, Tensor<T>& out, Tensor<T>& saved_lse, const Tensor<T>& q, const Tensor<T>& k, const Tensor<T>& v, T scale, bool is_causal, bool save_intermediates) {
+        if (device.is_cpu()) {
+            throw std::runtime_error("cuDNN SDPA forward dispatch called on CPU");
+        }
+        else if (device.is_cuda()) {
+            CUDAMath::apply_cudnn_sdpa_forward(out, saved_lse, q, k, v, scale, is_causal, save_intermediates);
+        }
+    } 
+
+    template <typename T>
+    inline void dispatch_cudnn_sdpa_backward(Device device, Tensor<T>& dq, Tensor<T>& dk, Tensor<T>& dv, const Tensor<T>& out_grad, const Tensor<T>& q, const Tensor<T>& k, const Tensor<T>& v, const Tensor<T> out, const Tensor<T>& saved_lse, T scale, bool is_causal) {
+        if (device.is_cpu()) {
+            throw std::runtime_error("cuDNN SDPA backward dispatch called on CPU");
+        }
+        else if (device.is_cuda()) {
+            CUDAMath::apply_cudnn_sdpa_backward(dq, dk, dv, out_grad, q, k, v, out, saved_lse, scale, is_causal);
+        }
+    }
+
+    
 }

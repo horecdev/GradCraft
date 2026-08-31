@@ -34,10 +34,6 @@ namespace gradc {
             return fe::DataType_t::FLOAT;
         } else if constexpr (std::is_same_v<T, double>) {
             return fe::DataType_t::DOUBLE;
-        } else if constexpr (std::is_same_v<T, uint16_t>) { // e.g., fp16 / __half cast
-            return fe::DataType_t::HALF;
-        } else {
-            return fe::DataType_t::FLOAT;
         }
     }
 
@@ -318,6 +314,206 @@ namespace gradc {
 
     #pragma endregion CUDNN LAYERNORM
 
+    #pragma region CUDNN SDPA
+
+    template <typename T>
+    requires std::is_same_v<T, float>
+    void CUDAMath::apply_cudnn_sdpa_forward(Tensor<T>& out, Tensor<T>& saved_lse, const Tensor<T>& q, const Tensor<T>& k, const Tensor<T>& v, T scale, bool is_causal, bool save_intermediates) {
+        cudnnHandle_t handle = get_cudnn_handle();
+        cudaSetDevice(q.device().index);
+
+        void* p_q   = static_cast<void*>(q._get_storage()->data() + q.offset());
+        void* p_k   = static_cast<void*>(k._get_storage()->data() + k.offset());
+        void* p_v   = static_cast<void*>(v._get_storage()->data() + v.offset());
+        void* p_out = static_cast<void*>(out._get_storage()->data() + out.offset());
+        
+        void* p_lse = nullptr;
+        if (save_intermediates) {
+            p_lse = static_cast<void*>(saved_lse._get_storage()->data() + saved_lse.offset());
+        }
+
+        fe::DataType_t dtype = fe::DataType_t::FLOAT;
+        fe::graph::Graph graph;
+
+        // input tensors
+        auto q_tensor = graph.tensor(
+            fe::graph::Tensor_attributes().set_name("Q").set_data_type(dtype)
+            .set_dim(q.shape()).set_stride(q.strides())
+        );
+        auto k_tensor = graph.tensor(
+            fe::graph::Tensor_attributes().set_name("K").set_data_type(dtype)
+            .set_dim(k.shape()).set_stride(k.strides())
+        );
+        auto v_tensor = graph.tensor(
+            fe::graph::Tensor_attributes().set_name("V").set_data_type(dtype)
+            .set_dim(v.shape()).set_stride(v.strides())
+        );
+
+        auto sdpa_attr = fe::graph::SDPA_attributes()
+            .set_generate_stats(save_intermediates)
+            .set_attn_scale(static_cast<float>(scale));
+
+        if (is_causal) {
+            // ignore everything on the top left (causal)
+            sdpa_attr.set_diagonal_alignment(fe::DiagonalAlignment_t::TOP_LEFT);
+            sdpa_attr.set_diagonal_band_right_bound(0);
+        }
+
+        // connect inputs and create outputs
+        auto [out_tensor, lse_tensor] = graph.sdpa(q_tensor, k_tensor, v_tensor, sdpa_attr);
+
+        // configure outputs
+        out_tensor->set_output(true)
+            .set_data_type(dtype)
+            .set_dim(out.shape())
+            .set_stride(out.strides());
+
+        if (save_intermediates) {
+            // only floats (function restricted for floats also)
+            lse_tensor->set_output(true)
+                .set_data_type(fe::DataType_t::FLOAT) 
+                .set_dim(saved_lse.shape())
+                .set_stride(saved_lse.strides());
+        }
+
+        // compile graph
+        auto status = graph.validate();
+        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA validation failed: " + status.get_message());
+
+        status = graph.build_operation_graph(handle);
+        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA op graph failed: " + status.get_message());
+
+        status = graph.create_execution_plans({fe::HeurMode_t::A});
+        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA exec plans failed: " + status.get_message());
+
+        status = graph.check_support();
+        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA check support failed: " + status.get_message());
+
+        status = graph.build_plans();
+        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA build plans failed: " + status.get_message());
+
+        // workspace memory
+        int64_t workspace_size = 0;
+        auto smth = graph.get_workspace_size(workspace_size);
+        void* workspace_ptr = nullptr;
+        if (workspace_size > 0) {
+            workspace_ptr = CUDAMemPool::get().allocate(workspace_size, q.device());
+        }
+
+        // bind pointers
+        std::unordered_map<fe::graph::Tensor_attributes::uid_t, void*> variant_pack = {
+            {q_tensor->get_uid(), p_q},
+            {k_tensor->get_uid(), p_k},
+            {v_tensor->get_uid(), p_v},
+            {out_tensor->get_uid(), p_out}
+        };
+
+        if (save_intermediates) {
+            variant_pack[lse_tensor->get_uid()] = p_lse;
+        }
+
+        status = graph.execute(handle, variant_pack, workspace_ptr);
+
+        // free memory
+        if (workspace_size > 0) {
+            CUDAMemPool::get().free(workspace_ptr, workspace_size, q.device());
+        }
+
+        if (!status.is_good()) {
+            throw std::runtime_error("cuDNN SDPA execution failed: " + status.get_message());
+        }
+    }
+
+    template <typename T>
+    requires std::is_same_v<T, float>
+    void CUDAMath::apply_cudnn_sdpa_backward(Tensor<T>& dq, Tensor<T>& dk, Tensor<T>& dv, const Tensor<T>& out_grad, const Tensor<T>& q, const Tensor<T>& k, const Tensor<T>& v, const Tensor<T>& out, const Tensor<T>& saved_lse, T scale, bool is_causal) {
+        cudnnHandle_t handle = get_cudnn_handle();
+        cudaSetDevice(q.device().index);
+
+        void* p_dq = static_cast<void*>(dq._get_storage()->data() + dq.offset());
+        void* p_dk = static_cast<void*>(dk._get_storage()->data() + dk.offset());
+        void* p_dv = static_cast<void*>(dv._get_storage()->data() + dv.offset());
+        void* p_q = static_cast<void*>(q._get_storage()->data() + q.offset());
+        void* p_k = static_cast<void*>(k._get_storage()->data() + k.offset());
+        void* p_v = static_cast<void*>(v._get_storage()->data() + v.offset());
+        void* p_out = static_cast<void*>(out._get_storage()->data() + out.offset());
+        void* p_out_grad = static_cast<void*>(out_grad._get_storage()->data() + out_grad.offset());
+        void* p_stats = static_cast<void*>(saved_lse._get_storage()->data() + saved_lse.offset());
+
+        fe::DataType_t dtype = fe::DataType_t::FLOAT;
+        fe::graph::Graph graph;
+
+        auto q_tensor = graph.tensor(fe::graph::Tensor_attributes().set_name("Q").set_data_type(dtype).set_dim(q.shape()).set_stride(q.strides()));
+        auto k_tensor = graph.tensor(fe::graph::Tensor_attributes().set_name("K").set_data_type(dtype).set_dim(k.shape()).set_stride(k.strides()));
+        auto v_tensor = graph.tensor(fe::graph::Tensor_attributes().set_name("V").set_data_type(dtype).set_dim(v.shape()).set_stride(v.strides()));
+        auto out_tensor = graph.tensor(fe::graph::Tensor_attributes().set_name("O").set_data_type(dtype).set_dim(out.shape()).set_stride(out.strides()));
+        auto dY_tensor = graph.tensor(fe::graph::Tensor_attributes().set_name("dY").set_data_type(dtype).set_dim(out_grad.shape()).set_stride(out_grad.strides()));
+        
+        auto stats_tensor = graph.tensor(fe::graph::Tensor_attributes().set_name("Stats").set_data_type(fe::DataType_t::FLOAT).set_dim(saved_lse.shape()).set_stride(saved_lse.strides()));
+
+        auto sdpa_bwd_attr = fe::graph::SDPA_backward_attributes()
+            .set_attn_scale(scale);
+
+        if (is_causal) {
+            sdpa_bwd_attr.set_diagonal_alignment(fe::DiagonalAlignment_t::TOP_LEFT);
+            sdpa_bwd_attr.set_diagonal_band_right_bound(0);
+        }
+
+        auto [dq_tensor, dk_tensor, dv_tensor] = graph.sdpa_backward(
+            q_tensor, k_tensor, v_tensor, out_tensor, dY_tensor, stats_tensor, sdpa_bwd_attr
+        );
+
+        dq_tensor->set_output(true).set_data_type(dtype).set_dim(dq.shape()).set_stride(dq.strides());
+        dk_tensor->set_output(true).set_data_type(dtype).set_dim(dk.shape()).set_stride(dk.strides());
+        dv_tensor->set_output(true).set_data_type(dtype).set_dim(dv.shape()).set_stride(dv.strides());
+
+        auto status = graph.validate();
+        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA BWD validation failed: " + status.get_message());
+
+        status = graph.build_operation_graph(handle);
+        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA BWD op graph failed: " + status.get_message());
+
+        status = graph.create_execution_plans({fe::HeurMode_t::A});
+        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA BWD exec plans failed: " + status.get_message());
+
+        status = graph.check_support();
+        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA BWD check support failed: " + status.get_message());
+
+        status = graph.build_plans();
+        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA BWD build plans failed: " + status.get_message());
+
+        int64_t workspace_size = 0;
+        auto smth = graph.get_workspace_size(workspace_size);
+        void* workspace_ptr = nullptr;
+        if (workspace_size > 0) {
+            workspace_ptr = CUDAMemPool::get().allocate(workspace_size, q.device());
+        }
+
+        std::unordered_map<fe::graph::Tensor_attributes::uid_t, void*> variant_pack = {
+            {q_tensor->get_uid(), p_q},
+            {k_tensor->get_uid(), p_k},
+            {v_tensor->get_uid(), p_v},
+            {out_tensor->get_uid(), p_out},
+            {dY_tensor->get_uid(), p_out_grad},
+            {stats_tensor->get_uid(), p_stats},
+            {dq_tensor->get_uid(), p_dq},
+            {dk_tensor->get_uid(), p_dk},
+            {dv_tensor->get_uid(), p_dv}
+        };
+
+        status = graph.execute(handle, variant_pack, workspace_ptr);
+
+        if (workspace_size > 0) {
+            CUDAMemPool::get().free(workspace_ptr, workspace_size, q.device());
+        }
+
+        if (!status.is_good()) {
+            throw std::runtime_error("cuDNN SDPA BWD execution failed: " + status.get_message());
+        }
+    }
+
+    #pragma endregion CUDNN SDPA
+
     #pragma region TEMPLATING
 
     #define INSTANTIATE_CUDNN_LAYERNORM(T) \
@@ -326,6 +522,7 @@ namespace gradc {
 
     INSTANTIATE_CUDNN_LAYERNORM(float)
     INSTANTIATE_CUDNN_LAYERNORM(double)
+
 
     #pragma endregion TEMPLATING
 }
