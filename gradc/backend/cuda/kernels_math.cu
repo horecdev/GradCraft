@@ -997,11 +997,9 @@ namespace gradc {
                 .set_stride(saved_inv_var.strides())
         );
 
-        // FIX: Attach mean and inv_var to the attributes struct
         auto bwd_attr = fe::graph::Layernorm_backward_attributes()
             .set_saved_mean_and_inv_variance(mean_tensor, inv_var_tensor);
 
-        // Pass exactly 4 arguments to the backend
         auto [dx_tensor, dgamma_tensor, dbeta_tensor] = graph.layernorm_backward(
             dy_tensor, x_tensor, gamma_tensor, bwd_attr
         );
