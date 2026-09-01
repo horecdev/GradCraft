@@ -43,7 +43,10 @@ target_include_directories(tensor PRIVATE
 )
 
 if(MSVC)
-    target_compile_options(tensor PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4>)
+    target_compile_options(tensor PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4 /bigobj>
+        $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/bigobj>
+    )
     target_link_options(tensor PRIVATE /INCREMENTAL:NO)
 else()
     target_compile_options(tensor PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fsanitize=address -g -fno-omit-frame-pointer>)

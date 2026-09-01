@@ -4,6 +4,9 @@
 #include <cublas_v2.h>
 #include <cudnn.h>
 #include <cudnn_frontend.h>
+#include <unordered_map>
+#include <string>
+#include <memory>
 
 namespace gradc {
     template <typename T>
@@ -28,6 +31,20 @@ namespace gradc {
 
     namespace fe = cudnn_frontend;
 
+    // cache structs
+    struct LNFwdCache {
+        std::shared_ptr<fe::graph::Graph> graph;
+        fe::graph::Tensor_attributes::uid_t x_uid, gamma_uid, beta_uid, y_uid, mean_uid, inv_var_uid;
+        int64_t workspace_size;
+    };
+
+    struct LNBwdCache {
+        std::shared_ptr<fe::graph::Graph> graph;
+        fe::graph::Tensor_attributes::uid_t dy_uid, x_uid, gamma_uid, mean_uid, inv_var_uid;
+        fe::graph::Tensor_attributes::uid_t dx_uid, dgamma_uid, dbeta_uid;
+        int64_t workspace_size;
+    };
+
     template <typename T>
     constexpr fe::DataType_t get_cudnn_fe_dtype() {
         if constexpr (std::is_same_v<T, float>) {
@@ -43,6 +60,7 @@ namespace gradc {
         cudnnHandle_t handle = get_cudnn_handle();
         cudaSetDevice(x.device().index);
 
+        // get ptrs
         void* p_x     = static_cast<void*>(x._get_storage()->data() + x.offset());
         void* p_y     = static_cast<void*>(out._get_storage()->data() + out.offset());
         void* p_gamma = static_cast<void*>(gamma._get_storage()->data() + gamma.offset());
@@ -57,118 +75,91 @@ namespace gradc {
 
         fe::DataType_t dtype = get_cudnn_fe_dtype<T>();
 
-        fe::graph::Graph graph;
+        // generate unique key based on shape and training/inference
+        std::string shape_key = "";
+        for (int64_t d : x.shape()) shape_key += std::to_string(d) + "_";
+        shape_key += (save_intermediates ? "TRAIN" : "INFER");
 
-        // literally create tensor variables in cuDNN with these lines
-        auto x_tensor = graph.tensor(
-            fe::graph::Tensor_attributes()
-                .set_name("X")
-                .set_data_type(dtype)
-                .set_dim(x.shape())
-                .set_stride(x.strides())
-        );
+        // cache map
+        static std::unordered_map<std::string, LNFwdCache> fwd_cache;
 
-        auto gamma_tensor = graph.tensor(
-            fe::graph::Tensor_attributes()
-                .set_name("Gamma")
-                .set_data_type(dtype)
-                .set_dim(gamma.shape())
-                .set_stride(gamma.strides())
-        );
+        // compile only if cache not in the map
+        if (fwd_cache.find(shape_key) == fwd_cache.end()) {
+            auto graph = std::make_shared<fe::graph::Graph>();
+            
+            auto x_tensor = graph->tensor(
+                fe::graph::Tensor_attributes().set_name("X").set_data_type(dtype).set_dim(x.shape()).set_stride(x.strides())
+            );
 
-        auto beta_tensor = graph.tensor(
-            fe::graph::Tensor_attributes()
-                .set_name("Beta")
-                .set_data_type(dtype)
-                .set_dim(beta.shape())
-                .set_stride(beta.strides())
-        );
+            auto gamma_tensor = graph->tensor(
+                fe::graph::Tensor_attributes().set_name("Gamma").set_data_type(dtype).set_dim(gamma.shape()).set_stride(gamma.strides())
+            );
 
-        // do we need to save inv_var or mean?
-        fe::NormFwdPhase_t phase = save_intermediates ? fe::NormFwdPhase_t::TRAINING : fe::NormFwdPhase_t::INFERENCE;
-        // configure layernorm
-        auto layernorm_attr = fe::graph::Layernorm_attributes()
-            .set_forward_phase(phase)
-            .set_epsilon(static_cast<double>(eps));
+            auto beta_tensor = graph->tensor(
+                fe::graph::Tensor_attributes().set_name("Beta").set_data_type(dtype).set_dim(beta.shape()).set_stride(beta.strides())
+            );
 
-        // this line below is what connects outputs to inputs via layernorm. Creates 3 new tensors (outputs)
-        auto [y_tensor, mean_tensor, inv_var_tensor] = graph.layernorm(x_tensor, gamma_tensor, beta_tensor, layernorm_attr);
+            fe::NormFwdPhase_t phase = save_intermediates ? fe::NormFwdPhase_t::TRAINING : fe::NormFwdPhase_t::INFERENCE;
+            auto layernorm_attr = fe::graph::Layernorm_attributes().set_forward_phase(phase).set_epsilon(static_cast<double>(eps));
 
-        // after they are already plugged
-        y_tensor->set_output(true)
-                .set_data_type(dtype)
-                .set_dim(out.shape())
-                .set_stride(out.strides());
+            auto [y_tensor, mean_tensor, inv_var_tensor] = graph->layernorm(x_tensor, gamma_tensor, beta_tensor, layernorm_attr);
 
-        if (save_intermediates) {
-            mean_tensor->set_output(true)
-                    .set_data_type(dtype)
-                    .set_dim(saved_mean.shape())
-                    .set_stride(saved_mean.strides());
+            y_tensor->set_output(true).set_data_type(dtype).set_dim(out.shape()).set_stride(out.strides());
 
-            inv_var_tensor->set_output(true)
-                        .set_data_type(dtype)
-                        .set_dim(saved_inv_var.shape())
-                        .set_stride(saved_inv_var.strides());
+            if (save_intermediates) {
+                mean_tensor->set_output(true).set_data_type(dtype).set_dim(saved_mean.shape()).set_stride(saved_mean.strides());
+                inv_var_tensor->set_output(true).set_data_type(dtype).set_dim(saved_inv_var.shape()).set_stride(saved_inv_var.strides());
+            }
+
+            if (!graph->validate().is_good() || !graph->build_operation_graph(handle).is_good() || 
+                !graph->create_execution_plans({fe::HeurMode_t::A}).is_good() || !graph->check_support().is_good() || 
+                !graph->build_plans().is_good()) {
+                throw std::runtime_error("cuDNN FWD Graph compilation failed.");
+            }
+
+            LNFwdCache entry;
+            entry.graph = graph;
+            entry.x_uid = x_tensor->get_uid();
+            entry.gamma_uid = gamma_tensor->get_uid();
+            entry.beta_uid = beta_tensor->get_uid();
+            entry.y_uid = y_tensor->get_uid();
+            if (save_intermediates) {
+                entry.mean_uid = mean_tensor->get_uid();
+                entry.inv_var_uid = inv_var_tensor->get_uid();
+            }
+            auto smth = graph->get_workspace_size(entry.workspace_size);
+            fwd_cache[shape_key] = entry;
         }
 
-        auto status = graph.validate();
-        if (!status.is_good()) {
-            throw std::runtime_error("cuDNN graph validation failed: " + status.get_message());
-        }
-
-        status = graph.build_operation_graph(handle);
-        if (!status.is_good()) {
-            throw std::runtime_error("cuDNN build_operation_graph failed: " + status.get_message());
-        }
-
-        status = graph.create_execution_plans({fe::HeurMode_t::A});
-        if (!status.is_good()) {
-            throw std::runtime_error("cuDNN create_execution_plans failed: " + status.get_message());
-        }
-
-        status = graph.check_support();
-        if (!status.is_good()) {
-            throw std::runtime_error("cuDNN check_support failed: " + status.get_message());
-        }
-
-        status = graph.build_plans();
-        if (!status.is_good()) {
-            throw std::runtime_error("cuDNN build_plans failed: " + status.get_message());
-        }
-
-
-        // workspace - intermediate memory allocates using our custom CUDAMemPool
-        int64_t workspace_size = 0;
-        auto smth = graph.get_workspace_size(workspace_size);
+        // retrieve from cache
+        auto& cache_entry = fwd_cache[shape_key];
         void* workspace_ptr = nullptr;
-        if (workspace_size > 0) {
-            workspace_ptr = CUDAMemPool::get().allocate(workspace_size, x.device());
+        if (cache_entry.workspace_size > 0) {
+            workspace_ptr = CUDAMemPool::get().allocate(cache_entry.workspace_size, x.device());
         }
 
-        // hook up actual memory pointers to tensors (both in and out)
         std::unordered_map<fe::graph::Tensor_attributes::uid_t, void*> variant_pack = {
-            {x_tensor->get_uid(), p_x},
-            {gamma_tensor->get_uid(), p_gamma},
-            {beta_tensor->get_uid(), p_beta},
-            {y_tensor->get_uid(), p_y}
+            {cache_entry.x_uid, p_x},
+            {cache_entry.gamma_uid, p_gamma},
+            {cache_entry.beta_uid, p_beta},
+            {cache_entry.y_uid, p_y}
         };
 
         if (save_intermediates) {
-            variant_pack[mean_tensor->get_uid()] = p_mean;
-            variant_pack[inv_var_tensor->get_uid()] = p_inv_var;
+            variant_pack[cache_entry.mean_uid] = p_mean;
+            variant_pack[cache_entry.inv_var_uid] = p_inv_var;
         }
 
         // execute the math
-        status = graph.execute(handle, variant_pack, workspace_ptr);
+        auto status = cache_entry.graph->execute(handle, variant_pack, workspace_ptr);
 
         // free CUDA memory back into mempool
-        if (workspace_size > 0) {
-            CUDAMemPool::get().free(workspace_ptr, workspace_size, x.device());
+        if (cache_entry.workspace_size > 0) {
+            CUDAMemPool::get().free(workspace_ptr, cache_entry.workspace_size, x.device());
         }
 
         if (!status.is_good()) {
-            throw std::runtime_error("cuDNN LayerNorm graph execution failed: " + status.get_message());
+            throw std::runtime_error("cuDNN LayerNorm FWD graph execution failed: " + status.get_message());
         }
     }
 
@@ -189,122 +180,73 @@ namespace gradc {
 
         fe::DataType_t dtype = get_cudnn_fe_dtype<T>();
 
-        fe::graph::Graph graph;
+        // 1. Generate unique string key based on shape
+        std::string shape_key = "";
+        for (int64_t d : x.shape()) shape_key += std::to_string(d) + "_";
 
-        // create variable tensors (input)
-        auto dy_tensor = graph.tensor(
-            fe::graph::Tensor_attributes()
-                .set_name("dY")
-                .set_data_type(dtype)
-                .set_dim(dy.shape())
-                .set_stride(dy.strides())
-        );
+        // 2. Static cache map
+        static std::unordered_map<std::string, LNBwdCache> bwd_cache;
 
-        auto x_tensor = graph.tensor(
-            fe::graph::Tensor_attributes()
-                .set_name("X")
-                .set_data_type(dtype)
-                .set_dim(x.shape())
-                .set_stride(x.strides())
-        );
+        // 3. Compile graph ONLY if not found in cache
+        if (bwd_cache.find(shape_key) == bwd_cache.end()) {
+            auto graph = std::make_shared<fe::graph::Graph>();
+            
+            auto dy_tensor = graph->tensor(fe::graph::Tensor_attributes().set_name("dY").set_data_type(dtype).set_dim(dy.shape()).set_stride(dy.strides()));
+            auto x_tensor = graph->tensor(fe::graph::Tensor_attributes().set_name("X").set_data_type(dtype).set_dim(x.shape()).set_stride(x.strides()));
+            auto gamma_tensor = graph->tensor(fe::graph::Tensor_attributes().set_name("Gamma").set_data_type(dtype).set_dim(gamma.shape()).set_stride(gamma.strides()));
+            auto mean_tensor = graph->tensor(fe::graph::Tensor_attributes().set_name("Mean").set_data_type(dtype).set_dim(saved_mean.shape()).set_stride(saved_mean.strides()));
+            auto inv_var_tensor = graph->tensor(fe::graph::Tensor_attributes().set_name("InvVar").set_data_type(dtype).set_dim(saved_inv_var.shape()).set_stride(saved_inv_var.strides()));
 
-        auto gamma_tensor = graph.tensor(
-            fe::graph::Tensor_attributes()
-                .set_name("Gamma")
-                .set_data_type(dtype)
-                .set_dim(gamma.shape())
-                .set_stride(gamma.strides())
-        );
+            auto bwd_attr = fe::graph::Layernorm_backward_attributes().set_saved_mean_and_inv_variance(mean_tensor, inv_var_tensor);
 
-        auto mean_tensor = graph.tensor(
-            fe::graph::Tensor_attributes()
-                .set_name("Mean")
-                .set_data_type(dtype)
-                .set_dim(saved_mean.shape())
-                .set_stride(saved_mean.strides())
-        );
+            auto [dx_tensor, dgamma_tensor, dbeta_tensor] = graph->layernorm_backward(dy_tensor, x_tensor, gamma_tensor, bwd_attr);
 
-        auto inv_var_tensor = graph.tensor(
-            fe::graph::Tensor_attributes()
-                .set_name("InvVar")
-                .set_data_type(dtype)
-                .set_dim(saved_inv_var.shape())
-                .set_stride(saved_inv_var.strides())
-        );
+            dx_tensor->set_output(true).set_data_type(dtype).set_dim(dx.shape()).set_stride(dx.strides());
+            dgamma_tensor->set_output(true).set_data_type(dtype).set_dim(dgamma.shape()).set_stride(dgamma.strides());
+            dbeta_tensor->set_output(true).set_data_type(dtype).set_dim(dbeta.shape()).set_stride(dbeta.strides());
 
-        auto bwd_attr = fe::graph::Layernorm_backward_attributes()
-            .set_saved_mean_and_inv_variance(mean_tensor, inv_var_tensor);
+            if (!graph->validate().is_good() || !graph->build_operation_graph(handle).is_good() || 
+                !graph->create_execution_plans({fe::HeurMode_t::A}).is_good() || !graph->check_support().is_good() || 
+                !graph->build_plans().is_good()) {
+                throw std::runtime_error("cuDNN BWD Graph compilation failed.");
+            }
 
-        // create out tensors (derivative) and link them up
-        auto [dx_tensor, dgamma_tensor, dbeta_tensor] = graph.layernorm_backward(
-            dy_tensor, x_tensor, gamma_tensor, bwd_attr
-        );
-
-        // configure outputs
-        dx_tensor->set_output(true)
-                .set_data_type(dtype)
-                .set_dim(dx.shape())
-                .set_stride(dx.strides());
-
-        dgamma_tensor->set_output(true)
-                .set_data_type(dtype)
-                .set_dim(dgamma.shape())
-                .set_stride(dgamma.strides());
-
-        dbeta_tensor->set_output(true)
-                .set_data_type(dtype)
-                .set_dim(dbeta.shape())
-                .set_stride(dbeta.strides());
-
-        auto status = graph.validate();
-        if (!status.is_good()) {
-            throw std::runtime_error("cuDNN graph validation failed: " + status.get_message());
+            LNBwdCache entry;
+            entry.graph = graph;
+            entry.dy_uid = dy_tensor->get_uid();
+            entry.x_uid = x_tensor->get_uid();
+            entry.gamma_uid = gamma_tensor->get_uid();
+            entry.mean_uid = mean_tensor->get_uid();
+            entry.inv_var_uid = inv_var_tensor->get_uid();
+            entry.dx_uid = dx_tensor->get_uid();
+            entry.dgamma_uid = dgamma_tensor->get_uid();
+            entry.dbeta_uid = dbeta_tensor->get_uid();
+            auto smth = graph->get_workspace_size(entry.workspace_size);
+            bwd_cache[shape_key] = entry;
         }
 
-        status = graph.build_operation_graph(handle);
-        if (!status.is_good()) {
-            throw std::runtime_error("cuDNN build_operation_graph failed: " + status.get_message());
-        }
-
-        status = graph.create_execution_plans({fe::HeurMode_t::A});
-        if (!status.is_good()) {
-            throw std::runtime_error("cuDNN create_execution_plans failed: " + status.get_message());
-        }
-
-        status = graph.check_support();
-        if (!status.is_good()) {
-            throw std::runtime_error("cuDNN check_support failed: " + status.get_message());
-        }
-
-        status = graph.build_plans();
-        if (!status.is_good()) {
-            throw std::runtime_error("cuDNN build_plans failed: " + status.get_message());
-        }
-
-        // working memory
-        int64_t workspace_size = 0;
-        auto smth = graph.get_workspace_size(workspace_size);
+        // 4. Retrieve from cache and bind active memory pointers
+        auto& cache_entry = bwd_cache[shape_key];
         void* workspace_ptr = nullptr;
-        if (workspace_size > 0) {
-            workspace_ptr = CUDAMemPool::get().allocate(workspace_size, x.device());
+        if (cache_entry.workspace_size > 0) {
+            workspace_ptr = CUDAMemPool::get().allocate(cache_entry.workspace_size, x.device());
         }
 
-        // connect pointers
         std::unordered_map<fe::graph::Tensor_attributes::uid_t, void*> variant_pack = {
-            {dy_tensor->get_uid(), p_dy},
-            {x_tensor->get_uid(), p_x},
-            {gamma_tensor->get_uid(), p_gamma},
-            {mean_tensor->get_uid(), p_mean},
-            {inv_var_tensor->get_uid(), p_inv_var},
-            {dx_tensor->get_uid(), p_dx},
-            {dgamma_tensor->get_uid(), p_dgamma},
-            {dbeta_tensor->get_uid(), p_dbeta}
+            {cache_entry.dy_uid, p_dy},
+            {cache_entry.x_uid, p_x},
+            {cache_entry.gamma_uid, p_gamma},
+            {cache_entry.mean_uid, p_mean},
+            {cache_entry.inv_var_uid, p_inv_var},
+            {cache_entry.dx_uid, p_dx},
+            {cache_entry.dgamma_uid, p_dgamma},
+            {cache_entry.dbeta_uid, p_dbeta}
         };
         
-        status = graph.execute(handle, variant_pack, workspace_ptr);
+        auto status = cache_entry.graph->execute(handle, variant_pack, workspace_ptr);
 
-        if (workspace_size > 0) {
-            CUDAMemPool::get().free(workspace_ptr, workspace_size, x.device());
+        if (cache_entry.workspace_size > 0) {
+            CUDAMemPool::get().free(workspace_ptr, cache_entry.workspace_size, x.device());
         }
 
         if (!status.is_good()) {
@@ -314,206 +256,6 @@ namespace gradc {
 
     #pragma endregion CUDNN LAYERNORM
 
-    #pragma region CUDNN SDPA
-
-    template <typename T>
-    requires std::is_same_v<T, float>
-    void CUDAMath::apply_cudnn_sdpa_forward(Tensor<T>& out, Tensor<T>& saved_lse, const Tensor<T>& q, const Tensor<T>& k, const Tensor<T>& v, T scale, bool is_causal, bool save_intermediates) {
-        cudnnHandle_t handle = get_cudnn_handle();
-        cudaSetDevice(q.device().index);
-
-        void* p_q   = static_cast<void*>(q._get_storage()->data() + q.offset());
-        void* p_k   = static_cast<void*>(k._get_storage()->data() + k.offset());
-        void* p_v   = static_cast<void*>(v._get_storage()->data() + v.offset());
-        void* p_out = static_cast<void*>(out._get_storage()->data() + out.offset());
-        
-        void* p_lse = nullptr;
-        if (save_intermediates) {
-            p_lse = static_cast<void*>(saved_lse._get_storage()->data() + saved_lse.offset());
-        }
-
-        fe::DataType_t dtype = fe::DataType_t::FLOAT;
-        fe::graph::Graph graph;
-
-        // input tensors
-        auto q_tensor = graph.tensor(
-            fe::graph::Tensor_attributes().set_name("Q").set_data_type(dtype)
-            .set_dim(q.shape()).set_stride(q.strides())
-        );
-        auto k_tensor = graph.tensor(
-            fe::graph::Tensor_attributes().set_name("K").set_data_type(dtype)
-            .set_dim(k.shape()).set_stride(k.strides())
-        );
-        auto v_tensor = graph.tensor(
-            fe::graph::Tensor_attributes().set_name("V").set_data_type(dtype)
-            .set_dim(v.shape()).set_stride(v.strides())
-        );
-
-        auto sdpa_attr = fe::graph::SDPA_attributes()
-            .set_generate_stats(save_intermediates)
-            .set_attn_scale(static_cast<float>(scale));
-
-        if (is_causal) {
-            // ignore everything on the top left (causal)
-            sdpa_attr.set_diagonal_alignment(fe::DiagonalAlignment_t::TOP_LEFT);
-            sdpa_attr.set_diagonal_band_right_bound(0);
-        }
-
-        // connect inputs and create outputs
-        auto [out_tensor, lse_tensor] = graph.sdpa(q_tensor, k_tensor, v_tensor, sdpa_attr);
-
-        // configure outputs
-        out_tensor->set_output(true)
-            .set_data_type(dtype)
-            .set_dim(out.shape())
-            .set_stride(out.strides());
-
-        if (save_intermediates) {
-            // only floats (function restricted for floats also)
-            lse_tensor->set_output(true)
-                .set_data_type(fe::DataType_t::FLOAT) 
-                .set_dim(saved_lse.shape())
-                .set_stride(saved_lse.strides());
-        }
-
-        // compile graph
-        auto status = graph.validate();
-        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA validation failed: " + status.get_message());
-
-        status = graph.build_operation_graph(handle);
-        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA op graph failed: " + status.get_message());
-
-        status = graph.create_execution_plans({fe::HeurMode_t::A});
-        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA exec plans failed: " + status.get_message());
-
-        status = graph.check_support();
-        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA check support failed: " + status.get_message());
-
-        status = graph.build_plans();
-        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA build plans failed: " + status.get_message());
-
-        // workspace memory
-        int64_t workspace_size = 0;
-        auto smth = graph.get_workspace_size(workspace_size);
-        void* workspace_ptr = nullptr;
-        if (workspace_size > 0) {
-            workspace_ptr = CUDAMemPool::get().allocate(workspace_size, q.device());
-        }
-
-        // bind pointers
-        std::unordered_map<fe::graph::Tensor_attributes::uid_t, void*> variant_pack = {
-            {q_tensor->get_uid(), p_q},
-            {k_tensor->get_uid(), p_k},
-            {v_tensor->get_uid(), p_v},
-            {out_tensor->get_uid(), p_out}
-        };
-
-        if (save_intermediates) {
-            variant_pack[lse_tensor->get_uid()] = p_lse;
-        }
-
-        status = graph.execute(handle, variant_pack, workspace_ptr);
-
-        // free memory
-        if (workspace_size > 0) {
-            CUDAMemPool::get().free(workspace_ptr, workspace_size, q.device());
-        }
-
-        if (!status.is_good()) {
-            throw std::runtime_error("cuDNN SDPA execution failed: " + status.get_message());
-        }
-    }
-
-    template <typename T>
-    requires std::is_same_v<T, float>
-    void CUDAMath::apply_cudnn_sdpa_backward(Tensor<T>& dq, Tensor<T>& dk, Tensor<T>& dv, const Tensor<T>& out_grad, const Tensor<T>& q, const Tensor<T>& k, const Tensor<T>& v, const Tensor<T>& out, const Tensor<T>& saved_lse, T scale, bool is_causal) {
-        cudnnHandle_t handle = get_cudnn_handle();
-        cudaSetDevice(q.device().index);
-
-        void* p_dq = static_cast<void*>(dq._get_storage()->data() + dq.offset());
-        void* p_dk = static_cast<void*>(dk._get_storage()->data() + dk.offset());
-        void* p_dv = static_cast<void*>(dv._get_storage()->data() + dv.offset());
-        void* p_q = static_cast<void*>(q._get_storage()->data() + q.offset());
-        void* p_k = static_cast<void*>(k._get_storage()->data() + k.offset());
-        void* p_v = static_cast<void*>(v._get_storage()->data() + v.offset());
-        void* p_out = static_cast<void*>(out._get_storage()->data() + out.offset());
-        void* p_out_grad = static_cast<void*>(out_grad._get_storage()->data() + out_grad.offset());
-        void* p_stats = static_cast<void*>(saved_lse._get_storage()->data() + saved_lse.offset());
-
-        fe::DataType_t dtype = fe::DataType_t::FLOAT;
-        fe::graph::Graph graph;
-
-        auto q_tensor = graph.tensor(fe::graph::Tensor_attributes().set_name("Q").set_data_type(dtype).set_dim(q.shape()).set_stride(q.strides()));
-        auto k_tensor = graph.tensor(fe::graph::Tensor_attributes().set_name("K").set_data_type(dtype).set_dim(k.shape()).set_stride(k.strides()));
-        auto v_tensor = graph.tensor(fe::graph::Tensor_attributes().set_name("V").set_data_type(dtype).set_dim(v.shape()).set_stride(v.strides()));
-        auto out_tensor = graph.tensor(fe::graph::Tensor_attributes().set_name("O").set_data_type(dtype).set_dim(out.shape()).set_stride(out.strides()));
-        auto dY_tensor = graph.tensor(fe::graph::Tensor_attributes().set_name("dY").set_data_type(dtype).set_dim(out_grad.shape()).set_stride(out_grad.strides()));
-        
-        auto stats_tensor = graph.tensor(fe::graph::Tensor_attributes().set_name("Stats").set_data_type(fe::DataType_t::FLOAT).set_dim(saved_lse.shape()).set_stride(saved_lse.strides()));
-
-        auto sdpa_bwd_attr = fe::graph::SDPA_backward_attributes()
-            .set_attn_scale(scale);
-
-        if (is_causal) {
-            sdpa_bwd_attr.set_diagonal_alignment(fe::DiagonalAlignment_t::TOP_LEFT);
-            sdpa_bwd_attr.set_diagonal_band_right_bound(0);
-        }
-
-        auto [dq_tensor, dk_tensor, dv_tensor] = graph.sdpa_backward(
-            q_tensor, k_tensor, v_tensor, out_tensor, dY_tensor, stats_tensor, sdpa_bwd_attr
-        );
-
-        dq_tensor->set_output(true).set_data_type(dtype).set_dim(dq.shape()).set_stride(dq.strides());
-        dk_tensor->set_output(true).set_data_type(dtype).set_dim(dk.shape()).set_stride(dk.strides());
-        dv_tensor->set_output(true).set_data_type(dtype).set_dim(dv.shape()).set_stride(dv.strides());
-
-        auto status = graph.validate();
-        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA BWD validation failed: " + status.get_message());
-
-        status = graph.build_operation_graph(handle);
-        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA BWD op graph failed: " + status.get_message());
-
-        status = graph.create_execution_plans({fe::HeurMode_t::A});
-        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA BWD exec plans failed: " + status.get_message());
-
-        status = graph.check_support();
-        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA BWD check support failed: " + status.get_message());
-
-        status = graph.build_plans();
-        if (!status.is_good()) throw std::runtime_error("cuDNN SDPA BWD build plans failed: " + status.get_message());
-
-        int64_t workspace_size = 0;
-        auto smth = graph.get_workspace_size(workspace_size);
-        void* workspace_ptr = nullptr;
-        if (workspace_size > 0) {
-            workspace_ptr = CUDAMemPool::get().allocate(workspace_size, q.device());
-        }
-
-        std::unordered_map<fe::graph::Tensor_attributes::uid_t, void*> variant_pack = {
-            {q_tensor->get_uid(), p_q},
-            {k_tensor->get_uid(), p_k},
-            {v_tensor->get_uid(), p_v},
-            {out_tensor->get_uid(), p_out},
-            {dY_tensor->get_uid(), p_out_grad},
-            {stats_tensor->get_uid(), p_stats},
-            {dq_tensor->get_uid(), p_dq},
-            {dk_tensor->get_uid(), p_dk},
-            {dv_tensor->get_uid(), p_dv}
-        };
-
-        status = graph.execute(handle, variant_pack, workspace_ptr);
-
-        if (workspace_size > 0) {
-            CUDAMemPool::get().free(workspace_ptr, workspace_size, q.device());
-        }
-
-        if (!status.is_good()) {
-            throw std::runtime_error("cuDNN SDPA BWD execution failed: " + status.get_message());
-        }
-    }
-
-    #pragma endregion CUDNN SDPA
-
     #pragma region TEMPLATING
 
     #define INSTANTIATE_CUDNN_LAYERNORM(T) \
@@ -522,7 +264,6 @@ namespace gradc {
 
     INSTANTIATE_CUDNN_LAYERNORM(float)
     INSTANTIATE_CUDNN_LAYERNORM(double)
-
 
     #pragma endregion TEMPLATING
 }

@@ -58,28 +58,4 @@ namespace gradc {
         
         return result;
     }
-
-    template <typename T>
-    requires std::is_same_v<T, float>
-    Tensor<T> sdpa_cudnn(Tensor<T> q, Tensor<T> k, Tensor<T> v, bool is_causal, std::optional<T> scale = std::nullopt) {
-        Device target_device = infer_assert_device(q, k, v);
-
-        if (std::ssize(q.shape()) != 4 || std::ssize(k.shape()) != 4 || std::ssize(v.shape()) != 4) {
-            throw std::runtime_error("SDPA expects 4D tensors.");
-        }
-
-        if (q.has_negative_strides() || !q.last_stride_dense()) {q = q.contiguous();}
-        if (k.has_negative_strides() || !k.last_stride_dense()) {k = k.contiguous();}
-        if (v.has_negative_strides() || !v.last_stride_dense()) {v = v.contiguous();}
-        
-        int64_t head_dim = q.shape()[3];
-        T actual_scale = scale.value_or(static_cast<T>(1.0 / std::sqrt(head_dim)));
-
-        bool requires_grad = q.requires_grad() || k.requires_grad() || v.requires_grad();
-
-        Tensor<T> result = Tensor<T>(q.shape(), requires_grad, lazy, target_device);
-        result._get_state()->m_creation_op = std::make_unique<SDPACuDNNNode<T>>(std::move(q), std::move(k), std::move(v), actual_scale, is_causal);
-        
-        return result;
-    }
 }

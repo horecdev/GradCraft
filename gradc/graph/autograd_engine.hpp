@@ -120,6 +120,9 @@ namespace gradc {
     void Tensor<T>::backward(bool retain_graph) {
         std::vector<TensorStateBase*> topo_order = AutogradEngine::build_topo(m_state.get());
 
+        if (!m_state->m_grad.has_value()) {
+            m_state->m_grad = Tensor<T>::ones(m_shape, device());
+        }
         for (TensorStateBase* current : topo_order) {
             current->backward(retain_graph);
             current->clear_grad_if_non_leaf();
