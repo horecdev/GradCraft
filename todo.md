@@ -146,10 +146,15 @@ DONE overfit one batch of anything with every optimizer
 DONE XOR test on SGD
 DONE num_params method test
 DONE save params, load and resume training. same with all optimizers
+DONE RMSNorm naive frontend
+DONE RMSNormNaiveNode
 
-- LayerNorm kernel
+
+- RMSNorm kernel fast (contig strides / reduced dims)
+- RMSNorm kernel slower
+- RMSNormFast frontend
+- RMSNormFastNode 
 - SDPA kernel
-- fast LayerNorm frontend
 - fast SDPA frontend
 - compare them
 

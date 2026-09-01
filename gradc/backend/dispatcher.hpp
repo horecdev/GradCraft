@@ -153,4 +153,23 @@ namespace gradc {
             CUDAMath::apply_scatter_add(dembeds, indices, out_grad, embed_vol);
         }
     }
+    template <typename T>
+    inline void dispatch_rmsnorm_forward(Device device, Tensor<T>& out, Tensor<T>& inv_rms, const Tensor<T>& parent, const Tensor<T>& gamma, const RedMeta& red_meta, T eps) {
+        if (device.is_cpu()) {
+            throw std::runtime_error("Tried running RMSNormFast forward on the CPU.");
+        }
+        else if (device.is_cuda()) {
+            CUDAMath::apply_rmsnorm_forward(out, inv_rms, parent, gamma, red_meta, eps);
+        }
+    }
+
+    template <typename T>
+    inline void dispatch_rmsnorm_backward(Device device, Tensor<T>& dx, Tensor<T>& dgamma, const Tensor<T>& out_grad, const Tensor<T>& parent, const Tensor<T>& gamma, const Tensor<T>& inv_rms, const RedMeta& red_meta) {
+        if (device.is_cpu()) {
+            throw std::runtime_error("Tried running RMSNormFast backward on the CPU.");
+        }
+        else if (device.is_cuda()) {
+            CUDAMath::apply_rmsnorm_backward(dx, dgamma, out_grad, parent, gamma, inv_rms, red_meta);
+        }
+    }
 }

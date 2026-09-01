@@ -149,7 +149,7 @@ namespace gradc {
 
             Tensor<T> m_inv_rms;
         public:
-            RMSNormNaiveNode(Tensor<T> parent, Tensor<T> gamma, Tensor<T> beta, RedMeta red_meta, std::vector<int64_t> normalized_shape, T eps)
+            RMSNormNaiveNode(Tensor<T> parent, Tensor<T> gamma, RedMeta red_meta, std::vector<int64_t> normalized_shape, T eps)
              : m_parent(std::move(parent)), m_gamma(std::move(gamma)), m_red_meta(std::move(red_meta)), m_normalized_shape(std::move(normalized_shape)), m_eps(eps) {}
 
             Tensor<T> realize() override {
@@ -181,8 +181,8 @@ namespace gradc {
                     result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
                     dispatch(target_device, BinaryOp::Mul, result, m_parent, inv_rms);
                 }
-
-                dispatch(target_device, BinaryOpInPlace::Mul, result, m_gamma);
+                Tensor<T> reshaped_gamma = lobotomized_reshape_view(m_gamma, m_normalized_shape);
+                dispatch(target_device, BinaryOpInPlace::Mul, result, reshaped_gamma);
 
                 if (m_parent.requires_grad() || m_gamma.requires_grad()) {
                     m_inv_rms = std::move(inv_rms);
@@ -233,6 +233,42 @@ namespace gradc {
 
                     m_parent.accumulate_grad(dx_hat);
                 }
+
+                if (!retain_graph) {
+                    m_inv_rms = Tensor<T>();
+                }
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_parent._get_state_base(), m_gamma._get_state_base()};
+            }
+    };
+
+    template <typename T>
+    class RMSNormFastNode : public Node<T> {
+        private:
+            Tensor<T> m_parent;
+            Tensor<T> m_gamma;
+            RedMeta m_red_meta;
+            std::vector<int64_t> m_normalized_shape;
+            T m_eps;
+
+            Tensor<T> m_inv_rms;
+        public:
+            RMSNormFastNode(Tensor<T> parent, Tensor<T> gamma, RedMeta red_meta, std::vector<int64_t> normalized_shape, T eps)
+             : m_parent(std::move(parent)), m_gamma(std::move(gamma)), m_red_meta(std::move(red_meta)), m_normalized_shape(std::move(normalized_shape)), m_eps(eps) {}
+
+            Tensor<T> realize() override {
+                m_parent.realize();
+                m_gamma.realize();
+
+                Device target_device = m_parent.device();
+
+                bool can_mutate_parent = m_parent.is_exclusive() && !m_parent.requires_grad() && !m_gamma.requires_grad();
+            }
+
+            void backward(const Tensor<T>& out_grad, bool retain_graph) override {
+                Device target_device = out_grad.device();
 
                 if (!retain_graph) {
                     m_inv_rms = Tensor<T>();

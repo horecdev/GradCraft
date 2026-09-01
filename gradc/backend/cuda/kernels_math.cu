@@ -778,6 +778,107 @@ namespace gradc {
 
     #pragma endregion MATRIX MULTIPLY
 
+
+
+    #pragma region RMSNorm
+
+    template <typename T>
+    __global__ void rmsnorm_forward_kernel_fast(
+        T* __restrict__ p_out, T* __restrict__ p_inv_rms, 
+        const T* __restrict__ p_parent, const T* __restrict__ p_gamma,
+        int64_t parent_offset, int64_t gamma_offset, 
+        int64_t reduced_vol, T eps
+    ) {
+        int64_t row = blockIdx.x;
+
+        const T* parent_row = p_parent + parent_offset + (row * reduced_vol);
+        T* out_row = p_out + (row * reduced_vol);
+        const T* gamma_row = p_gamma + gamma_offset; // also contiguous flat (shape of stuff being reduced)
+
+        int64_t tid = threadIdx.x;
+        T thread_sq_sum = 0;
+
+        // loop over reduced_vol elements. Thread 0 does 0, 256, 512...
+        for (int64_t i = tid; i < reduced_vol; i += blockDim.x) {
+            T val = parent_row[i];
+            thread_sq_sum += val * val;
+        }
+
+        __shared__ T s_sum[256];
+
+        s_sum[tid] = thread_sq_sum;
+        __syncthreads();
+
+        for (int64_t s = blockDim.x / 2; s > 0; s /= 2) {
+            if (tid < s) {
+                s_sum[tid] += s_sum[tid + s];
+            }
+            _syncthreads();
+        }
+
+        T inv_rms = 0;
+        if (tid == 0) {
+            inv_rms = static_cast<T>(1.0) / sqrt((s_sum[0] / static_cast<T>(reduced_vol)));
+            p_inv_rms[row] = inv_rms;
+            s_sum[0] = inv_rms;
+        }
+        __syncthreads();
+        inv_rms = s_sum[0]; // now all 0-255 threads have the same inv_rms (before it was 0 and tid=0 only had it)
+
+        for (int64_t i = tid; i < reduced_vol; i += blockDim.x) {
+            out_row[i] = parent_row[i] * inv_rms * gamma_row[i];
+        }
+    }
+
+    template <typename T>
+    __global__ void rmsnorm_forward_kernel_strided(
+        T* __restrict__ p_out, T* __restrict__ p_inv_rms,
+        const T* __restrict__ p_parent, const T* __restrict__ p_gamma,
+        
+    ) {
+
+    }
+
+    template <typename T> 
+    requires std::is_floating_point_v<T>
+    // out and inv_rms ALWAYS DENSE
+    void CUDAMath::apply_rmsnorm_forward(Tensor<T>& out, Tensor<T>& inv_rms, const Tensor<T>& parent, const Tensor<T>& gamma, const RedMeta& red_meta, T eps) {
+        cudaSetDevice(out.device().index);
+
+        int64_t total_elems = out.volume();
+        int64_t threads = 256;
+        // you launch result_vol blocks, 256 threads each
+        int64_t blocks = red_meta.result_vol;
+        // say you launch block 100. It starts in RAM exactly at 100 * reduced_vol (skip over the tokens normalized by previous blocks)
+        // for [10, 30, 500] it starts at [4, 10, 0] - skipped over 100 * 500 elems
+        // To make it work all the result_vol elems (say B, T) must be contiguous. In addition all the dims being reduced must be trailing and contiguous too.
+
+        bool is_fast = parent.is_contiguous() && gamma.is_contiguous();
+        if (is_fast) {
+            bool found_unreduced = false;
+            for (int64_t i = std::ssize(parent.shape()) - 1; i > 0; --i) {
+                bool is_reduced = (red_meta.temp_strides[i] == 0);
+                
+                if (!is_reduced) {
+                    found_unreduced = true;
+                }
+                else {
+                    if (found_unreduced) { // this one is reduced, but found an unreduced earlier
+                        is_fast = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (is_fast) {
+            // fire up the fast kernel
+        }
+        
+    }
+
+    #pragma endregion RMSNorm
+
     #pragma region TEMPLATING
 
     #define INSTANTIATE_CUDA_MATH_SINGLE(T) \
