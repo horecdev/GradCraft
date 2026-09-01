@@ -834,9 +834,88 @@ namespace gradc {
     __global__ void rmsnorm_forward_kernel_strided(
         T* __restrict__ p_out, T* __restrict__ p_inv_rms,
         const T* __restrict__ p_parent, const T* __restrict__ p_gamma,
-        
+        CUDAMeta reduced_shape, CUDAMeta normalized_shape,
+        CUDAMeta out_strides, CUDAMeta parent_strides, CUDAMeta gamma_strides,
+        int64_t parent_offset, int64_t gamma_offset, 
+        int64_t reduced_vol, T eps
     ) {
+        int64_t row = blockIdx.x;
+        int64_t tid = blockDim.x;
 
+        int64_t temp_idx = row;
+        int64_t base_parent = parent_offset;
+        int64_t base_out = 0;
+        int64_t base_gamma = gamma_offset;
+
+        // first figure out the base (where are we in the reduced_shape e.g. [B, 1, C] in the B, C dims)
+        for (int64_t d = reduced_shape.size; d >= 0; --d) {
+            int64_t coord = temp_idx % reduced_shape.data[d];
+            temp_idx /= reduced_shape.data[d];
+
+            base_parent += coord * parent_strides.data[d];
+            base_out += coord * out_strides.data[d];
+            base_gamma += coord * gamma_strides.data[d];
+        }
+
+        // thread local sum - 256 threads have partial results of summation across the reduced dims
+        T thread_sq_sum = 0;
+        for (int64_t i = tid; i < reduced_vol; i += blockDim.x) {
+            int64_t temp_i = i;
+            int64_t mov_parent = 0;
+
+            // sum over the normalized_shape into 256 diff threads
+            for (int64_t d = normalized_shape.size - 1; d >= 0; --d) {
+                int64_t coord = temp_i % normalized_shape.data[d];
+                temp_i /= normalized_shape.data[d];
+                mov_parent += coord * parent_strides.data[d];
+            }
+
+            T val = p_parent[base_parent + mov_parent];
+            thread_sq_sum += val * val;
+        }
+
+        // sum into one value
+        __shared__ T s_sum[256];
+        s_sum[tid] = thread_sq_sum;
+        __syncthreads();
+
+        for (int64_t s = blockDim.x / 2; s > 0; s /= 2) {
+            if (tid < s) {
+                s_sum[tid] += s_sum[tid + s];
+            }
+            __syncthreads();
+        }
+
+        T inv_rms = 0;
+        if (tid == 0) {
+            inv_rms = static_cast<T>(1.0) / sqrt((s_sum[0] / static_cast<T>(reduced_vol)));
+            p_inv_rms[row] = inv_rms;
+            s_sum[0] = inv_rms;
+        }
+        __syncthreads();
+        inv_rms = s_sum[0]; // share to all threads
+
+        // where we are in the normalized shape again (to use our inv_rms and actually update)
+        // we already have where we are in the reduced_shape. 
+        for (int64_t i = tid; i < reduced_vol; i += blockDim.x) {
+            int64_t temp_i = 0;
+            int64_t rel_parent = 0;
+            int64_t rel_out = 0;
+            int64_t rel_gamma = 0;
+
+            for (int64_t d = normalized_shape.size - 1; d >= 0; --d) {
+                int64_t coord = temp_i % normalized_shape.data[d];
+                temp_i /= normalized_shape.data[d];
+                rel_parent += coord * parent_strides.data[d];
+                rel_out += coord * out_strides.data[d];
+                rel_gamma += coord * gamma_strides.data[d];
+            }
+
+            T val = p_parent[base_parent + rel_parent];
+            T g = p_gamma[base_gamma + rel_gamma];
+
+            p_out[base_out + rel_out] = val * g * inv_rms;
+        }
     }
 
     template <typename T> 

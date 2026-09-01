@@ -150,10 +150,12 @@ DONE RMSNorm naive frontend
 DONE RMSNormNaiveNode
 
 
-- RMSNorm kernel fast (contig strides / reduced dims)
-- RMSNorm kernel slower
+DONE RMSNorm kernel fast (contig strides / reduced dims)
+DONE RMSNorm kernel slower
+- Wrapper that fires kernels and: passes whether to save inv_var (checks nullptr on it)
 - RMSNormFast frontend
 - RMSNormFastNode 
+
 - SDPA kernel
 - fast SDPA frontend
 - compare them
