@@ -6,8 +6,6 @@
 
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
-#include <cudnn.h>
-#include <cudnn_frontend.h>
 
 namespace gradc {
     constexpr int MAX_DIMS = 8;

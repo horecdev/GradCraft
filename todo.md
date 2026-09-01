@@ -146,19 +146,12 @@ DONE overfit one batch of anything with every optimizer
 DONE XOR test on SGD
 DONE num_params method test
 DONE save params, load and resume training. same with all optimizers
-DONE install / integrate cuDNN
-DONE Install the cudnn_frontend
-DONE Write dispatch for layernorm cuDNN forward, backward
-DONE Write CUDAMath implementations in cuDNN API (layernorm)
-DONE Write LayerNormNaiveNode and LayerNormCuDNNNode
 
-DONE Write dispatch for cuDNN SDPA forward, backward
-DONE Write CUDAMath for SDPA forward, backward
-DONE lock SDPA cuDNN to fp32
-DONE SDPANode cuDNN 
-DONE cudnn SDPA frontend
-DONE Guard against negative strides in cuDNN SDPA and LayerNorm and enforce last_stride_dense
-- compare cuDNN vs naive layernorm and SDPA in inference / training
+- LayerNorm kernel
+- SDPA kernel
+- fast LayerNorm frontend
+- fast SDPA frontend
+- compare them
 
 - PositionalEncoding module
 - RoPE module

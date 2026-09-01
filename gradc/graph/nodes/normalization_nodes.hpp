@@ -7,7 +7,7 @@
 namespace gradc {
 
     template <typename T>
-    class LayerNormNaiveNode : public Node<T> {
+    class LayerNormNode : public Node<T> {
         private:
             Tensor<T> m_parent;
             Tensor<T> m_gamma;
@@ -18,7 +18,7 @@ namespace gradc {
             Tensor<T> m_inv_std;
             Tensor<T> m_z_scores;
         public:
-            LayerNormNaiveNode(Tensor<T> parent, Tensor<T> gamma, Tensor<T> beta, RedMeta red_meta, std::vector<int64_t> normalized_shape, T eps)
+            LayerNormNode(Tensor<T> parent, Tensor<T> gamma, Tensor<T> beta, RedMeta red_meta, std::vector<int64_t> normalized_shape, T eps)
              : m_parent(std::move(parent)), m_gamma(std::move(gamma)), m_beta(std::move(beta)), m_red_meta(std::move(red_meta)), m_normalized_shape(std::move(normalized_shape)), m_eps(eps) {}
 
             Tensor<T> realize() override {
@@ -58,7 +58,7 @@ namespace gradc {
                 dispatch(target_device, BinaryOpInPlace::Div, inv_std, Tensor<T>(static_cast<T>(m_red_meta.reduced_vol), target_device));
                 dispatch(target_device, BinaryOpInPlace::Add, inv_std, Tensor<T>(static_cast<T>(m_eps), target_device));
                 dispatch(target_device, UnaryOpInPlace::Sqrt, inv_std);
-                dispatch(target_device, BinaryOpInPlace::IDiv, inv_std, Tensor<T>(T(static_cast<T>(1.0)), target_device));
+                dispatch(target_device, BinaryOpInPlace::IDiv, inv_std, Tensor<T>(static_cast<T>(1.0), target_device));
 
                 Tensor<T>& normalized_z_scores = x_minus_mean;
                 dispatch(target_device, BinaryOpInPlace::Mul, normalized_z_scores, inv_std);
@@ -139,81 +139,109 @@ namespace gradc {
     };
 
     template <typename T>
-    class LayerNormCuDNNNode : public Node<T> {
+    class RMSNormNaiveNode : public Node<T> {
         private:
             Tensor<T> m_parent;
             Tensor<T> m_gamma;
-            Tensor<T> m_beta;
-
             RedMeta m_red_meta;
             std::vector<int64_t> m_normalized_shape;
             T m_eps;
-            
-            Tensor<T> m_saved_mean;
-            Tensor<T> m_saved_inv_var;
-        
+
+            Tensor<T> m_inv_rms;
         public:
-            LayerNormCuDNNNode(Tensor<T> parent, Tensor<T> gamma, Tensor<T> beta, RedMeta red_meta, std::vector<int64_t> normalized_shape, T eps) 
-                : m_parent(std::move(parent)), m_gamma(std::move(gamma)), m_beta(std::move(beta)), m_red_meta(std::move(red_meta)), m_normalized_shape(std::move(normalized_shape)), m_eps(eps) {}
+            RMSNormNaiveNode(Tensor<T> parent, Tensor<T> gamma, Tensor<T> beta, RedMeta red_meta, std::vector<int64_t> normalized_shape, T eps)
+             : m_parent(std::move(parent)), m_gamma(std::move(gamma)), m_red_meta(std::move(red_meta)), m_normalized_shape(std::move(normalized_shape)), m_eps(eps) {}
 
             Tensor<T> realize() override {
                 m_parent.realize();
                 m_gamma.realize();
-                m_beta.realize();
 
                 Device target_device = m_parent.device();
 
-                Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
-
-                bool save_intermediates = false;
-                if (m_parent.requires_grad() || m_gamma.requires_grad() || m_beta.requires_grad()) {
-                    m_saved_mean = Tensor<T>(m_red_meta.temp_shape, target_device, uninitialized);
-                    m_saved_inv_var = Tensor<T>(m_red_meta.temp_shape, target_device, uninitialized);
-                    save_intermediates = true;
+                bool can_mutate_parent = m_parent.is_exclusive() && !m_parent.requires_grad() && !m_gamma.requires_grad();
+                Tensor<T> scratchpad = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                
+                // RMSNorm is x / rms(x) * gamma
+                
+                dispatch(target_device, UnaryOp::Square, scratchpad, m_parent);
+            
+                Tensor<T> inv_rms = Tensor<T>(m_red_meta.temp_shape, target_device, uninitialized); // (B, T, 1)
+                dispatch(target_device, ReduceOp::Sum, m_red_meta, inv_rms, scratchpad);
+                dispatch(target_device, BinaryOpInPlace::Div, inv_rms, Tensor<T>(m_red_meta.reduced_vol, target_device));
+                dispatch(target_device, BinaryOpInPlace::Add, inv_rms, Tensor<T>(m_eps, target_device));
+                dispatch(target_device, UnaryOpInPlace::Sqrt, inv_rms);
+                dispatch(target_device, BinaryOpInPlace::IDiv, inv_rms, Tensor<T>(static_cast<T>(1.0), target_device));
+                
+                Tensor<T> result;
+                if (can_mutate_parent) {
+                    result = m_parent;
+                    dispatch(target_device, BinaryOpInPlace::Mul, result, inv_rms);
+                }
+                else {
+                    result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::Mul, result, m_parent, inv_rms);
                 }
 
-                // cuDNN expects gamma, beta and dgamma, dbeta in normalized_shape
-                Tensor<T> gamma_reshaped = lobotomized_reshape_view(m_gamma, m_normalized_shape);
-                Tensor<T> beta_reshaped = lobotomized_reshape_view(m_beta, m_normalized_shape);
+                dispatch(target_device, BinaryOpInPlace::Mul, result, m_gamma);
 
-                dispatch_cudnn_layernorm_forward(target_device, result, m_saved_mean, m_saved_inv_var, m_parent, gamma_reshaped, beta_reshaped, m_eps, save_intermediates);
+                if (m_parent.requires_grad() || m_gamma.requires_grad()) {
+                    m_inv_rms = std::move(inv_rms);
+                }
 
                 return result;
             }
 
             void backward(const Tensor<T>& out_grad, bool retain_graph) override {
-                if (m_parent.requires_grad() || m_gamma.requires_grad() || m_beta.requires_grad()) {
-                    Device target_device = out_grad.device();
+                Device target_device = out_grad.device();
 
-                    Tensor<T> dx = Tensor<T>(m_parent.shape(), target_device, uninitialized);
-                    Tensor<T> dgamma_reshaped = Tensor<T>(m_normalized_shape, target_device, uninitialized);
-                    Tensor<T> dbeta_reshaped = Tensor<T>(m_normalized_shape, target_device, uninitialized);
-                    Tensor<T> gamma_reshaped = lobotomized_reshape_view(m_gamma, m_normalized_shape);
+                Tensor<T> x_norm;
+                if (m_gamma.requires_grad() || m_parent.requires_grad()) {
+                    x_norm = Tensor<T>(out_grad.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::Mul, x_norm, m_parent, m_inv_rms);
+                }
 
-                    dispatch_cudnn_layernorm_backward(target_device, dx, dgamma_reshaped, dbeta_reshaped, out_grad, m_parent, gamma_reshaped, m_saved_mean, m_saved_inv_var);
+                Tensor<T> scratchpad;
+                if (m_gamma.requires_grad() || m_parent.requires_grad()) {
+                    scratchpad = Tensor<T>(out_grad.shape(), target_device, uninitialized);
+                }
 
-                    if (m_parent.requires_grad()) {
-                        m_parent.accumulate_grad(dx);
-                    }
-                    if (m_gamma.requires_grad()) {
-                        Tensor<T> dgamma = lobotomized_reshape_view(dgamma_reshaped, m_gamma.shape());
-                        m_gamma.accumulate_grad(dgamma);
-                    }
-                    if (m_beta.requires_grad()) {
-                        Tensor<T> dbeta = lobotomized_reshape_view(dbeta_reshaped, m_beta.shape());
-                        m_beta.accumulate_grad(dbeta);
-                    }
+                if (m_gamma.requires_grad()) {
+                    Tensor<T> dgamma_broadcast = scratchpad;
+                    dispatch(target_device, BinaryOp::Mul, dgamma_broadcast, out_grad, x_norm);
 
-                    if (!retain_graph) {
-                        m_saved_mean = Tensor<T>();
-                        m_saved_inv_var = Tensor<T>();
-                    }
+                    Tensor<T> dgamma = unbroadcast_grad(dgamma_broadcast, m_normalized_shape);
+                    dgamma = lobotomized_reshape_view(dgamma, m_gamma.shape());
+                    m_gamma.accumulate_grad(dgamma);
+                }
+
+                if (m_parent.requires_grad()) {
+                    
+                    Tensor<T>& dx_hat = scratchpad; // dx_norm/dL
+                    Tensor<T> reshaped_gamma = lobotomized_reshape_view(m_gamma, m_normalized_shape);
+                    dispatch(target_device, BinaryOp::Mul, dx_hat, out_grad, reshaped_gamma);
+
+                    Tensor<T> dx_inter = Tensor<T>(out_grad.shape(), target_device, uninitialized);
+                    dispatch(target_device, BinaryOp::Mul, dx_inter, dx_hat, x_norm);
+
+                    Tensor<T> sum_term = Tensor<T>(m_red_meta.temp_shape, target_device, uninitialized);
+                    dispatch(target_device, ReduceOp::Sum, m_red_meta, sum_term, dx_inter);
+                    dispatch(target_device, BinaryOpInPlace::Div, sum_term, Tensor<T>(static_cast<T>(m_red_meta.reduced_vol), target_device));
+
+                    dispatch(target_device, BinaryOp::Mul, dx_inter, x_norm, sum_term);
+                    dispatch(target_device, BinaryOpInPlace::Sub, dx_hat, dx_inter);
+                    dispatch(target_device, BinaryOpInPlace::Mul, dx_hat, m_inv_rms);
+
+                    m_parent.accumulate_grad(dx_hat);
+                }
+
+                if (!retain_graph) {
+                    m_inv_rms = Tensor<T>();
                 }
             }
 
             std::vector<TensorStateBase*> get_input_states() override {
-                return {m_parent._get_state_base(), m_gamma._get_state_base(), m_beta._get_state_base()};
+                return {m_parent._get_state_base(), m_gamma._get_state_base()};
             }
     };
-    
+
 }

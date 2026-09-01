@@ -6,6 +6,3 @@ GRADCRAFT VS PYTORCH (CUDA) ave of 20 iterations TOTAL
 1. MHA initial
 GradCraft - 1553ms
 Pytorch - 75ms
-2. After cuDNN
-GradCraft - 
-PyTorch - 389.69ms
