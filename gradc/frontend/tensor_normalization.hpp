@@ -20,6 +20,10 @@ namespace gradc {
     template <typename T>
     Tensor<T> layernorm_cudnn(Tensor<T> parent, Tensor<T> gamma, Tensor<T> beta, const std::vector<int64_t>& axes, T eps) requires std::is_floating_point_v<T> {
         Device target_device = infer_assert_device(parent, gamma, beta);
+        // prolly 99.99% of the time gamma and beta will be leaf tensors (dense) but still we do allow them to be frankensteins, so lets check
+        if (parent.has_negative_strides()) {parent = parent.contiguous();}
+        if (gamma.has_negative_strides()) {gamma = gamma.contiguous();}
+        if (beta.has_negative_strides()) {beta = beta.contiguous();}
         RedMeta red_meta = infer_red_meta(parent.shape(), axes, true);
         std::vector<int64_t> norm_shape = get_normalized_shape(parent.shape(), axes);
         Tensor<T> result = Tensor<T>(parent.shape(), parent.requires_grad(), lazy, target_device);

@@ -152,14 +152,19 @@ DONE Write dispatch for layernorm cuDNN forward, backward
 DONE Write CUDAMath implementations in cuDNN API (layernorm)
 DONE Write LayerNormNaiveNode and LayerNormCuDNNNode
 
-- Write dispatch for cuDNN SDPA forward, backward
-- Write CUDAMath for SDPA forward, backward
-- lock SDPA cuDNN to fp32
-- SDPANode only for CUDA
-- cudnn SDPA frotnend
-- Guard against negative strides in cuDNN SDPA and LayerNorm
-- make SDPANode only for CUDA
+DONE Write dispatch for cuDNN SDPA forward, backward
+DONE Write CUDAMath for SDPA forward, backward
+DONE lock SDPA cuDNN to fp32
+DONE SDPANode cuDNN 
+DONE cudnn SDPA frontend
+DONE Guard against negative strides in cuDNN SDPA and LayerNorm and enforce last_stride_dense
 - compare cuDNN vs naive layernorm and SDPA in inference / training
+
+- PositionalEncoding module
+- RoPE module
+- CosineScheduler (with saving - scheduler class)
+- clip_grad_norm, scales back, no explosions
+
 
 - fused layernorm (benchmark)
 - flash attention (benchmark)

@@ -33,59 +33,52 @@ namespace gradc {
     template <typename T>
     requires std::is_floating_point_v<T>
     // TODO: add scale param, rename QKV to lowercase, scale as nullopt, use value_or
-    Tensor<T> sdpa_naive(Tensor<T> Q, Tensor<T> K, Tensor<T> V, std::optional<Tensor<T>> causal_mask = std::nullopt) {
-        Device target_device = infer_assert_device(Q, K, V);
+    Tensor<T> sdpa_naive(Tensor<T> q, Tensor<T> k, Tensor<T> v, std::optional<Tensor<T>> causal_mask = std::nullopt, std::optional<T> scale = std::nullopt) {
+        Device target_device = infer_assert_device(q, k, v);
         // expected shape: [B, num_heads, T, head_dim]
-        if (std::ssize(Q.shape()) != 4 || std::ssize(K.shape()) != 4 || std::ssize(V.shape()) != 4) {
+        if (std::ssize(q.shape()) != 4 || std::ssize(k.shape()) != 4 || std::ssize(v.shape()) != 4) {
             throw std::runtime_error("SDPA expects 4D tensors.");
         }
         
-        int64_t head_dim = Q.shape()[3];
+        int64_t head_dim = q.shape()[3];
 
-        Tensor<T> K_T = K.transpose(2, 3);
+        Tensor<T> k_T = k.transpose(2, 3);
 
-        Tensor<T> scores = bmm(Q, K_T);
+        Tensor<T> scores = bmm(q, k_T);
 
-        T scale_factor = static_cast<T>(1.0 / std::sqrt(head_dim));
-        scores *= scale_factor; // its [B, num_heads, T, T]. Mask is [T, T]
+        T actual_scale = scale.value_or(static_cast<T>(1.0 / std::sqrt(head_dim)));
+        scores *= actual_scale; // its [B, num_heads, T, T]. Mask is [T, T]
 
         if (causal_mask.has_value()) {
             scores += causal_mask.value();
         }
 
         Tensor<T> probs = scores.softmax(3); // along the last dim
-        Tensor<T> result = bmm(probs, V);
+        Tensor<T> result = bmm(probs, v);
         
         return result;
     }
 
     template <typename T>
     requires std::is_same_v<T, float>
-    // TODO: same, rename, implement, value_or (pass as param). DO NOT CREATE A MASTER FUNCTION TO DISPATCH NAIVE OR CUDNN. 
-    Tensor<T> sdpa_cudnn(Tensor<T> Q, Tensor<T> K, Tensor<T> V, std::optional<Tensor<T>> causal_mask = std::nullopt) {
-        Device target_device = infer_assert_device(Q, K, V);
-        // expected shape: [B, num_heads, T, head_dim]
-        if (std::ssize(Q.shape()) != 4 || std::ssize(K.shape()) != 4 || std::ssize(V.shape()) != 4) {
+    Tensor<T> sdpa_cudnn(Tensor<T> q, Tensor<T> k, Tensor<T> v, bool is_causal, std::optional<T> scale = std::nullopt) {
+        Device target_device = infer_assert_device(q, k, v);
+
+        if (std::ssize(q.shape()) != 4 || std::ssize(k.shape()) != 4 || std::ssize(v.shape()) != 4) {
             throw std::runtime_error("SDPA expects 4D tensors.");
         }
 
-        Tensor<T> result = Tensor<T>()
+        if (q.has_negative_strides() || !q.last_stride_dense()) {q = q.contiguous();}
+        if (k.has_negative_strides() || !k.last_stride_dense()) {k = k.contiguous();}
+        if (v.has_negative_strides() || !v.last_stride_dense()) {v = v.contiguous();}
         
-        int64_t head_dim = Q.shape()[3];
+        int64_t head_dim = q.shape()[3];
+        T actual_scale = scale.value_or(static_cast<T>(1.0 / std::sqrt(head_dim)));
 
-        Tensor<T> K_T = K.transpose(2, 3);
+        bool requires_grad = q.requires_grad() || k.requires_grad() || v.requires_grad();
 
-        Tensor<T> scores = bmm(Q, K_T);
-
-        T scale_factor = static_cast<T>(1.0 / std::sqrt(head_dim));
-        scores *= scale_factor; // its [B, num_heads, T, T]. Mask is [T, T]
-
-        if (causal_mask.has_value()) {
-            scores += causal_mask.value();
-        }
-
-        Tensor<T> probs = scores.softmax(3); // along the last dim
-        Tensor<T> result = bmm(probs, V);
+        Tensor<T> result = Tensor<T>(q.shape(), requires_grad, lazy, target_device);
+        result._get_state()->m_creation_op = std::make_unique<SDPACuDNNNode<T>>(std::move(q), std::move(k), std::move(v), actual_scale, is_causal);
         
         return result;
     }

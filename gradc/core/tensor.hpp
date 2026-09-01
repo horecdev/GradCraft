@@ -160,6 +160,21 @@ namespace gradc {
                 return true;
             }
 
+            bool has_negative_strides() const {
+                for (int64_t stride : m_strides) {
+                    if (stride < 0) {return true;}
+                }
+                return false;
+            }
+
+            bool last_stride_dense() const {
+                if (m_shape.back() == 1) {
+                    return true;
+                }
+                return false;
+            }
+        
+
             Tensor contiguous() const;
             Tensor transpose(const int64_t dim0, const int64_t dim1) const;
             Tensor permute(const std::vector<int64_t>& axes) const;
