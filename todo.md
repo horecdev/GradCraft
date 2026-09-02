@@ -158,12 +158,13 @@ DONE RMSNormFast backward strided version
 DONE Force gamma dense in rmsnorm_fast()
 DONE rmsnorm frontend dispatch (based on bool fast)
 DONE RMSNormFastNode 
+DONE Causal softmax dispatcher
+DONE Causal softmax forward CUDA
+DONE Causal softmax backward CUDA
+- Causal softmax frontend
+- Integrate causal softmax into SDPA
 - Fix LayerNorm module
 - Write RMSNorm module
-
-- SDPA kernel
-- fast SDPA frontend
-- compare them
 
 - PositionalEncoding module
 - RoPE module

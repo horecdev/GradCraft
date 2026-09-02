@@ -173,4 +173,24 @@ namespace gradc {
             CUDAMath::apply_rmsnorm_backward(dx, dgamma, out_grad, parent, gamma, inv_rms, red_meta, normalized_shape);
         }
     }
+
+    template <typename T>
+    inline void dispatch_causal_softmax_forward(Device device, Tensor<T>& probs, const Tensor<T>& scores, T scale, int64_t seq_len) {
+        if (device.is_cpu()) {
+            throw std::runtime_error("Tried running Softmax Causal forward on the CPU.");
+        }
+        else if (device.is_cuda()) {
+            CUDAMath::apply_causal_softmax_forward(probs, scores, scale, seq_len);
+        }
+    }
+
+    template <typename T>
+    inline void dispatch_causal_softmax_backward(Device device, Tensor<T>& dx, const Tensor<T>& out_grad, const Tensor<T>& probs, T scale, int64_t seq_len) {
+        if (device.is_cpu()) {
+            throw std::runtime_error("Tried running Softmax Causal backward on the CPU.");
+        }
+        else if (device.is_cuda()) {
+            CUDAMath::apply_causal_softmax_backward(dx, out_grad, probs, scale, seq_len);
+        }
+    }
 }

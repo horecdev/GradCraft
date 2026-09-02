@@ -36,5 +36,11 @@ namespace gradc {
             template <typename T>
             requires std::is_floating_point_v<T>
             static void apply_rmsnorm_backward(Tensor<T>& dx, Tensor<T>& dgamma, const Tensor<T>& out_grad, const Tensor<T>& parent, const Tensor<T>& gamma, const Tensor<T>& inv_rms, const RedMeta& red_meta, const std::vector<int64_t>& normalized_shape);
+            template <typename T>
+            requires std::is_floating_point_v<T>
+            static void apply_causal_softmax_forward(Tensor<T>& probs, const Tensor<T>& scores, T scale, int64_t seq_len);
+            template <typename T>
+            requires std::is_floating_point_v<T>
+            static void apply_causal_softmax_backward(Tensor<T>& dx, const Tensor<T>& out_grad, const Tensor<T>& probs, T scale, int64_t seq_len);
     };
 }

@@ -95,4 +95,41 @@ namespace gradc {
                 return {m_embeds._get_state_base(), m_indices._get_state_base()};
             }
     };
+
+    template <typename T>
+    class CausalSoftmaxNode : public Node<T> {
+        private:
+            Tensor<T> m_scores; // [B, num_heads, T, T] dense
+            Tensor<T> m_probs;
+            T m_scale;
+            int64_t m_seq_len;
+        public:
+            CausalSoftmaxNode(Tensor<T> scores, T scale) : m_scores(std::move(scores)), m_scale(scale), m_seq_len(m_scores.shape()[2]) {}
+
+            Tensor<T> realize() override {
+                m_scores.realize();
+
+                Device target_device = m_scores.device();
+
+                Tensor<T> result = Tensor<T>(m_scores.shape(), target_device, uninitialized);
+
+                dispatch_causal_softmax_forward(target_device, result, m_scores, m_scale, m_seq_len);
+
+                if (m_scores.requires_grad()) {
+                    m_probs = Tensor<T>(m_scores.shape(), target_device, uninitialized);
+                    dispatch(target_device, UnaryOp::Identity, m_probs, result);
+                }
+
+                return result;
+            }
+
+            void backward(const Tensor<T>& out_grad, bool retain_graph) {
+                if (m_scores.requires_grad()) {
+                    Device target_device = out_grad.device();
+                    Tensor<T> dscores = Tensor<T>(m_scores.shape(), target_device, uninitialized);
+
+                    dispatch_causal_softmax_backward(target_device, dscores, out_grad, m_probs, m_scale, m_seq_len);
+                }
+            }
+    };
 }

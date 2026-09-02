@@ -1190,7 +1190,7 @@ namespace gradc {
     template <typename T>
     requires std::is_floating_point_v<T>
     // probs and p_scores are dense
-    __global__ void causal_softmax_kernel_fast(
+    __global__ void causal_softmax_forward_kernel_fast(
         T* __restrict__ p_probs, const T* p_scores,
         T scale, int64_t seq_len
     ) {
@@ -1254,10 +1254,24 @@ namespace gradc {
         }
     }
 
+    template <typename T> 
+    requires std::is_floating_point_v<T>
+    void CUDAMath::apply_causal_softmax_forward(Tensor<T>& probs, const Tensor<T>& scores, T scale, int64_t seq_len) {
+        cudaSetDevice(probs.device().index);
+        int64_t threads = 256;
+        int64_t blocks = probs.shape()[0] * probs.shape()[1] * probs.shape()[2];
+
+
+        T* p_probs = probs._get_storage()->data();
+        const T* p_scores = scores._get_storage()->data();
+
+        causal_softmax_forward_kernel_fast<<<blocks, threads>>>(p_probs, p_scores, scale, seq_len);
+    }
+
     template <typename T>
     requires std::is_floating_point_v<T>
     // dx, out_grad, probs are dense
-    __global__ void causal_softmax_backward_fast(
+    __global__ void causal_softmax_backward_kernel_fast(
         T* __restrict__ p_dx, 
         const T* __restrict__ p_out_grad, const T* __restrict__ p_probs,
         T scale, int64_t seq_len
@@ -1301,6 +1315,22 @@ namespace gradc {
             }
         }
     }
+    
+    template <typename T> 
+    requires std::is_floating_point_v<T>
+    void CUDAMath::apply_causal_softmax_backward(Tensor<T>& dx, const Tensor<T>& out_grad, const Tensor<T>& probs, T scale, int64_t seq_len) {
+        cudaSetDevice(probs.device().index);
+        int64_t threads = 256;
+        int64_t blocks = probs.shape()[0] * probs.shape()[1] * probs.shape()[2];
+
+        T* p_dx = dx._get_storage()->data();
+        const T* p_out_grad = out_grad._get_storage()->data();
+        const T* p_probs = probs._get_storage()->data();
+
+        causal_softmax_backward_kernel_fast<<<blocks, threads>>>(p_dx, p_out_grad, p_probs, scale, seq_len);
+    }
+
+    
 
     #pragma endregion CAUSAL SOFTMAX
 

@@ -32,6 +32,19 @@ namespace gradc {
 
     template <typename T>
     requires std::is_floating_point_v<T>
+    Tensor<T> causal_softmax(Tensor<T> scores, T scale) {
+        Device target_device = scores.device();
+
+        if (!scores.is_dense()) {
+            throw std::runtime_error("Causal Softmax scores must be dense.");
+        }
+
+        Tensor<T> result = Tensor<T>(scores.shape(), scores.requires_grad(), lazy, target_device);
+        result._get_state()->m_creation_op = std::make_unique<CausalSoftmaxNode<T>>(std::move(scores), scale);
+    }
+
+    template <typename T>
+    requires std::is_floating_point_v<T>
     // TODO: add scale param, rename QKV to lowercase, scale as nullopt, use value_or
     Tensor<T> sdpa_naive(Tensor<T> q, Tensor<T> k, Tensor<T> v, std::optional<Tensor<T>> causal_mask = std::nullopt, std::optional<T> scale = std::nullopt) {
         Device target_device = infer_assert_device(q, k, v);
