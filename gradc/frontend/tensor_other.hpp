@@ -38,14 +38,18 @@ namespace gradc {
         if (!scores.is_dense()) {
             throw std::runtime_error("Causal Softmax scores must be dense.");
         }
+        if (std::ssize(scores.shape()) != 4) {
+            throw std::runtime_error("Causal Softmax scores must be 4D.");
+        }
 
         Tensor<T> result = Tensor<T>(scores.shape(), scores.requires_grad(), lazy, target_device);
         result._get_state()->m_creation_op = std::make_unique<CausalSoftmaxNode<T>>(std::move(scores), scale);
+
+        return result;
     }
 
     template <typename T>
     requires std::is_floating_point_v<T>
-    // TODO: add scale param, rename QKV to lowercase, scale as nullopt, use value_or
     Tensor<T> sdpa_naive(Tensor<T> q, Tensor<T> k, Tensor<T> v, std::optional<Tensor<T>> causal_mask = std::nullopt, std::optional<T> scale = std::nullopt) {
         Device target_device = infer_assert_device(q, k, v);
         // expected shape: [B, num_heads, T, head_dim]
@@ -70,5 +74,67 @@ namespace gradc {
         Tensor<T> result = bmm(probs, v);
         
         return result;
+    }
+
+    template <typename T>
+    requires std::is_floating_point_v<T>
+    Tensor<T> sdpa_fast(Tensor<T> q, Tensor<T> k, Tensor<T> v, std::optional<T> scale = std::nullopt) {
+        Device target_device = infer_assert_device(q, k, v);
+        if (std::ssize(q.shape()) != 4 || std::ssize(k.shape()) != 4 || std::ssize(v.shape()) != 4) {
+            throw std::runtime_error("SDPA expects 4D tensors.");
+        }
+        
+        int64_t head_dim = q.shape()[3];
+        Tensor<T> k_T = k.transpose(2, 3);
+        Tensor<T> scores = bmm(q, k_T);
+        T actual_scale = scale.value_or(static_cast<T>(1.0 / std::sqrt(head_dim)));
+        Tensor<T> probs = causal_softmax(scores, actual_scale);
+        Tensor<T> result = bmm(probs, v);
+        
+        return result;
+    }
+
+    template <typename T>
+    requires std::is_floating_point_v<T>
+    Tensor<T> sdpa(
+        Tensor<T> q, Tensor<T> k, Tensor<T> v, 
+        bool is_causal = false, 
+        std::optional<Tensor<T>> custom_mask = std::nullopt, 
+        std::optional<T> scale = std::nullopt, 
+        bool cuda_fast = true
+    ) {
+        Device target_device = infer_assert_device(q, k, v);
+        
+        if (std::ssize(q.shape()) != 4 || std::ssize(k.shape()) != 4 || std::ssize(v.shape()) != 4) {
+            throw std::runtime_error("SDPA expects 4D tensors.");
+        }
+        
+        int64_t head_dim = q.shape()[3];
+        T actual_scale = scale.value_or(static_cast<T>(1.0 / std::sqrt(head_dim)));
+        
+        Tensor<T> k_T = k.transpose(2, 3);
+        Tensor<T> scores = bmm(q, k_T);
+        
+        Tensor<T> probs;
+        
+        if (cuda_fast && is_causal && target_device.is_cuda()) {
+            probs = causal_softmax(scores, actual_scale);
+        } 
+        else {
+            scores *= actual_scale;
+            
+            if (is_causal) {
+                if (custom_mask.has_value()) {
+                    scores += custom_mask.value();
+                } 
+                else {
+                    throw std::runtime_error("Must pass causal_mask into SDPA when is_causal and not using CUDA causal softmax.");
+                }
+            } 
+            
+            probs = scores.softmax(3);
+        }
+        
+        return bmm(probs, v);
     }
 }

@@ -148,8 +148,6 @@ DONE num_params method test
 DONE save params, load and resume training. same with all optimizers
 DONE RMSNorm naive frontend
 DONE RMSNormNaiveNode
-
-
 DONE RMSNorm kernel fast (contig strides / reduced dims)
 DONE RMSNorm kernel strided
 DONE Wrapper that fires forward kernels
@@ -161,8 +159,8 @@ DONE RMSNormFastNode
 DONE Causal softmax dispatcher
 DONE Causal softmax forward CUDA
 DONE Causal softmax backward CUDA
-- Causal softmax frontend
-- Integrate causal softmax into SDPA
+DONE Causal softmax frontend
+DONE Integrate causal softmax into SDPA fast frontend
 - Fix LayerNorm module
 - Write RMSNorm module
 

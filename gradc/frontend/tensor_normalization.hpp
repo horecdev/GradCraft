@@ -44,11 +44,12 @@ namespace gradc {
 
     template <typename T>
     Tensor<T> rmsnorm(Tensor<T> parent, Tensor<T> gamma, const std::vector<int64_t>& axes, T eps, bool cuda_fast=true) requires std::is_floating_point_v<T> {
-        if (cuda_fast == false) {
-            return rmsnorm_naive(std::move(parent), std::move(gamma), axes, eps);
+        Device target_device = infer_assert_device(parent, gamma);
+        if (cuda_fast == true && target_device.is_cuda()) {
+            return rmsnorm_fast(std::move(parent), std::move(gamma), axes, eps);
         }
         else {
-            return rmsnorm_fast(std::move(parent), std::move(gamma), axes, eps);
+            return rmsnorm_naive(std::move(parent), std::move(gamma), axes, eps);
         }
     }
 

@@ -129,6 +129,8 @@ namespace gradc {
                     Tensor<T> dscores = Tensor<T>(m_scores.shape(), target_device, uninitialized);
 
                     dispatch_causal_softmax_backward(target_device, dscores, out_grad, m_probs, m_scale, m_seq_len);
+
+                    m_scores.accumulate_grad(dscores);
                 }
             }
     };
