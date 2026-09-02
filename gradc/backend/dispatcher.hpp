@@ -154,12 +154,12 @@ namespace gradc {
         }
     }
     template <typename T>
-    inline void dispatch_rmsnorm_forward(Device device, Tensor<T>& out, Tensor<T>& inv_rms, const Tensor<T>& parent, const Tensor<T>& gamma, const RedMeta& red_meta, T eps) {
+    inline void dispatch_rmsnorm_forward(Device device, Tensor<T>& out, Tensor<T>& inv_rms, const Tensor<T>& parent, const Tensor<T>& gamma, const RedMeta& red_meta, const std::vector<int64_t>& normalized_shape, T eps) {
         if (device.is_cpu()) {
             throw std::runtime_error("Tried running RMSNormFast forward on the CPU.");
         }
         else if (device.is_cuda()) {
-            CUDAMath::apply_rmsnorm_forward(out, inv_rms, parent, gamma, red_meta, eps);
+            CUDAMath::apply_rmsnorm_forward(out, inv_rms, parent, gamma, red_meta, normalized_shape, eps);
         }
     }
 

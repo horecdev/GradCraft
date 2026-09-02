@@ -32,7 +32,7 @@ namespace gradc {
             static void apply_scatter_add(Tensor<T>& dembeds, const Tensor<int64_t>& indices, const Tensor<T>& out_grad, int64_t embed_vol);
             template <typename T>
             requires std::is_floating_point_v<T>
-            static void apply_rmsnorm_forward(Tensor<T>& out, Tensor<T>& inv_rms, const Tensor<T>& parent, const Tensor<T>& gamma, const RedMeta& red_meta, T eps);
+            static void apply_rmsnorm_forward(Tensor<T>& out, Tensor<T>& inv_rms, const Tensor<T>& parent, const Tensor<T>& gamma, const RedMeta& red_meta, const std::vector<int64_t>& normalized_shape, T eps);
             template <typename T>
             requires std::is_floating_point_v<T>
             static void apply_rmsnorm_backward(Tensor<T>& dx, Tensor<T>& dgamma, const Tensor<T>& out_grad, const Tensor<T>& parent, const Tensor<T>& gamma, const Tensor<T>& inv_rms, const RedMeta& red_meta);

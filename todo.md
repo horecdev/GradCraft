@@ -153,8 +153,13 @@ DONE RMSNormNaiveNode
 DONE RMSNorm kernel fast (contig strides / reduced dims)
 DONE RMSNorm kernel slower
 - Wrapper that fires kernels and: passes whether to save inv_var (checks nullptr on it)
+- RMSNormFast backward fast kernel
+- RMSNormFast slower version
+- Force gamma contiguity in RMSNorm
 - RMSNormFast frontend
 - RMSNormFastNode 
+- Fix LayerNorm module
+- Write RMSNorm module
 
 - SDPA kernel
 - fast SDPA frontend

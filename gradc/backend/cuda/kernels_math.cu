@@ -786,14 +786,14 @@ namespace gradc {
     __global__ void rmsnorm_forward_kernel_fast(
         T* __restrict__ p_out, T* __restrict__ p_inv_rms, 
         const T* __restrict__ p_parent, const T* __restrict__ p_gamma,
-        int64_t parent_offset, int64_t gamma_offset, 
+        int64_t parent_offset, 
         int64_t reduced_vol, T eps
     ) {
         int64_t row = blockIdx.x;
 
         const T* parent_row = p_parent + parent_offset + (row * reduced_vol);
         T* out_row = p_out + (row * reduced_vol);
-        const T* gamma_row = p_gamma + gamma_offset; // also contiguous flat (shape of stuff being reduced)
+        const T* gamma_row = p_gamma; // also contiguous flat 
 
         int64_t tid = threadIdx.x;
         T thread_sq_sum = 0;
@@ -819,7 +819,12 @@ namespace gradc {
         T inv_rms = 0;
         if (tid == 0) {
             inv_rms = static_cast<T>(1.0) / sqrt((s_sum[0] / static_cast<T>(reduced_vol)));
-            p_inv_rms[row] = inv_rms;
+            
+            // if we dont save inv_rms then its nullptr
+            if (p_inv_rms != nullptr) {
+                p_inv_rms[row] = inv_rms;
+            }
+
             s_sum[0] = inv_rms;
         }
         __syncthreads();
@@ -835,8 +840,8 @@ namespace gradc {
         T* __restrict__ p_out, T* __restrict__ p_inv_rms,
         const T* __restrict__ p_parent, const T* __restrict__ p_gamma,
         CUDAMeta reduced_shape, CUDAMeta normalized_shape,
-        CUDAMeta out_strides, CUDAMeta parent_strides, CUDAMeta gamma_strides,
-        int64_t parent_offset, int64_t gamma_offset, 
+        CUDAMeta out_strides, CUDAMeta parent_strides,
+        int64_t parent_offset,
         int64_t reduced_vol, T eps
     ) {
         int64_t row = blockIdx.x;
@@ -845,7 +850,7 @@ namespace gradc {
         int64_t temp_idx = row;
         int64_t base_parent = parent_offset;
         int64_t base_out = 0;
-        int64_t base_gamma = gamma_offset;
+        int64_t base_gamma = 0;
 
         // first figure out the base (where are we in the reduced_shape e.g. [B, 1, C] in the B, C dims)
         for (int64_t d = reduced_shape.size; d >= 0; --d) {
@@ -854,7 +859,6 @@ namespace gradc {
 
             base_parent += coord * parent_strides.data[d];
             base_out += coord * out_strides.data[d];
-            base_gamma += coord * gamma_strides.data[d];
         }
 
         // thread local sum - 256 threads have partial results of summation across the reduced dims
@@ -889,7 +893,12 @@ namespace gradc {
         T inv_rms = 0;
         if (tid == 0) {
             inv_rms = static_cast<T>(1.0) / sqrt((s_sum[0] / static_cast<T>(reduced_vol)));
-            p_inv_rms[row] = inv_rms;
+
+            // if we dont save inv_rms then its nullptr
+            if (p_inv_rms != nullptr) {
+                p_inv_rms[row] = inv_rms;
+            }
+            
             s_sum[0] = inv_rms;
         }
         __syncthreads();
@@ -901,18 +910,16 @@ namespace gradc {
             int64_t temp_i = 0;
             int64_t rel_parent = 0;
             int64_t rel_out = 0;
-            int64_t rel_gamma = 0;
 
             for (int64_t d = normalized_shape.size - 1; d >= 0; --d) {
                 int64_t coord = temp_i % normalized_shape.data[d];
                 temp_i /= normalized_shape.data[d];
                 rel_parent += coord * parent_strides.data[d];
                 rel_out += coord * out_strides.data[d];
-                rel_gamma += coord * gamma_strides.data[d];
             }
 
             T val = p_parent[base_parent + rel_parent];
-            T g = p_gamma[base_gamma + rel_gamma];
+            T g = p_gamma[base_gamma + i];
 
             p_out[base_out + rel_out] = val * g * inv_rms;
         }
@@ -920,11 +927,9 @@ namespace gradc {
 
     template <typename T> 
     requires std::is_floating_point_v<T>
-    // out and inv_rms ALWAYS DENSE
-    void CUDAMath::apply_rmsnorm_forward(Tensor<T>& out, Tensor<T>& inv_rms, const Tensor<T>& parent, const Tensor<T>& gamma, const RedMeta& red_meta, T eps) {
+    // out, inv_rms, gamma ALWAYS DENSE
+    void CUDAMath::apply_rmsnorm_forward(Tensor<T>& out, Tensor<T>& inv_rms, const Tensor<T>& parent, const Tensor<T>& gamma, const RedMeta& red_meta, const std::vector<int64_t>& normalized_shape, T eps) {
         cudaSetDevice(out.device().index);
-
-        int64_t total_elems = out.volume();
         int64_t threads = 256;
         // you launch result_vol blocks, 256 threads each
         int64_t blocks = red_meta.result_vol;
@@ -932,7 +937,7 @@ namespace gradc {
         // for [10, 30, 500] it starts at [4, 10, 0] - skipped over 100 * 500 elems
         // To make it work all the result_vol elems (say B, T) must be contiguous. In addition all the dims being reduced must be trailing and contiguous too.
 
-        bool is_fast = parent.is_contiguous() && gamma.is_contiguous();
+        bool is_fast = parent.is_contiguous();
         if (is_fast) {
             bool found_unreduced = false;
             for (int64_t i = std::ssize(parent.shape()) - 1; i > 0; --i) {
@@ -950,8 +955,21 @@ namespace gradc {
             }
         }
 
+        T* p_out = out._get_storage()->data();
+        T* p_inv_rms = inv_rms._get_storage()->data();
+        T* p_parent = parent._get_storage()->data();
+        T* p_gamma = gamma._get_storage()->data();
+
         if (is_fast) {
+            rmsnorm_forward_kernel_fast<<<blocks, threads>>>(p_out, p_inv_rms, p_parent, p_gamma, parent.offset(), red_meta.reduced_vol, eps);
             // fire up the fast kernel
+        }
+        else {
+            CUDAMeta cuda_reduced_shape = to_cuda_meta(red_meta.temp_shape);
+            CUDAMeta cuda_normalized_shape = to_cuda_meta(normalized_shape);
+            CUDAMeta cuda_out_strides = to_cuda_meta(out.strides());
+            CUDAMeta cuda_parent_strides = to_cuda_meta(parent.strides());
+            rmsnorm_forward_kernel_strided<<<blocks, threads>>>(p_out, p_inv_rms, p_parent, p_gamma, cuda_reduced_shape, cuda_normalized_shape, cuda_out_strides, cuda_parent_strides, parent.offset(), red_meta.reduced_vol, eps);
         }
         
     }
