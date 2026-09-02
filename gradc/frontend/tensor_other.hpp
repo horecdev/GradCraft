@@ -50,52 +50,6 @@ namespace gradc {
 
     template <typename T>
     requires std::is_floating_point_v<T>
-    Tensor<T> sdpa_naive(Tensor<T> q, Tensor<T> k, Tensor<T> v, std::optional<Tensor<T>> causal_mask = std::nullopt, std::optional<T> scale = std::nullopt) {
-        Device target_device = infer_assert_device(q, k, v);
-        // expected shape: [B, num_heads, T, head_dim]
-        if (std::ssize(q.shape()) != 4 || std::ssize(k.shape()) != 4 || std::ssize(v.shape()) != 4) {
-            throw std::runtime_error("SDPA expects 4D tensors.");
-        }
-        
-        int64_t head_dim = q.shape()[3];
-
-        Tensor<T> k_T = k.transpose(2, 3);
-
-        Tensor<T> scores = bmm(q, k_T);
-
-        T actual_scale = scale.value_or(static_cast<T>(1.0 / std::sqrt(head_dim)));
-        scores *= actual_scale; // its [B, num_heads, T, T]. Mask is [T, T]
-
-        if (causal_mask.has_value()) {
-            scores += causal_mask.value();
-        }
-
-        Tensor<T> probs = scores.softmax(3); // along the last dim
-        Tensor<T> result = bmm(probs, v);
-        
-        return result;
-    }
-
-    template <typename T>
-    requires std::is_floating_point_v<T>
-    Tensor<T> sdpa_fast(Tensor<T> q, Tensor<T> k, Tensor<T> v, std::optional<T> scale = std::nullopt) {
-        Device target_device = infer_assert_device(q, k, v);
-        if (std::ssize(q.shape()) != 4 || std::ssize(k.shape()) != 4 || std::ssize(v.shape()) != 4) {
-            throw std::runtime_error("SDPA expects 4D tensors.");
-        }
-        
-        int64_t head_dim = q.shape()[3];
-        Tensor<T> k_T = k.transpose(2, 3);
-        Tensor<T> scores = bmm(q, k_T);
-        T actual_scale = scale.value_or(static_cast<T>(1.0 / std::sqrt(head_dim)));
-        Tensor<T> probs = causal_softmax(scores, actual_scale);
-        Tensor<T> result = bmm(probs, v);
-        
-        return result;
-    }
-
-    template <typename T>
-    requires std::is_floating_point_v<T>
     Tensor<T> sdpa(
         Tensor<T> q, Tensor<T> k, Tensor<T> v, 
         bool is_causal = false, 
