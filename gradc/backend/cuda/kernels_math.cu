@@ -1185,6 +1185,125 @@ namespace gradc {
 
     #pragma endregion RMSNorm
 
+    #pragma region CAUSAL SOFTMAX
+
+    template <typename T>
+    requires std::is_floating_point_v<T>
+    // probs and p_scores are dense
+    __global__ void causal_softmax_kernel_fast(
+        T* __restrict__ p_probs, const T* p_scores,
+        T scale, int64_t seq_len
+    ) {
+        // launch B * num_heads * T blocks
+        int64_t row = blockIdx.x;
+        int64_t tid = threadIdx.x;
+
+        int64_t seq_row = row % seq_len; // which row in the T x T matrix (causal condition)
+        const T* scores_row = p_scores + (row * seq_len); // jump into our row in scores
+        T* probs_row = p_probs + (row * seq_len); // jump into our row in probs
+
+        T thread_max = -INFINITY;
+        for (int64_t i = tid; i < seq_len; i += blockDim.x) {
+            if (i <= seq_row) { // causal condition - if (i >= j)
+                T val = scores_row[i] * scale;
+                thread_max = max(thread_max, val);
+            }
+        }
+
+        __shared__ T s_scratch[256];
+        s_scratch[tid] = thread_max;
+        __syncthreads();
+
+        for (int64_t s = blockDim.x / 2; s > 0; s >>= 1) {
+            if (tid < s) {
+                s_scratch[tid] = max(s_scratch[tid], s_scratch[tid + s]);
+            }
+            __sync_threads();
+        }
+
+        T row_max = s_scratch[0];
+        __syncthreads();
+        // sync so that thread_sum doesnt overwrite s_scratch[0]
+
+        T thread_sum = 0;
+        for (int64_t i = tid; i < seq_len; i += blockDim.x) {
+            if (i <= seq_row) {
+                thread_sum += exp((p_scores[i] * scale) - row_max);
+            }
+        }
+        s_scratch[tid] = thread_sum;
+        __syncthreads();
+
+        for (int s = blockDim.x / 2; s >= 0; s >>= 1) {
+            if (tid < s) {
+                s_scratch[tid] += s_scratch[tid + s];
+            }
+            __syncthreads();
+        }
+
+        T row_sum = s_scratch[0];
+        __syncthreads();
+
+        for (int64_t i = tid; i < seq_len; i += blockDim.x) {
+            if (i <= seq_row) {
+                p_probs[i] = exp((p_scores[i] * scale) - row_max) / row_sum;
+            }
+            else {
+                p_probs[i] = 0;
+            }
+        }
+    }
+
+    template <typename T>
+    requires std::is_floating_point_v<T>
+    // dx, out_grad, probs are dense
+    __global__ void causal_softmax_backward_fast(
+        T* __restrict__ p_dx, 
+        const T* __restrict__ p_out_grad, const T* __restrict__ p_probs,
+        T scale, int64_t seq_len
+    ) {
+        // launch B * num_heads * T blocks again
+        int64_t row = blockIdx.x;
+        int64_t tid = threadIdx.x;
+
+        int64_t seq_row = row % seq_len;
+
+        const T* out_grad_row = p_out_grad + (row * seq_len);
+        const T* probs_row = p_probs + (row * seq_len);
+        T* dx_row = p_dx + (row * seq_len);
+
+        __shared__ T s_scratch[256];
+
+        T thread_sum = 0;
+        for (int64_t i = tid; i < seq_len; i += blockDim.x) {
+            if (i <= seq_row) {
+                thread_sum += out_grad_row[i] * probs_row[i];
+            }
+        }
+        s_scratch[tid] = thread_sum;
+        __syncthreads();
+
+        for (int64_t s = blockDim.x / 2; s >= 0; s >>= 1) {
+            if (tid < s) {
+                s_scratch[tid] += s_scratch[tid + s];
+            }
+            __syncthreads();
+        }
+
+        T row_sum = s_scratch[0];
+        
+        for (int64_t i = tid; i < seq_len; i += blockDim.x) {
+            if (i <= seq_row) {
+                dx_row = scale * probs_row[i] * (out_grad_row[i] - row_sum);
+            }
+            else {
+                dx_row[i] = 0;
+            }
+        }
+    }
+
+    #pragma endregion CAUSAL SOFTMAX
+
     #pragma region TEMPLATING
 
     #define INSTANTIATE_CUDA_MATH_SINGLE(T) \
