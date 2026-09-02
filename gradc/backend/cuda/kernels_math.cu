@@ -423,7 +423,7 @@ namespace gradc {
         }
         __syncthreads(); // all threads wait for init to finish
 
-        for (int stride = blockDim.x / 2; stride > 0; stride /= 2) {
+        for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
             if (t_idx < stride) {
                 shared_data[t_idx] = op(shared_data[t_idx], shared_data[t_idx + stride]); // not atomic since its thread safe
             } 
@@ -494,7 +494,7 @@ namespace gradc {
         shared_idxs[t_idx] = thread_best_idx;
         __syncthreads();
 
-        for (int stride = blockDim.x; stride > 0; stride /= 2) {
+        for (int stride = blockDim.x; stride > 0; stride >>= 1) {
             if (t_idx < stride) {
                 if (op(shared_vals[t_idx + stride], shared_vals[t_idx])) {
                     shared_vals[t_idx] = shared_vals[t_idx + stride];
@@ -809,7 +809,7 @@ namespace gradc {
         s_sum[tid] = thread_sq_sum;
         __syncthreads();
 
-        for (int64_t s = blockDim.x / 2; s > 0; s /= 2) {
+        for (int64_t s = blockDim.x / 2; s > 0; s >>= 1) {
             if (tid < s) {
                 s_sum[tid] += s_sum[tid + s];
             }
@@ -818,7 +818,7 @@ namespace gradc {
 
         T inv_rms = 0;
         if (tid == 0) {
-            inv_rms = static_cast<T>(1.0) / sqrt((s_sum[0] / static_cast<T>(reduced_vol)));
+            inv_rms = static_cast<T>(1.0) / sqrt((s_sum[0] / static_cast<T>(reduced_vol)) + eps);
             
             // if we dont save inv_rms then its nullptr
             if (p_inv_rms != nullptr) {
@@ -883,7 +883,7 @@ namespace gradc {
         s_sum[tid] = thread_sq_sum;
         __syncthreads();
 
-        for (int64_t s = blockDim.x / 2; s > 0; s /= 2) {
+        for (int64_t s = blockDim.x / 2; s > 0; s >>= 1) {
             if (tid < s) {
                 s_sum[tid] += s_sum[tid + s];
             }
@@ -892,7 +892,7 @@ namespace gradc {
 
         T inv_rms = 0;
         if (tid == 0) {
-            inv_rms = static_cast<T>(1.0) / sqrt((s_sum[0] / static_cast<T>(reduced_vol)));
+            inv_rms = static_cast<T>(1.0) / sqrt((s_sum[0] / static_cast<T>(reduced_vol)) + eps);
 
             // if we dont save inv_rms then its nullptr
             if (p_inv_rms != nullptr) {
@@ -908,20 +908,20 @@ namespace gradc {
         // we already have where we are in the reduced_shape. 
         for (int64_t i = tid; i < reduced_vol; i += blockDim.x) {
             int64_t temp_i = 0;
-            int64_t rel_parent = 0;
-            int64_t rel_out = 0;
+            int64_t mov_parent = 0;
+            int64_t mov_out = 0;
 
             for (int64_t d = normalized_shape.size - 1; d >= 0; --d) {
                 int64_t coord = temp_i % normalized_shape.data[d];
                 temp_i /= normalized_shape.data[d];
-                rel_parent += coord * parent_strides.data[d];
-                rel_out += coord * out_strides.data[d];
+                mov_parent += coord * parent_strides.data[d];
+                mov_out += coord * out_strides.data[d];
             }
 
-            T val = p_parent[base_parent + rel_parent];
+            T val = p_parent[base_parent + mov_parent];
             T g = p_gamma[base_gamma + i];
 
-            p_out[base_out + rel_out] = val * g * inv_rms;
+            p_out[base_out + mov_out] = val * g * inv_rms;
         }
     }
 
@@ -938,40 +938,249 @@ namespace gradc {
         // To make it work all the result_vol elems (say B, T) must be contiguous. In addition all the dims being reduced must be trailing and contiguous too.
 
         bool is_fast = parent.is_contiguous();
+        // all ones have to be on the left, and all numbers have to be trailing
         if (is_fast) {
-            bool found_unreduced = false;
-            for (int64_t i = std::ssize(parent.shape()) - 1; i > 0; --i) {
-                bool is_reduced = (red_meta.temp_strides[i] == 0);
-                
-                if (!is_reduced) {
-                    found_unreduced = true;
-                }
-                else {
-                    if (found_unreduced) { // this one is reduced, but found an unreduced earlier
+            bool found_1 = false;
+            for (int64_t i = std::ssize(normalized_shape) - 1; i >= 0; --i) {
+                if (normalized_shape[i] != 1) {
+                    if (found_1 == true) { // there was one to the right of it
                         is_fast = false;
                         break;
                     }
+                }
+                else {
+                    found_1 = true;
                 }
             }
         }
 
         T* p_out = out._get_storage()->data();
         T* p_inv_rms = inv_rms._get_storage()->data();
-        T* p_parent = parent._get_storage()->data();
-        T* p_gamma = gamma._get_storage()->data();
+        const T* p_parent = parent._get_storage()->data();
+        const T* p_gamma = gamma._get_storage()->data();
 
         if (is_fast) {
             rmsnorm_forward_kernel_fast<<<blocks, threads>>>(p_out, p_inv_rms, p_parent, p_gamma, parent.offset(), red_meta.reduced_vol, eps);
             // fire up the fast kernel
         }
         else {
-            CUDAMeta cuda_reduced_shape = to_cuda_meta(red_meta.temp_shape);
-            CUDAMeta cuda_normalized_shape = to_cuda_meta(normalized_shape);
-            CUDAMeta cuda_out_strides = to_cuda_meta(out.strides());
-            CUDAMeta cuda_parent_strides = to_cuda_meta(parent.strides());
-            rmsnorm_forward_kernel_strided<<<blocks, threads>>>(p_out, p_inv_rms, p_parent, p_gamma, cuda_reduced_shape, cuda_normalized_shape, cuda_out_strides, cuda_parent_strides, parent.offset(), red_meta.reduced_vol, eps);
+            CUDAMeta gpu_reduced_shape = to_cuda_meta(red_meta.temp_shape);
+            CUDAMeta gpu_normalized_shape = to_cuda_meta(normalized_shape);
+            CUDAMeta gpu_out_strides = to_cuda_meta(out.strides());
+            CUDAMeta gpu_parent_strides = to_cuda_meta(parent.strides());
+            rmsnorm_forward_kernel_strided<<<blocks, threads>>>(p_out, p_inv_rms, p_parent, p_gamma, gpu_reduced_shape, gpu_normalized_shape, gpu_out_strides, gpu_parent_strides, parent.offset(), red_meta.reduced_vol, eps);
         }
-        
+    }
+
+    template <typename T>
+    // dx, dgamma, dy, gamma, inv_rms are always DENSE.
+    __device__ void rmsnorm_backward_kernel_fast(
+        T* __restrict__ p_dx, T* __restrict__ p_dgamma, 
+        const T* __restrict__  p_out_grad, const T* __restrict__ p_parent, 
+        const T* __restrict__ p_gamma, const T* __restrict__ p_inv_rms,
+        int64_t parent_offset, int64_t reduced_vol
+    ) {
+        int64_t row = blockIdx.x;
+        int64_t tid = threadIdx.x;
+
+        const T* out_grad_row = p_out_grad + (row * reduced_vol);
+        const T* parent_row = p_parent + parent_offset + (row * reduced_vol);
+        T* dx_row = p_dx != nullptr ? p_dx + (row * reduced_vol) : nullptr;
+        const T* gamma_row = p_gamma;
+
+        T inv_rms = p_inv_rms[row];
+
+        // sum for each thread of dx_hat * x_norm
+        T thread_sum = 0;
+        for (int64_t i = tid; i < reduced_vol; i += blockDim.x) {
+            T dx_hat = out_grad_row[i] * gamma_row[i];
+            T x_norm = parent_row[i] * inv_rms;
+            thread_sum += dx_hat * x_norm;
+        }
+
+        __shared__ T s_sum[256];
+        s_sum[tid] = thread_sum;
+        __syncthreads();
+
+        for (int64_t s = blockDim.x / 2; s > 0; s >>= 1)  { // shift right by 1 = div 2
+            if (tid < s) {
+                s_sum[tid] += s_sum[tid + s];
+            }
+            __syncthreads();
+        }
+
+        T sum_term = 0;
+        if (tid == 0) {
+            sum_term = s_sum[0] / static_cast<T>(reduced_vol);
+            s_sum[0] = sum_term;
+        }
+        __syncthreads();
+        sum_term = s_sum[0]; // share
+
+        for (int64_t i = tid; i < reduced_vol; i += blockDim.x) {
+            T x_norm = parent_row[i] * inv_rms;
+
+            if (p_dx != nullptr) {
+                T dx_hat = out_grad_row[i] * gamma_row[i];
+                dx_row[i] = inv_rms * (dx_hat - x_norm * sum_term);
+            }
+
+            if (p_gamma != nullptr) {
+                T dgamma_val = out_grad_row[i] * x_norm;
+
+                cuda_functors::RED::Sum<T>().atomic(&p_dgamma[i], dgamma_val);
+                // memory of dgamma must be initialized to zeros beforehand
+            }    
+        }
+    }
+
+    template <typename T>
+    __device__ void rmsnorm_backward_kernel_strided(
+        T* __restrict__ p_dx, T* __restrict__ p_dgamma, 
+        const T* __restrict__ p_out_grad, const T* __restrict__ p_parent, 
+        const T* __restrict__ p_gamma, const T* __restrict__ p_inv_rms,
+        CUDAMeta reduced_shape, CUDAMeta normalized_shape, 
+        CUDAMeta dx_strides, CUDAMeta out_grad_strides, CUDAMeta parent_strides,
+        int64_t parent_offset, int64_t reduced_vol
+    ) {
+        int64_t row = blockIdx.x;
+        int64_t tid = threadIdx.x;
+
+        // get location in reduced_shape
+        int64_t temp_idx = row;
+        int64_t base_dx = 0;
+        int64_t base_out_grad = 0;
+        int64_t base_parent = parent_offset;
+
+        for (int64_t d = reduced_shape.size - 1; d >= 0; --d) {
+            int64_t coord = temp_idx % reduced_shape.data[d];
+            temp_idx /= reduced_shape.data[d];
+
+            base_dx += coord * dx_strides.data[d];
+            base_out_grad += coord * out_grad_strides.data[d];
+            base_parent += coord * parent_strides.data[d];
+        }
+
+        T inv_rms = p_inv_rms[row];
+
+        // get location in normalized_shape
+        T thread_sum = 0;
+        for (int64_t i = tid; i < reduced_vol; i += blockDim.x) {
+            int64_t temp_i = i;
+            int64_t mov_out_grad = 0;
+            int64_t mov_parent = 0;
+
+            for (int64_t d = normalized_shape.size; d >= 0; --d) {
+                int64_t coord = temp_i % normalized_shape.data[d];
+                temp_i /= normalized_shape.data[d];
+
+                mov_out_grad += coord * out_grad_strides.data[d];
+                mov_parent += coord * parent_strides.data[d];
+            }
+
+            T x_val = p_parent[base_parent + mov_parent];
+            T out_grad_val = p_out_grad[base_out_grad + mov_out_grad];
+            T gamma_val = p_gamma[i];
+
+            T dx_hat = out_grad_val * gamma_val;
+            T x_norm = inv_rms * x_val;
+
+            thread_sum += dx_hat * x_norm;
+        }
+
+        __shared__ T s_sum[256];
+        s_sum[tid] = thread_sum;
+        __syncthreads();
+
+        for (int64_t s = blockDim.x / 2; s >= 0; s >>= 1) {
+            if (tid < s) {
+                s_sum[tid] += s_sum[tid + s];
+            }
+            __syncthreads();
+        }
+
+        T sum_term = 0;
+        if (tid == 0) {
+            sum_term = s_sum[0] / static_cast<T>(reduced_vol);
+            s_sum[0] = sum_term;
+        }
+        __syncthreads();
+        sum_term = s_sum[0];
+
+        for (int64_t i = tid; i < reduced_vol; i += blockDim.x) {
+            int64_t temp_i = i;
+            int64_t mov_dx = 0;
+            int64_t mov_out_grad = 0;
+            int64_t mov_parent = 0;
+
+            for (int64_t d = normalized_shape.size - 1; d >= 0; --d) {
+                int64_t coord = temp_i % normalized_shape.data[d];
+                temp_i /= normalized_shape.data[d];
+
+                mov_dx += coord * dx_strides.data[d];
+                mov_out_grad += coord * out_grad_strides.data[d];
+                mov_parent += coord * parent_strides.data[d];
+            }
+
+            T x_val = p_parent[base_parent + mov_parent];
+            T out_grad_val = p_out_grad[base_out_grad + mov_out_grad];
+            T x_norm = x_val * inv_rms;
+
+            if (p_dx != nullptr) {
+                T gamma_val = p_gamma[i];
+                T dx_hat = out_grad_val * gamma_val;
+                p_dx[base_dx + mov_dx] = inv_rms * (dx_hat - x_norm * sum_term);
+            }
+
+            if (p_dgamma != nullptr) {
+                T dgamma_val = out_grad_val * x_norm;
+                cuda_functors::RED::Sum<T>().atomic(&p_dgamma[i], dgamma_val);
+            }
+        }
+    }
+
+    template <typename T> 
+    requires std::is_floating_point_v<T>
+    // dx, out_grad, dgamma, gamma, inv_rms always DENSE
+    void CUDAMath::apply_rmsnorm_backward(Tensor<T>& dx, Tensor<T>& dgamma, const Tensor<T>& out_grad, const Tensor<T>& parent, const Tensor<T>& gamma, const Tensor<T>& inv_rms, const RedMeta& red_meta, const std::vector<int64_t>& normalized_shape) {
+        cudaSetDevice(out_grad.device().index);
+        int64_t threads = 256;
+        int64_t blocks = red_meta.result_vol;
+
+        bool is_fast = parent.is_contiguous();
+        if (is_fast) {
+            bool found_1 = false;
+            for (int64_t i = std::ssize(normalized_shape) - 1; i >= 0; --i) {
+                if (normalized_shape[i] != 1) {
+                    if (found_1 == true) {
+                        is_fast = false;
+                        break;
+                    }
+                }
+                else {
+                    found_1 = true;
+                }
+            }
+        }
+
+        T* p_dx = dx._get_storage()->data();
+        T* p_dgamma = dgamma._get_storage()->data();
+        const T* p_out_grad = out_grad._get_storage()->data();
+        const T* p_parent = parent._get_storage()->data();
+        const T* p_gamma = gamma._get_storage()->data();
+        const T* p_inv_rms = inv_rms._get_storage()->data();
+
+        if (is_fast) {
+            rmsnorm_backward_kernel_fast<<<blocks, threads>>>(p_dx, p_dgamma, p_out_grad, p_parent, p_gamma, p_inv_rms, parent.offset(), red_meta.reduced_vol);
+        }
+        else {
+            CUDAMeta gpu_reduced_shape = to_cuda_meta(red_meta.temp_shape);
+            CUDAMeta gpu_normalized_shape = to_cuda_meta(normalized_shape);
+            CUDAMeta gpu_dx_strides = to_cuda_meta(dx.strides());
+            CUDAMeta gpu_out_grad_strides = to_cuda_meta(out_grad.strides());
+            CUDAMeta gpu_parent_strides = to_cuda_meta(parent.strides());
+            rmsnorm_backward_kernel_strided<<<blocks, threads>>>(p_dx, p_dgamma, p_out_grad, p_parent, p_gamma, p_inv_rms, gpu_reduced_shape, gpu_normalized_shape, gpu_dx_strides, gpu_out_grad_strides, gpu_parent_strides, parent.offset(), red_meta.reduced_vol);
+        }
     }
 
     #pragma endregion RMSNorm

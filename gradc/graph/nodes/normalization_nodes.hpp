@@ -264,11 +264,30 @@ namespace gradc {
 
                 Device target_device = m_parent.device();
 
-                bool can_mutate_parent = m_parent.is_exclusive() && !m_parent.requires_grad() && !m_gamma.requires_grad();
+                if (m_parent.requires_grad() || m_gamma.requires_grad()) {
+                    m_inv_rms = Tensor<T>(m_normalized_shape, target_device, uninitialized);
+                }
+
+                Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                Tensor<T> reshaped_gamma = lobotomized_reshape_view(m_gamma, m_normalized_shape);
+                
+                dispatch_rmsnorm_forward(target_device, result, m_inv_rms, m_parent, reshaped_gamma, m_red_meta, m_normalized_shape, m_eps);
+
+                return result;
             }
 
             void backward(const Tensor<T>& out_grad, bool retain_graph) override {
                 Device target_device = out_grad.device();
+
+                Tensor<T> dx = m_parent.requires_grad() ? Tensor<T>(m_parent.shape(), target_device, uninitialized) : Tensor<T>();;
+                Tensor<T> dgamma = m_gamma.requires_grad() ? Tensor<T>(m_gamma.shape(), T(0), target_device) : Tensor<T>();
+                Tensor<T> reshaped_gamma = lobotomized_reshape_view(m_gamma, m_normalized_shape);
+                Tensor<T> reshaped_dgamma = lobotomized_reshape_view(dgamma, m_normalized_shape);
+
+                dispatch_rmsnorm_backward(target_device, dx, reshaped_dgamma, out_grad, m_parent, reshaped_gamma, m_inv_rms, m_red_meta, m_normalized_shape);
+
+                if (m_parent.requires_grad()) {m_parent.accumulate_grad(dx);}
+                if (m_gamma.requires_grad()) {m_gamma.accumulate_grad(dgamma);}
 
                 if (!retain_graph) {
                     m_inv_rms = Tensor<T>();

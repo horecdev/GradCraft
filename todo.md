@@ -151,12 +151,14 @@ DONE RMSNormNaiveNode
 
 
 DONE RMSNorm kernel fast (contig strides / reduced dims)
-DONE RMSNorm kernel slower
-- Wrapper that fires kernels and: passes whether to save inv_var (checks nullptr on it)
-- RMSNormFast backward fast kernel
-- RMSNormFast slower version
-- Force gamma contiguity in RMSNorm
-- RMSNormFast frontend
+DONE RMSNorm kernel strided
+DONE Wrapper that fires forward kernels
+DONE RMSNormFast backward fast kernel
+DONE RMSNormFast backward strided version
+- Force gamma dense in rmsnorm_fast()
+- rmsnorm_fast frontend
+- rmsnorm_naive frontend
+- rmsnorm frontend (based on bool fast)
 - RMSNormFastNode 
 - Fix LayerNorm module
 - Write RMSNorm module
