@@ -155,11 +155,9 @@ DONE RMSNorm kernel strided
 DONE Wrapper that fires forward kernels
 DONE RMSNormFast backward fast kernel
 DONE RMSNormFast backward strided version
-- Force gamma dense in rmsnorm_fast()
-- rmsnorm_fast frontend
-- rmsnorm_naive frontend
-- rmsnorm frontend (based on bool fast)
-- RMSNormFastNode 
+DONE Force gamma dense in rmsnorm_fast()
+DONE rmsnorm frontend dispatch (based on bool fast)
+DONE RMSNormFastNode 
 - Fix LayerNorm module
 - Write RMSNorm module
 
