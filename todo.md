@@ -169,15 +169,8 @@ DONE dispatch scalar update + kernel
 DONE Scheduler class
 DONE CosineScheduler (with saving - scheduler class)
 DONE - saivng/loading scalar checkpoints (Scheduler) (T scalars)
-- add type tags in both checkpointing tensors and scalars.
-- clip_grad_norm, scales back, no explosions
-
-
-- SwiGLU MLP module
-- Transformer module
-- GPT module
-- ExtractPathesNode (backward pass crash) - purely util, like argmin/argmax - Im2Col or smth
-- Compile
-- add multithreading with OpenMP (no writing mutexes and shit)
-- Create a diffusion transformer final proof project 
-- Create a big GPT for coding himself (finetune maybe?)
+DONE add type tags in both checkpointing tensors and scalars.
+DONE SwiGLU MLP module
+- TransformerBlock module
+- FULL GPT!!!!
+- fit as much params as possible - optionally train with B=1 and accumulate

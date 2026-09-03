@@ -104,7 +104,7 @@ namespace gradc {
         if (!in) {throw std::runtime_error("Failed to open file for loading: " + path);}
 
         uint32_t type_tag;
-        in.read(reinterpret_cast<char*>(&type_tag), sizeof(type_tag)); // read in the same 
+        in.read(reinterpret_cast<char*>(&type_tag), sizeof(type_tag));
         if (type_tag != sizeof(T)) {
             throw std::runtime_error("Tried reading a file whose type is " + std::to_string(type_tag) + "-bytes with a type having " + std::to_string(sizeof(T)) + "-bytes.");
         }
