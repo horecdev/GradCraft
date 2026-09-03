@@ -161,18 +161,17 @@ DONE Causal softmax forward CUDA
 DONE Causal softmax backward CUDA
 DONE Causal softmax frontend
 DONE Integrate causal softmax into SDPA fast frontend
-- Fix LayerNorm module
-- Write RMSNorm module
+DONE Fix LayerNorm module
+DONE Write RMSNorm module
 
-- PositionalEncoding module
-- RoPE module
+- PositionalEncoding module (slices indices)
 - CosineScheduler (with saving - scheduler class)
 - clip_grad_norm, scales back, no explosions
 
 
-- fused layernorm (benchmark)
-- flash attention (benchmark)
-- Transformer block
+- SwiGLU MLP module
+- Transformer module
+- GPT module
 - ExtractPathesNode (backward pass crash) - purely util, like argmin/argmax - Im2Col or smth
 - Compile
 - add multithreading with OpenMP (no writing mutexes and shit)

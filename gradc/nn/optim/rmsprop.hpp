@@ -12,7 +12,7 @@ namespace gradc {
             Tensor<T> m_eps;
             std::unordered_map<std::string, Tensor<T>> m_uncentered_variances;
         public:
-            RMSProp(std::unordered_map<std::string, Parameter<T>*> named_params, T lr, T beta = static_cast<T>(0.9), T eps = static_cast<T>(1e-7)) {
+            RMSProp(std::unordered_map<std::string, Parameter<T>*> named_params, T lr, T beta = static_cast<T>(0.9), T eps = static_cast<T>(1e-8)) {
                 this->m_named_params = std::move(named_params);
                 this->assert_valid_params();
                 Device target_device = this->optim_device();
