@@ -28,18 +28,24 @@ namespace gradc {
     class PosEncoding : public Module<T> {
         private: 
             Parameter<T> m_pos_embeds;
-            Tensor<T> m_token_range;
+            Tensor<int64_t> m_token_range;
         public:
             PosEncoding(int64_t max_seq_len, std::vector<int64_t> pos_embed_dim, const Initializer<T>& embed_init) {
                 pos_embed_dim.insert(pos_embed_dim.begin(), max_seq_len);
                 m_pos_embeds = embed_init.generate(pos_embed_dim, Device(DeviceType::CPU));
 
-                m_token_range = Tensor<T>::arange(0, max_seq_len, 1);
+                m_token_range = Tensor<int64_t>::arange(0, max_seq_len, 1);
 
                 this->register_parameter("pos_embeds", &m_pos_embeds);
             }
 
             Tensor<T> forward(int64_t seq_len) {
+                if (m_token_range.device() != m_pos_embeds.device()) {
+                    m_token_range = m_token_range.to(m_pos_embeds.device());
+                    m_token_range.realize();
+                    m_token_range.make_leaf();
+                }
+                
                 return embed(m_token_range[Slice(0, seq_len)], m_pos_embeds);
             }
     };
