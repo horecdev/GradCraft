@@ -165,9 +165,11 @@ DONE Fix LayerNorm module
 DONE Write RMSNorm module
 DONE PositionalEncoding module (slices indices)
 DONE Check MHA if it fits sdpa func and the causal mask stuff not being done if cudafast=true
-- dispatch scalar update + kernel
-- Scheduler class
-- CosineScheduler (with saving - scheduler class)
+DONE dispatch scalar update + kernel
+DONE Scheduler class
+DONE CosineScheduler (with saving - scheduler class)
+DONE - saivng/loading scalar checkpoints (Scheduler) (T scalars)
+- add type tags in both checkpointing tensors and scalars.
 - clip_grad_norm, scales back, no explosions
 
 
