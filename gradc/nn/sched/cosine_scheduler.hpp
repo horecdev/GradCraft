@@ -1,37 +1,9 @@
 #pragma once
 
-#include "../optim/optimizer.hpp"
 #include <numbers>
+#include "scheduler.hpp"
 
 namespace gradc {
-    template <typename T>
-    requires std::is_floating_point_v<T>
-    class Scheduler {
-        protected:
-            Optimizer<T>* m_optimizer;
-        public:
-            int64_t m_t;
-            T m_lr;
-
-            Scheduler(Optimizer<T>* optimizer, T init_lr) : m_optimizer(optimizer), m_t(0), m_lr(init_lr) {}
-
-            virtual void step() = 0;
-
-            virtual std::unordered_map<std::string, T> state_dict() const { // always on the CPU
-                std::unordered_map<std::string, T> result;
-                result["m_t"] = static_cast<T>(m_t);
-                result["m_lr"] = m_lr;
-            }
-
-            virtual void load_state_dict(const std::unordered_map<std::string, T>& state) {
-                m_t = static_cast<int64_t>(state["m_t"]);
-                m_lr = state["m_lr"];
-                
-                // sync to optimizer
-                m_optimizer->update_lr(m_lr);
-            }
-    };
-
     template <typename T>
     requires std::is_floating_point_v<T>
     class CosineScheduler : public Scheduler<T> {
@@ -46,7 +18,8 @@ namespace gradc {
              : Scheduler<T>(optimizer, 0.0), /*lr set to 0 cuz warmup*/ m_max_lr(max_lr), m_min_lr(min_lr), m_warmup_steps(warmup_steps), m_max_steps(max_steps) {}
 
             void step() override {
-                this->m_t++;
+                this->m_t++; // scheduler always does the step FIRST. Its at t=1. Then gives it to optimizer at step 0. It moves from 0 to 1. Both are at 1. Then sched moves from 1 to 2, etc.
+                // when you LOAD: scheduler and opt are at t=2. First scheduler steps, gets lr for t=3, passes to optimizer to do step 3. Works fully.
                 
                 if (this->m_t <= m_warmup_steps) {
                     this->m_lr = m_max_lr * (static_cast<T>(this->m_t) / static_cast<T>(m_warmup_steps));
@@ -73,7 +46,7 @@ namespace gradc {
             }
 
             void load_state_dict(const std::unordered_map<std::string, T>& state) override {
-                Scheduler<T>::load_state_dict(state); // load the base
+                Scheduler<T>::load_state_dict(state); // load the base, push the lr inside
                 
                 m_max_lr = state["max_lr"];
                 m_min_lr = state["min_lr"];
@@ -81,6 +54,5 @@ namespace gradc {
                 m_max_steps = static_cast<int64_t>(state["max_steps"]);
             }
     };
-
-
 }
+
