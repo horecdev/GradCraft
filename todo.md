@@ -171,6 +171,10 @@ DONE CosineScheduler (with saving - scheduler class)
 DONE - saivng/loading scalar checkpoints (Scheduler) (T scalars)
 DONE add type tags in both checkpointing tensors and scalars.
 DONE SwiGLU MLP module
-- TransformerBlock module
-- FULL GPT!!!!
+DONE TransformerBlock module
+DONE FULL GPT!!!!
+- Train on synthetic data and asses how much params you can fit with B=1 and scaling grads by 1/B.
+- Download a dataset to help it learn how to speak without trivia (TinyStories)
+- Download a dataset of C++ code that is heavily documented
+- Write the training loop for the first phase (internet blabber)
 - fit as much params as possible - optionally train with B=1 and accumulate
