@@ -14,12 +14,15 @@ namespace gradc {
             Linear<T> m_out_proj;
             int64_t m_num_heads;
             int64_t m_head_dim;
-            Tensor<T> m_causal_mask; // register this as??? how tf do you move 
+            bool m_is_causal;
+            std::optional<Tensor<T>> m_causal_mask;
+            bool cuda_fast = true;
             
         public:
             MultiHeadAttention(int64_t embed_dim, int64_t num_heads, bool is_causal, int64_t max_seq_len, const Initializer<T>& proj_w_init, const Initializer<T>& proj_b_init)
              : m_q_proj(Linear<T>(embed_dim, embed_dim, proj_w_init, proj_b_init)), m_k_proj(Linear<T>(embed_dim, embed_dim, proj_w_init, proj_b_init)), 
-                m_v_proj(Linear<T>(embed_dim, embed_dim, proj_w_init, proj_b_init)), m_out_proj(Linear<T>(embed_dim, embed_dim, proj_w_init, proj_b_init)) 
+                m_v_proj(Linear<T>(embed_dim, embed_dim, proj_w_init, proj_b_init)), m_out_proj(Linear<T>(embed_dim, embed_dim, proj_w_init, proj_b_init)),
+                m_is_causal(is_causal)
             {
                 if (embed_dim % num_heads != 0) {
                     throw std::runtime_error("embed_dim modulo num_heads must = 0 in MHA.");
@@ -50,16 +53,22 @@ namespace gradc {
                 K = K.reshape({B, seq_len, m_num_heads, m_head_dim}).permute({0, 2, 1, 3});
                 V = V.reshape({B, seq_len, m_num_heads, m_head_dim}).permute({0, 2, 1, 3});
 
-                if (m_causal_mask.device() != x.device()) {
-                    m_causal_mask = m_causal_mask.to(x.device());
-                    m_causal_mask.realize();
-                    m_causal_mask.make_leaf();
+                std::optional<Tensor<T>> active_mask = std::nullopt;
+
+                // do we need to move mask?
+                if (m_causal_mask.has_value()) { // there is a mask (so is causal)
+                    if (m_causal_mask.value().device() != x.device() && !(x.device().is_cuda() && cuda_fast)) { // we have not moved to cuda fast where we dont need it
+                        m_causal_mask = m_causal_mask.value().to(x.device());
+                        m_causal_mask.value().realize();
+                        m_causal_mask.value().make_leaf();
+                    } 
+                    active_mask = m_causal_mask.value()[Slice(0, seq_len), Slice(0, seq_len)];
                 }
-
-                Tensor<T> active_mask = m_causal_mask[Slice(0, seq_len), Slice(0, seq_len)];
-
-                Tensor<T> attn = sdpa_naive(Q, K, V); // [B, num_heads, T, head_dim]
+                // we do not delete the mask if we are on cuda and cuda_fast. If you switch later, this check evaluates and it gets moved.
+                
+                Tensor<T> attn = sdpa(Q, K, V, m_is_causal, active_mask, /*scale*/ std::nullopt, cuda_fast); // [B, num_heads, T, head_dim]
                 attn = attn.permute({0, 2, 1, 3}).reshape({B, seq_len, m_num_heads * m_head_dim}); // [B, T, C]
+
                 return m_out_proj.forward(attn);
             }
     };

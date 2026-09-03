@@ -5,6 +5,8 @@
 namespace gradc {
     class CUDAUtils {
         public:
+        template <typename T>
+            static void set_scalar(T* d_ptr, T value);
             template <typename T>
             static void fill(T* ptr, T val, int64_t size, Device device);
             template <typename T>

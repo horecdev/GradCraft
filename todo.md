@@ -163,9 +163,10 @@ DONE Causal softmax frontend
 DONE Integrate causal softmax into SDPA fast frontend
 DONE Fix LayerNorm module
 DONE Write RMSNorm module
-
-- PositionalEncoding module (slices indices)
-- Check MHA if it fits sdpa func and the causal mask stuff not being done if cudafast=true
+DONE PositionalEncoding module (slices indices)
+DONE Check MHA if it fits sdpa func and the causal mask stuff not being done if cudafast=true
+- dispatch scalar update + kernel
+- Scheduler class
 - CosineScheduler (with saving - scheduler class)
 - clip_grad_norm, scales back, no explosions
 

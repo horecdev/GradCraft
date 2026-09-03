@@ -3,6 +3,20 @@
 #include <curand.h>
 
 namespace gradc {
+
+    template <typename T>
+    __global__ void set_scalar_kernel(T* ptr, T val) {
+        if (threadIdx.x == 0 && blockIdx.x == 0) {
+            *ptr = val;
+        }
+    }
+
+    template <typename T>
+    void CUDAUtils::set_scalar(T* d_ptr, T value) {
+        set_scalar_kernel<<<1, 1>>>(d_ptr, value);
+    }
+
+
     template <typename T>
     __global__ void fill_kernel(T* ptr, T val, int64_t size) {
         int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -110,6 +124,11 @@ namespace gradc {
         scale_uniform_kernel<<<blocks, threads>>>(ptr, low, high, size);
 
     }
+    
+    template void CUDAUtils::set_scalar<float>(float*, float);
+    template void CUDAUtils::set_scalar<double>(double*, double);
+    template void CUDAUtils::set_scalar<int32_t>(int32_t*, int32_t);
+    template void CUDAUtils::set_scalar<int64_t>(int64_t*, int64_t);
     
     template void CUDAUtils::fill<float>(float* ptr, float val, int64_t size, Device device);
     template void CUDAUtils::fill<double>(double* ptr, double val, int64_t size, Device device);

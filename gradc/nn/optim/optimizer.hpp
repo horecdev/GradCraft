@@ -51,8 +51,13 @@ namespace gradc {
             // used to move all states / metadata into the same device params are on
             virtual void sync_state_param_device() = 0;
 
-            void update_lr(Tensor<T> lr) {
-                m_lr = std::move(lr);
+            void update_lr(T new_lr) {
+                if (m_lr.device().is_cpu()) {
+                    m_lr._get_storage()->data()[0] = new_lr;
+                }
+                else if (m_lr.device().is_cuda()) {
+                    CUDAUtils::set_scalar(m_lr._get_storage()->data(), new_lr);
+                }
             }
     };
 }

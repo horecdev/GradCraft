@@ -17,7 +17,7 @@ namespace gradc {
             std::unordered_map<std::string, Tensor<T>> m_first_moment;
             std::unordered_map<std::string, Tensor<T>> m_second_moment;
         public:
-            AdamW(std::unordered_map<std::string, Parameter<T>*> named_params, T lr, T beta1 = static_cast<T>(0.9), T beta2 = static_cast<T>(0.999), T weight_decay = static_cast<T>(0.0), T eps = static_cast<T>(1e-7)) {
+            AdamW(std::unordered_map<std::string, Parameter<T>*> named_params, T lr, T beta1 = static_cast<T>(0.9), T beta2 = static_cast<T>(0.999), T weight_decay = static_cast<T>(0.0), T eps = static_cast<T>(1e-8)) {
                 this->m_named_params = std::move(named_params);
                 this->assert_valid_params();
                 Device target_device = this->optim_device();
