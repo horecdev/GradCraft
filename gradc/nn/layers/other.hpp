@@ -39,7 +39,9 @@ namespace gradc {
                 this->register_parameter("pos_embeds", &m_pos_embeds);
             }
 
-            Tensor<T> forward(int64_t )
+            Tensor<T> forward(int64_t seq_len) {
+                return embed(m_token_range[Slice(0, seq_len)], m_pos_embeds);
+            }
     };
 
     template <typename T>
