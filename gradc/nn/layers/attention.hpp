@@ -56,7 +56,7 @@ namespace gradc {
                 std::optional<Tensor<T>> active_mask = std::nullopt;
 
                 // do we need to move mask?
-                if (m_causal_mask.has_value()) { // there is a mask (so is causal)
+                if (m_causal_mask.has_value()) { // there is a mask
                     if (m_causal_mask.value().device() != x.device() && !(x.device().is_cuda() && cuda_fast)) { // we have not moved to cuda fast where we dont need it
                         m_causal_mask = m_causal_mask.value().to(x.device());
                         m_causal_mask.value().realize();
@@ -64,7 +64,7 @@ namespace gradc {
                     } 
                     active_mask = m_causal_mask.value()[Slice(0, seq_len), Slice(0, seq_len)];
                 }
-                // we do not delete the mask if we are on cuda and cuda_fast. If you switch later, this check evaluates and it gets moved.
+                // we do not delete the mask if we are on cuda and cuda_fast. If you switch later, this check evaluates and it gets moved (or stays in place)
                 
                 Tensor<T> attn = sdpa(Q, K, V, m_is_causal, active_mask, /*scale*/ std::nullopt, cuda_fast); // [B, num_heads, T, head_dim]
                 attn = attn.permute({0, 2, 1, 3}).reshape({B, seq_len, m_num_heads * m_head_dim}); // [B, T, C]
