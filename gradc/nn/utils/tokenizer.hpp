@@ -8,53 +8,15 @@
 
 namespace gradc {
 
-    class PreTokenizer {
-        private:
-            std::vector<std::string> m_filepaths;
-            std::vector<char> m_raw_data;
-            std::vector<std::string_view> m_pieces;
+    struct PreTokenizer {
         public:
-            PreTokenizer(std::vector<std::string> filepaths) : m_filepaths(std::move(filepaths)) {}
-
-            const std::vector<std::string_view>& get_pieces() {
-                return m_pieces;
-            }
-
-            void process() {
-                uint64_t total_bytes = 0;
-                for (const std::string& path : m_filepaths) {
-                    if (std::filesystem::exists(path)) {
-                        uint64_t file_bytes = std::filesystem::file_size(path);
-                        total_bytes += file_bytes;
-                    }
-                }
-
-                m_raw_data.resize(total_bytes);
-                m_pieces.reserve(total_bytes / 4); // hopefully one piece will merge >= 4 chars on average
-
-                int64_t write_offset = 0;
-                for (const std::string& path : m_filepaths) {
-                    if (std::filesystem::exists(path)) {
-                        uint64_t file_bytes = std::filesystem::file_size(path);
-
-                        std::ifstream file(path, std::ios::binary);
-
-                        if (file.is_open()) {
-                            file.read(reinterpret_cast<char*>(m_raw_data.data() + write_offset), file_bytes);
-                            
-                            write_offset += file_bytes;
-                        }
-                    }
-                }
-
-                std::string_view text(m_raw_data.data(), m_raw_data.size());
-
+            static void process_normal_text(std::string_view text, std::vector<std::string_view>& pieces) {
                 int64_t start = 0;
                 int64_t stop = 0;
                 int64_t length = text.length();
 
                 while (stop < length) {
-                    char c = static_cast<unsigned char>(m_raw_data[stop]);
+                    char c = static_cast<unsigned char>(text[stop]);
 
                     // you have to blast bitchass static_cast because isalpha etc expects unsigned char, but chars are signed by default
                     if (std::isalpha(c)) {
@@ -87,35 +49,162 @@ namespace gradc {
                         stop++;
                     }
 
-                    m_pieces.push_back(text.substr(start, stop - start));
+                    pieces.push_back(text.substr(start, stop - start));
 
                     start = stop;
                 }
             }
 
-            
+            static void process_chunks(std::string_view full_text, std::vector<std::string_view>& pieces) {
+                std::vector<std::string_view> specials = {"<|endoftext|>", "<|pad|>", "<|im_start|>", "<|im_end|>"};
+                int64_t current = 0;
+                while (current < full_text.length()) {
+                    int64_t earliest_pos = std::string_view::npos;
+                    std::string_view next_special = "";
+
+                    for (std::string_view sp : specials) {
+                        int64_t pos = full_text.find(sp, current);
+                        if (pos < earliest_pos) {
+                            earliest_pos = pos;
+                            next_special = sp;
+                        }
+                    }
+
+                    if (earliest_pos == std::string_view::npos) { // just process the rest of the text
+                        process_normal_text(full_text.substr(current), pieces);
+                    }
+
+                    if (earliest_pos > current) { // process text up to the special token
+                        process_normal_text(full_text.substr(current, earliest_pos - current), pieces);
+                    }
+
+                    pieces.push_back(next_special);
+
+                    current = earliest_pos + next_special.length();
+                }
+            }
     };
 
     class BytePairEncoding {
         private:
             std::vector<std::vector<uint32_t>> m_sequences;
-            std::map<std::pair<uint32_t, uint32_t>, uint32_t> merges;
+            std::map<std::pair<uint32_t, uint32_t>, uint32_t> m_merges;
+            std::vector<std::string> m_vocab;
+            int32_t m_num_tokens = 32768; // 2^15
         public:
+            BytePairEncoding() {
+                for (int i = 0; i < 256; ++i) {
+                    m_vocab[i] = std::string(1, static_cast<char>(i));
+                }
+                m_vocab[256] = "<|endoftext|>";
+                m_vocab[257] = "<|pad|>";
+                m_vocab[258] = "<|im_start|>";
+                m_vocab[259] = "<|im_end|>";
+            }
+
             void prepare_sequences(const std::vector<std::string_view>& pieces) {
-                m_sequences.resize(pieces.size());
+                m_sequences.resize(std::ssize(pieces));
 
-                for (int64_t i = 0; i < pieces.size(); ++i) {
-                    const std::string_view& view = pieces[i];
-                    std::vector<uint32_t> seq = m_sequences[i];
+                for (int64_t i = 0; i < std::ssize(pieces); ++i) {
+                    const std::string_view& str = pieces[i];
+                    std::vector<uint32_t>& seq = m_sequences[i];
 
-                    for (char c : view) {
-                        seq.push_back(static_cast<uint32_t>(c));
+                    if (str == "<|endoftext|>") {
+                        seq.push_back(256);
+                    }
+                    else if (str == "<|pad|>") {
+                        seq.push_back(257);
+                    }
+                    else if (str == "<|im_start|>") {
+                        seq.push_back(258);
+                    }
+                    else if (str == "<|im_end|>") {
+                        seq.push_back(259);
+                    }
+                    else {
+                        seq.reserve(str.length());
+                        for (char c : str) {
+                            uint32_t byte_val = static_cast<uint32_t>(static_cast<unsigned char>(c)); // double cast so we dont just make the negative roll into numerical max
+                            seq.push_back(byte_val);
+                        }
                     }
                 }
             }
 
-            void merge() {
-                // first: loop through every sequence. Create a full map. 
+            void create_vocabulary() {
+                for (int32_t token_id = 260; token_id < m_num_tokens; ++token_id) {
+                    std::map<std::pair<uint32_t, uint32_t>, uint32_t> pair_counts;
+                    for (std::vector<uint32_t>& seq : m_sequences) {
+                        for (int64_t idx = 0; idx < std::ssize(seq) - 1; ++idx) {
+                            std::pair<uint32_t, uint32_t> pair = std::make_pair(seq[idx], seq[idx + 1]);
+                            pair_counts[pair]++; // creates the entry initialized to 0 and THEN increments (unlike ++x)
+                        }
+                    }
+
+                    int64_t max_freq = 0;
+                    std::pair<uint32_t, uint32_t> max_pair;
+                    for (auto [pair, freq] : pair_counts) {
+                        if (freq > max_freq) {
+                            max_freq = freq;
+                            max_pair = pair;
+                        }
+                    }
+
+                    if (max_freq <= 1) {
+                        throw std::runtime_error("Unable to create a vocab of 32768.");
+                    }
+
+                    // now we have to incorporate the pair into every sequence and put it into merged
+
+                    m_merges[max_pair] = token_id;
+                    m_vocab[token_id] = m_vocab[max_pair.first] + m_vocab[max_pair.second];
+
+                    for (std::vector<uint32_t>& seq : m_sequences) {
+                        int64_t read_idx = 0;
+                        int64_t write_idx = 0;
+
+                        while (read_idx < std::ssize(seq)) {
+                            if (read_idx < std::ssize(seq) - 1 && seq[read_idx] == max_pair.first && seq[read_idx + 1] == max_pair.second) {
+                                seq[write_idx] = token_id;
+                                read_idx += 2;
+                                write_idx += 1;
+                            }
+                            else {
+                                seq[write_idx] = seq[read_idx];
+                                read_idx++;
+                                write_idx++;
+                            }
+                        }
+                        seq.resize(write_idx);
+                    }
+                }
+            }
+
+            std::vector<uint32_t> encode(std::string_view text) {
+                std::vector<std::string_view> pieces;
+                PreTokenizer::process_chunks(text, pieces);
+
+                std::vector<uint32_t> final_tokens;
+                final_tokens.reserve(text.length() / 3);
+
+                // check for special tokens. then do the greedy in place substitution on sequences 
+                // after all substitutions have been done (per sequence), push them all into final tokens
+            }
+
+            std::string decode(std::vector<uint32_t> indices) {
+                std::string result = "";
+                for (uint32_t idx : indices) {
+                    result = result + m_vocab[idx];
+                }
+                return result;
+            }
+
+            void save_vocab(std::string path) {
+                // save merges (mandatory for encoding) and vocab (for decoding)
+            }
+
+            void load_vocab(std::string path) {
+
             }
 
 
