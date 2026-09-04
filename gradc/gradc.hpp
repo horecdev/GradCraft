@@ -19,14 +19,24 @@
 
 #include "nn/base/module.hpp" // IWYU pragma: keep
 #include "nn/base/parameter.hpp" // IWYU pragma: keep
+#include "nn/base/initializers.hpp" // IWYU pragma: keep
+
+
 #include "nn/layers/linear.hpp" // IWYU pragma: keep
 #include "nn/layers/attention.hpp" // IWYU pragma: keep
 #include "nn/layers/normalization.hpp" // IWYU pragma: keep
 #include "nn/layers/other.hpp" // IWYU pragma: keep
-#include "nn/optim/adam.hpp" // IWYU pragma: keep
+#include "nn/layers/gpt.hpp" // IWYU pragma: keep
+
+
 #include "nn/optim/optimizer.hpp" // IWYU pragma: keep
-#include "nn/optim/rmsprop.hpp" // IWYU pragma: keep
 #include "nn/optim/sgd.hpp" // IWYU pragma: keep
+#include "nn/optim/rmsprop.hpp" // IWYU pragma: keep
+#include "nn/optim/adam.hpp" // IWYU pragma: keep
+
+#include "nn/sched/scheduler.hpp" // IWYU pragma: keep
+#include "nn/sched/cosine_scheduler.hpp" // IWYU pragma: keep
+
 #include "nn/utils/checkpoint.hpp" // IWYU pragma: keep
 
 

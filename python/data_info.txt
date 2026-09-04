@@ -1,0 +1,4 @@
+# Special tokens needed
+<|endoftext|> a stop signal between files / concepts so that it cleans its context window
+<|pad|> for padding user inputs to fit into the same batch
+<|im_start|> and <|im_end|> to indicate who is speaking

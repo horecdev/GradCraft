@@ -3,3 +3,7 @@ build/Debug
 main.cpp
 test.py
 cudnn_frontend/
+secrets.txt
+download_hf_datasets.py
+.env
+raw_data/
