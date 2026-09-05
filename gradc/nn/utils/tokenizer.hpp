@@ -250,14 +250,59 @@ namespace gradc {
             }
 
             void save_vocab(std::string path) {
-                // save merges (mandatory for encoding) and vocab (for decoding)
+                std::ofstream out(path, std::ios::binary);
+                if (!out) {throw std::runtime_error("Failed to open file for saving: " + path);}
+
+                uint32_t num_merges = m_merges.size();
+                out.write(reinterpret_cast<const char*>(&num_merges), sizeof(num_merges));
+                for (const auto& [pair, token_id] : m_merges) {
+                    out.write(reinterpret_cast<const char*>(&pair.first), sizeof(pair.first));
+                    out.write(reinterpret_cast<const char*>(&pair.second), sizeof(pair.second));
+                    out.write(reinterpret_cast<const char*>(&token_id), sizeof(token_id));
+                }
+
+                uint32_t num_vocab = m_vocab.size();
+                out.write(reinterpret_cast<const char*>(&num_vocab), sizeof(num_vocab));
+
+                for (const std::string& str : m_vocab) {
+                    uint32_t len = str.length();
+                    out.write(reinterpret_cast<const char*>(&len), sizeof(len));
+                    out.write(str.data(), len);
+                }
+
             }
 
             void load_vocab(std::string path) {
+                std::ifstream in(path, std::ios::binary);
+                if (!in) {throw std::runtime_error("Failed to open file for loading");}
 
+                m_merges.clear();
+                m_vocab.clear();
+
+                uint32_t num_merges;
+                in.read(reinterpret_cast<char*>(&num_merges), sizeof(num_merges));
+
+                for (uint32_t i = 0; i < num_merges; ++i) {
+                    uint32_t first, second, token_id;
+                    in.read(reinterpret_cast<char*>(&first), sizeof(first));
+                    in.read(reinterpret_cast<char*>(&second), sizeof(second));
+                    in.read(reinterpret_cast<char*>(&token_id), sizeof(token_id));
+
+                    m_merges[{first, second}] = token_id;
+                }
+
+                uint32_t num_vocab;
+                in.read(reinterpret_cast<char*>(&num_vocab), sizeof(num_vocab));
+                m_vocab.resize(num_vocab);
+
+                for (int32_t i = 0; i < num_vocab; ++i) {
+                    uint32_t len;
+                    in.read(reinterpret_cast<char*>(&len), sizeof(len));
+
+                    m_vocab[i].resize(len); // gotta preallocate string size
+                    in.read(m_vocab[i].data(), len);
+                }
             }
-
-
     };
 
 }
