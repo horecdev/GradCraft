@@ -341,12 +341,34 @@ namespace gradc {
             bpe.save_vocab(vocab_save_path);
         }
 
-        
-
         static void encode_dataset(std::string output_path, std::string vocab_load_path, std::vector<std::string> paths) {
             BytePairEncoding bpe;
             bpe.load_vocab(vocab_load_path);
+
+            std::ofstream out(output_path, std::ios::binary | std::ios::app); // can only ever append
+            if (!out) {throw std::runtime_error("Failed to open output bin file: " + output_path);}
+
+            for (const std::string& path : paths) { // process one file at a time
+                if (!std::filesystem::exists(path)) {continue;}
+
+                uint64_t file_bytes = std::filesystem::file_size(path);
+                std::vector<char> buffer(file_bytes);
+
+                std::ifstream in(path, std::ios::binary);
+                if (!in) {continue;}
+                in.read(buffer.data(), file_bytes);
+
+                std::string_view text(buffer.data(), file_bytes);
+                std::vector<uint32_t> tokens = bpe.encode(text);
+
+                uint64_t bytes_to_write = tokens.size() * sizeof(uint32_t);
+                out.write(reinterpret_cast<const char*>(tokens.data()), bytes_to_write);
+            }
         }
+    };
+
+    class DataLoader {
+
     };
 
 }
