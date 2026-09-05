@@ -168,7 +168,7 @@ DONE Check MHA if it fits sdpa func and the causal mask stuff not being done if 
 DONE dispatch scalar update + kernel
 DONE Scheduler class
 DONE CosineScheduler (with saving - scheduler class)
-DONE - saivng/loading scalar checkpoints (Scheduler) (T scalars)
+DONE saving/loading scalar checkpoints (Scheduler) (T scalars)
 DONE add type tags in both checkpointing tensors and scalars.
 DONE SwiGLU MLP module
 DONE TransformerBlock module
@@ -176,9 +176,12 @@ DONE FULL GPT!!!!
 DONE Download cosmopedia to help it learn logic / english grammar
 DONE Download C++ data with actual 
 DONE Write a pretokenizer (characters, punctuation, other)
-- Write a BPE tokenizer encode/decode/create
-- Write save/load for m_merges and m_vocab in BPE
-- Run it on 1GB cosmopedia/C++ and save
+DONE Write a BPE tokenizer encode/decode/create
+DONE Write save/load for m_merges and m_vocab in BPE
+DONE Write a TokenManager to create vocab / encode a full dataset
+- Create tokens with TokenManager on 2GB C++ / Cosmopedia and save.
+- Create the dataset with TokenManager
+- Write a DataLoader to spit out tensors on the CPU from the encoded .bin file. Rreturns leaf tensors to then call to_async() on.
 - Test how much you can fit into the model on a 3070Ti (num_params in a transformer)
 - Tokenize based on like 1GB of data
 - Train on synthetic data and asses how much params you can fit with B=1 and scaling grads by 1/B.

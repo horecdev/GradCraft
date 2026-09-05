@@ -309,7 +309,7 @@ namespace gradc {
             }
     };
 
-    struct DatasetManager {
+    struct TokenManager {
         static void create_vocab_out_of_files(std::string vocab_save_path, std::vector<std::string> paths) {
             uint64_t total_bytes = 0;
             for (const std::string& path : paths) {
@@ -366,9 +366,4 @@ namespace gradc {
             }
         }
     };
-
-    class DataLoader {
-
-    };
-
 }
