@@ -17,7 +17,7 @@ namespace gradc {
                 int64_t length = text.length();
 
                 while (stop < length) {
-                    char c = static_cast<unsigned char>(text[stop]);
+                    unsigned char c = static_cast<unsigned char>(text[stop]);
 
                     // you have to blast bitchass static_cast because isalpha etc expects unsigned char, but chars are signed by default
                     if (std::isalpha(c)) {
@@ -137,7 +137,9 @@ namespace gradc {
             }
 
             void create_vocabulary(const std::vector<std::string_view>& pieces) { // thats the pieces PreTokenizer modifies
+                std::cout << "Preparing sequences." << std::endl;
                 prepare_sequences(pieces);
+                std::cout << "Starting the token loop" << std::endl;
 
                 for (int32_t token_id = 260; token_id < m_num_tokens; ++token_id) {
                     std::map<std::pair<uint32_t, uint32_t>, uint32_t> pair_counts;
@@ -165,6 +167,7 @@ namespace gradc {
 
                     m_merges[max_pair] = token_id;
                     m_vocab[token_id] = m_vocab[max_pair.first] + m_vocab[max_pair.second];
+                    std::cout << "Created token: " + std::to_string(token_id) + " - " + m_vocab[token_id] << std::endl;
 
                     for (std::vector<uint32_t>& seq : m_sequences) {
                         int64_t read_idx = 0;
@@ -313,30 +316,36 @@ namespace gradc {
 
     struct TokenManager {
         static void create_vocab_out_of_files(std::string vocab_save_path, std::vector<std::string> paths) {
-            uint64_t total_bytes = 0;
+            int64_t total_bytes = 0;
+            const int64_t MAX_BYTES_PER_FILE = 50 * 1024 * 1024;
+
             for (const std::string& path : paths) {
                 if (std::filesystem::exists(path)) {
-                    total_bytes += std::filesystem::file_size(path);
+                    int64_t file_bytes = std::filesystem::file_size(path);
+                    total_bytes += std::min(file_bytes, MAX_BYTES_PER_FILE);
                 }
             }
 
 
             std::vector<char> raw_data(total_bytes);
 
-            uint64_t write_offset = 0;
+            int64_t write_offset = 0;
             for (const std::string& path : paths) {
                 if (std::filesystem::exists(path)) {
-                    uint64_t file_bytes = std::filesystem::file_size(path);
+                    int64_t file_bytes = std::filesystem::file_size(path);
+                    int64_t bytes_to_read = std::min(file_bytes, MAX_BYTES_PER_FILE);
                     std::ifstream file(path, std::ios::binary);
 
                     if (file) {
-                        file.read(raw_data.data() + write_offset, file_bytes);
-                        write_offset += file_bytes;
+                        file.read(raw_data.data() + write_offset, bytes_to_read);
+                        write_offset += bytes_to_read;
                     }
                 }
             }
 
             std::string_view full_text(raw_data.data(), raw_data.size());
+
+            std::cout << "Processing chunks." << std::endl;
             std::vector<std::string_view> pieces = PreTokenizer::process_chunks(full_text);
 
             BytePairEncoding bpe;
@@ -354,7 +363,7 @@ namespace gradc {
             for (const std::string& path : paths) { // process one file at a time
                 if (!std::filesystem::exists(path)) {continue;}
 
-                uint64_t file_bytes = std::filesystem::file_size(path);
+                int64_t file_bytes = std::filesystem::file_size(path);
                 std::vector<char> buffer(file_bytes);
 
                 std::ifstream in(path, std::ios::binary);
@@ -364,7 +373,7 @@ namespace gradc {
                 std::string_view text(buffer.data(), file_bytes);
                 std::vector<uint32_t> tokens = bpe.encode(text);
 
-                uint64_t bytes_to_write = tokens.size() * sizeof(uint32_t);
+                int64_t bytes_to_write = tokens.size() * sizeof(uint32_t);
                 out.write(reinterpret_cast<const char*>(tokens.data()), bytes_to_write);
             }
         }
