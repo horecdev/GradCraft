@@ -173,11 +173,12 @@ DONE add type tags in both checkpointing tensors and scalars.
 DONE SwiGLU MLP module
 DONE TransformerBlock module
 DONE FULL GPT!!!!
-- Download cosmopedia to help it learn logic / english grammar
-- Download C++ data with actual 
-- Write a pretokenizer (characters, punctuation, other)
-- fix the fuckass pretokenizer to load text into class buffer
-- Write a BPE tokenizer with vocab_size = 2^15 (uint16)
+DONE Download cosmopedia to help it learn logic / english grammar
+DONE Download C++ data with actual 
+DONE Write a pretokenizer (characters, punctuation, other)
+- Write a BPE tokenizer encode/decode/create
+- Write save/load for m_merges and m_vocab in BPE
+- Run it on 1GB cosmopedia/C++ and save
 - Test how much you can fit into the model on a 3070Ti (num_params in a transformer)
 - Tokenize based on like 1GB of data
 - Train on synthetic data and asses how much params you can fit with B=1 and scaling grads by 1/B.

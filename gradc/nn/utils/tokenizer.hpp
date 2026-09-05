@@ -187,8 +187,58 @@ namespace gradc {
                 std::vector<uint32_t> final_tokens;
                 final_tokens.reserve(text.length() / 3);
 
-                // check for special tokens. then do the greedy in place substitution on sequences 
-                // after all substitutions have been done (per sequence), push them all into final tokens
+                for (const std::string_view& str : pieces) {
+                    std::vector<uint32_t> seq;
+
+                    if (str == "<|endoftext|>") {seq.push_back(256);}
+                    else if (str == "<|pad|>") {seq.push_back(257);}
+                    else if (str == "<|im_start|>") {seq.push_back(258);}
+                    else if (str == "<|im_end|>") {seq.push_back(259);}
+                    else {
+                        seq.reserve(str.length());
+                        for (char c : str) {
+                            seq.push_back(static_cast<uint32_t>(static_cast<unsigned char>(c)));
+                        }
+                    }
+
+                    while (std::ssize(seq) >= 2) {
+                        uint32_t best_token_id = 0xFFFFFFFF; // set the best token to be the lowest priority token. Then you walk and find higher priorities
+                        std::pair<uint32_t, uint32_t> best_pair;
+                        bool found_merge = false;
+
+                        for (int64_t i = 0; i < std::ssize(seq) - 1; ++i) {
+                            auto it = m_merges.find({seq[i], seq[i + 1]});
+                            if (it != m_merges.end() && it->second < best_token_id) {
+                                best_token_id = it->second;
+                                best_pair = it->first;
+                                found_merge = true;
+                            }
+                        }
+
+                        if (!found_merge) {
+                            break; // cant compress further
+                        }
+
+                        int64_t read_idx = 0;
+                        int64_t write_idx = 0;
+                        while (read_idx < std::ssize(seq)) {
+                            if (read_idx < std::ssize(seq) - 1 && seq[read_idx] == best_pair.first && seq[read_idx + 1] == best_pair.second) {
+                                seq[write_idx] = best_token_id;
+                                read_idx += 2;
+                                write_idx++;
+                            }  
+                            else {
+                                seq[write_idx] = seq[read_idx];
+                                read_idx++;
+                                write_idx++;
+                            }
+                        }
+                        seq.resize(write_idx);
+                    }
+                    final_tokens.insert(final_tokens.end(), seq.begin(), seq.end()); // append all seq elems
+                }
+
+                return final_tokens;
             }
 
             std::string decode(std::vector<uint32_t> indices) {
