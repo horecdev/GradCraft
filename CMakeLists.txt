@@ -12,6 +12,7 @@ set(CMAKE_CUDA_ARCHITECTURES 86)
 
 find_package(CUDAToolkit REQUIRED)
 find_package(OpenBLAS REQUIRED)
+find_package(OpenMP REQUIRED)
 
 # core
 add_library(GradCore STATIC
@@ -26,6 +27,7 @@ target_link_libraries(GradCore PUBLIC
     CUDA::curand
     CUDA::nvrtc
     OpenBLAS::OpenBLAS
+    OpenMP::OpenMP_CXX
 )
 
 target_include_directories(GradCore PUBLIC 
@@ -33,10 +35,17 @@ target_include_directories(GradCore PUBLIC
 )
 
 if(MSVC)
+# release
     target_compile_options(GradCore PRIVATE
-        $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4 /bigobj>
-        $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/bigobj>
+        $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4 /bigobj /O2 /fp:fast>
+        $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/bigobj,-O2,-fp:fast -O3>
     )
+
+    # target_compile_options(GradCore PRIVATE
+    #     $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4 /bigobj /Od>
+    #     $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/bigobj,-Od -G -g>
+    # )
+
 endif()
 
 # train

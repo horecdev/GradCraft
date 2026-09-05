@@ -179,6 +179,7 @@ DONE Write a pretokenizer (characters, punctuation, other)
 DONE Write a BPE tokenizer encode/decode/create
 DONE Write save/load for m_merges and m_vocab in BPE
 DONE Write a TokenManager to create vocab / encode a full dataset
+- Add OpenMP to the tokenizer to speed it up
 - Create tokens with TokenManager on 2GB C++ / Cosmopedia and save.
 - Create the dataset with TokenManager
 DONE Write a DataLoader to spit out tensors on the CPU from the encoded .bin file. Rreturns leaf tensors to then call to_async() on.

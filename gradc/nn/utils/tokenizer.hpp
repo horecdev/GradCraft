@@ -1,5 +1,5 @@
 #include <iostream>
-#pragma 
+#include <unordered_map>
 
 #include <vector>
 #include <string>
@@ -7,7 +7,20 @@
 #include <filesystem>
 #include <fstream>
 
+#include <omp.h>
+
 namespace gradc {
+
+    struct PairHash {
+        size_t operator()(const std::pair<uint32_t, uint32_t>& p) const {
+            return (static_cast<size_t>(p.first) << 32) | p.second;
+        }
+    };
+
+    struct WordSeq {
+            std::vector<uint32_t> seq;
+            uint64_t count;
+    };
 
     struct PreTokenizer {
         public:
@@ -91,10 +104,10 @@ namespace gradc {
 
     class BytePairEncoding {
         private:
-            std::vector<std::vector<uint32_t>> m_sequences;
+            std::vector<WordSeq> m_sequences;
             std::map<std::pair<uint32_t, uint32_t>, uint32_t> m_merges;
             std::vector<std::string> m_vocab;
-            int32_t m_num_tokens = 32768; // 2^15
+            int32_t m_num_tokens = 1024; // 2^15
         public:
             BytePairEncoding() {
                 m_vocab.resize(m_num_tokens);
@@ -108,51 +121,72 @@ namespace gradc {
             }
 
             void prepare_sequences(const std::vector<std::string_view>& pieces) {
-                m_sequences.resize(std::ssize(pieces));
+                std::unordered_map<std::string_view, uint64_t> word_counts;
+                for (std::string_view str : pieces) {
+                    word_counts[str]++;
+                }
 
-                for (int64_t i = 0; i < std::ssize(pieces); ++i) {
-                    const std::string_view& str = pieces[i];
-                    std::vector<uint32_t>& seq = m_sequences[i];
+                m_sequences.reserve(word_counts.size());
 
-                    if (str == "<|endoftext|>") {
-                        seq.push_back(256);
-                    }
-                    else if (str == "<|pad|>") {
-                        seq.push_back(257);
-                    }
-                    else if (str == "<|im_start|>") {
-                        seq.push_back(258);
-                    }
-                    else if (str == "<|im_end|>") {
-                        seq.push_back(259);
-                    }
+                for (const auto& [str, count] : word_counts) { 
+                    // iterate over the UNIQUE ELEMS in hash map. This way every unique seq only appears ONCE
+                    WordSeq ws;
+                    ws.count = count; // how many times that str appeared
+
+                    if (str == "<|endoftext|>") {ws.seq.push_back(256);}
+                    else if (str == "<|pad|>") {ws.seq.push_back(257);}
+                    else if (str == "<|im_start|>") {ws.seq.push_back(258);}
+                    else if (str == "<|im_end|>") {ws.seq.push_back(259);}
                     else {
-                        seq.reserve(str.length());
+                        ws.seq.reserve(str.length());
                         for (char c : str) {
-                            uint32_t byte_val = static_cast<uint32_t>(static_cast<unsigned char>(c)); // double cast so we dont just make the negative roll into numerical max
-                            seq.push_back(byte_val);
+                            ws.seq.push_back(static_cast<uint32_t>(static_cast<unsigned char>(c)));
                         }
                     }
+                    m_sequences.push_back(ws);
                 }
-            }
+        }
 
             void create_vocabulary(const std::vector<std::string_view>& pieces) { // thats the pieces PreTokenizer modifies
                 std::cout << "Preparing sequences." << std::endl;
                 prepare_sequences(pieces);
                 std::cout << "Starting the token loop" << std::endl;
+                int num_threads = omp_get_max_threads();
+                std::vector<std::unordered_map<std::pair<uint32_t, uint32_t>, uint64_t, PairHash>> local_counts(num_threads);
+                std::unordered_map<std::pair<uint32_t, uint32_t>, uint64_t, PairHash> global_counts;
 
                 for (int32_t token_id = 260; token_id < m_num_tokens; ++token_id) {
-                    std::map<std::pair<uint32_t, uint32_t>, uint32_t> pair_counts;
-                    for (std::vector<uint32_t>& seq : m_sequences) {
-                        for (int64_t idx = 0; idx < std::ssize(seq) - 1; ++idx) {
-                            std::pair<uint32_t, uint32_t> pair = std::make_pair(seq[idx], seq[idx + 1]);
-                            pair_counts[pair]++; // creates the entry initialized to 0 and THEN increments (unlike ++x)
+                    for (auto& lc : local_counts) {
+                        for (auto& [str, count] : lc) {
+                            count = 0;
+                        }
+                    }
+                    global_counts.clear();
+
+                    #pragma omp parallel
+                    {
+                        int tid = omp_get_thread_num();
+                        auto& my_counts = local_counts[tid];
+
+                        #pragma omp for schedule(guided) // all threads walk over the m_sequences and accumulate into their std::unordered_map
+                        for (int64_t i = 0; i < std::ssize(m_sequences); ++i) {
+                            const WordSeq& ws = m_sequences[i];
+                            for (int64_t idx = 0; idx < std::ssize(ws.seq) - 1; ++idx) {
+                                std::pair<uint32_t, uint32_t> pair = {ws.seq[idx], ws.seq[idx + 1]};
+                                my_counts[pair] += ws.count;
+                            }
+                        }
+                    }
+
+                    for (const auto& lc : local_counts) { // accumulate into the master count for each pair
+                        for (const auto& [pair, count] : lc) {
+                            global_counts[pair] += count;
                         }
                     }
 
                     int64_t max_freq = 0;
                     std::pair<uint32_t, uint32_t> max_pair;
-                    for (auto [pair, freq] : pair_counts) {
+                    for (auto [pair, freq] : global_counts) {
                         if (freq > max_freq) {
                             max_freq = freq;
                             max_pair = pair;
@@ -169,23 +203,25 @@ namespace gradc {
                     m_vocab[token_id] = m_vocab[max_pair.first] + m_vocab[max_pair.second];
                     std::cout << "Created token: " + std::to_string(token_id) + " - " + m_vocab[token_id] << std::endl;
 
-                    for (std::vector<uint32_t>& seq : m_sequences) {
+                    #pragma omp parallel for schedule(guided) // each thread reaches for a vector and overwrites it replacing pair with new token
+                        for (int64_t i = 0; i < std::ssize(m_sequences); ++i) {
+                        WordSeq& ws = m_sequences[i];
                         int64_t read_idx = 0;
                         int64_t write_idx = 0;
 
-                        while (read_idx < std::ssize(seq)) {
-                            if (read_idx < std::ssize(seq) - 1 && seq[read_idx] == max_pair.first && seq[read_idx + 1] == max_pair.second) {
-                                seq[write_idx] = token_id;
+                        while (read_idx < std::ssize(ws.seq)) {
+                            if (read_idx < std::ssize(ws.seq) - 1 && ws.seq[read_idx] == max_pair.first && ws.seq[read_idx + 1] == max_pair.second) {
+                                ws.seq[write_idx] = token_id;
                                 read_idx += 2;
                                 write_idx += 1;
                             }
                             else {
-                                seq[write_idx] = seq[read_idx];
+                                ws.seq[write_idx] = ws.seq[read_idx];
                                 read_idx++;
                                 write_idx++;
                             }
                         }
-                        seq.resize(write_idx);
+                        ws.seq.resize(write_idx);
                     }
                 }
             }

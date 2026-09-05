@@ -16,7 +16,7 @@ int main() {
         };
 
         std::vector<std::string> all_files;
-        for (int i = 0; i < 30; ++i) {
+        for (int i = 0; i < 1; ++i) {
             all_files.push_back(std::format("C:/Local Projects/autograd_cpp/data/raw_data/cosmopedia/cosmo_chunk_{:03d}.txt", i));
             all_files.push_back(std::format("C:/Local Projects/autograd_cpp/data/raw_data/cpp/cpp_chunk_{:03d}.txt", i));
         }
