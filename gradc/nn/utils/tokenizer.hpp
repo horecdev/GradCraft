@@ -150,18 +150,15 @@ namespace gradc {
             void create_vocabulary(const std::vector<std::string_view>& pieces) { // thats the pieces PreTokenizer modifies
                 std::cout << "Preparing sequences." << std::endl;
                 prepare_sequences(pieces);
+
                 std::cout << "Starting the token loop" << std::endl;
+
                 int num_threads = omp_get_max_threads();
-                std::vector<std::unordered_map<std::pair<uint32_t, uint32_t>, uint64_t, PairHash>> local_counts(num_threads);
-                std::unordered_map<std::pair<uint32_t, uint32_t>, uint64_t, PairHash> global_counts;
 
                 for (int32_t token_id = 260; token_id < m_num_tokens; ++token_id) {
-                    for (auto& lc : local_counts) {
-                        for (auto& [str, count] : lc) {
-                            count = 0;
-                        }
-                    }
-                    global_counts.clear();
+
+                    std::vector<std::unordered_map<std::pair<uint32_t, uint32_t>, uint64_t, PairHash>> local_counts(num_threads);
+                    std::unordered_map<std::pair<uint32_t, uint32_t>, uint64_t, PairHash> global_counts;
 
                     #pragma omp parallel
                     {
@@ -184,9 +181,11 @@ namespace gradc {
                         }
                     }
 
+                    std::cout << "Global size: " + std::to_string(global_counts.size()) << std::endl;
+
                     int64_t max_freq = 0;
                     std::pair<uint32_t, uint32_t> max_pair;
-                    for (auto [pair, freq] : global_counts) {
+                    for (const auto& [pair, freq] : global_counts) {
                         if (freq > max_freq) {
                             max_freq = freq;
                             max_pair = pair;
