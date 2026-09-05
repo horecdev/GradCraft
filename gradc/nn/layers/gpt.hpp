@@ -10,7 +10,7 @@
 namespace gradc {
     template <typename T>
     requires std::is_floating_point_v<T>
-    class SwiGLUMLP: Module<T> {
+    class SwiGLUMLP : public Module<T> {
         private:
             Linear<T> m_w1;
             Linear<T> m_w2;
@@ -30,7 +30,7 @@ namespace gradc {
 
     template <typename T>
     requires std::is_floating_point_v<T>
-    class TransformerBlock: Module<T> {
+    class TransformerBlock : public Module<T> {
         private:
             RMSNorm<T> m_norm1;
             MultiHeadAttention<T> m_attn;
@@ -57,7 +57,7 @@ namespace gradc {
 
     template <typename T>
     requires std::is_floating_point_v<T>
-    class GPT : Module<T> {
+    class GPT : public Module<T> {
         private:
             Embedding<T> m_token_embed;
             PosEncoding<T> m_pos_embed;

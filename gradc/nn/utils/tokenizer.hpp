@@ -1,3 +1,4 @@
+#include <iostream>
 #pragma 
 
 #include <vector>
@@ -96,6 +97,7 @@ namespace gradc {
             int32_t m_num_tokens = 32768; // 2^15
         public:
             BytePairEncoding() {
+                m_vocab.resize(m_num_tokens);
                 for (int i = 0; i < 256; ++i) {
                     m_vocab[i] = std::string(1, static_cast<char>(i));
                 }
@@ -159,7 +161,7 @@ namespace gradc {
                         throw std::runtime_error("Unable to create a vocab of 32768.");
                     }
 
-                    // now we have to incorporate the pair into every sequence and put it into merged
+                    // now we have to incorporate the pair into every sequence and put it into 
 
                     m_merges[max_pair] = token_id;
                     m_vocab[token_id] = m_vocab[max_pair.first] + m_vocab[max_pair.second];
@@ -317,6 +319,7 @@ namespace gradc {
                     total_bytes += std::filesystem::file_size(path);
                 }
             }
+
 
             std::vector<char> raw_data(total_bytes);
 

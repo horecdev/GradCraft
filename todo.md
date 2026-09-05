@@ -181,7 +181,7 @@ DONE Write save/load for m_merges and m_vocab in BPE
 DONE Write a TokenManager to create vocab / encode a full dataset
 - Create tokens with TokenManager on 2GB C++ / Cosmopedia and save.
 - Create the dataset with TokenManager
-- Write a DataLoader to spit out tensors on the CPU from the encoded .bin file. Rreturns leaf tensors to then call to_async() on.
+DONE Write a DataLoader to spit out tensors on the CPU from the encoded .bin file. Rreturns leaf tensors to then call to_async() on.
 - Test how much you can fit into the model on a 3070Ti (num_params in a transformer)
 - Tokenize based on like 1GB of data
 - Train on synthetic data and asses how much params you can fit with B=1 and scaling grads by 1/B.

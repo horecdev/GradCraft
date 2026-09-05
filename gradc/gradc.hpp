@@ -38,6 +38,8 @@
 #include "nn/sched/cosine_scheduler.hpp" // IWYU pragma: keep
 
 #include "nn/utils/checkpoint.hpp" // IWYU pragma: keep
+#include "nn/utils/tokenizer.hpp" // IWYU pragma: keep
+#include "nn/utils/data_loader.hpp" // IWYU pragma: keep
 
 
 namespace gradc {

@@ -814,7 +814,7 @@ namespace gradc {
             if (tid < s) {
                 s_sum[tid] += s_sum[tid + s];
             }
-            _syncthreads();
+            __syncthreads();
         }
 
         T inv_rms = 0;
@@ -975,7 +975,7 @@ namespace gradc {
 
     template <typename T>
     // dx, dgamma, dy, gamma, inv_rms are always DENSE.
-    __device__ void rmsnorm_backward_kernel_fast(
+    __global__ void rmsnorm_backward_kernel_fast(
         T* __restrict__ p_dx, T* __restrict__ p_dgamma, 
         const T* __restrict__  p_out_grad, const T* __restrict__ p_parent, 
         const T* __restrict__ p_gamma, const T* __restrict__ p_inv_rms,
@@ -1036,7 +1036,7 @@ namespace gradc {
     }
 
     template <typename T>
-    __device__ void rmsnorm_backward_kernel_strided(
+    __global__ void rmsnorm_backward_kernel_strided(
         T* __restrict__ p_dx, T* __restrict__ p_dgamma, 
         const T* __restrict__ p_out_grad, const T* __restrict__ p_parent, 
         const T* __restrict__ p_gamma, const T* __restrict__ p_inv_rms,
@@ -1219,7 +1219,7 @@ namespace gradc {
             if (tid < s) {
                 s_scratch[tid] = max(s_scratch[tid], s_scratch[tid + s]);
             }
-            __sync_threads();
+            __syncthreads();
         }
 
         T row_max = s_scratch[0];
@@ -1309,7 +1309,7 @@ namespace gradc {
         
         for (int64_t i = tid; i < seq_len; i += blockDim.x) {
             if (i <= seq_row) {
-                dx_row = scale * probs_row[i] * (out_grad_row[i] - row_sum);
+                dx_row[i] = scale * probs_row[i] * (out_grad_row[i] - row_sum);
             }
             else {
                 dx_row[i] = 0;
@@ -1344,7 +1344,6 @@ namespace gradc {
         template void CUDAMath::apply_unary_in_place<T>(Tensor<T>&, UnaryOpInPlace); \
         template void CUDAMath::apply_reduction_operation<T>(Tensor<T>&, const Tensor<T>&, const RedMeta&, ReduceOp); \
         template void CUDAMath::apply_arg_extr_operation<T>(Tensor<int64_t>&, const Tensor<T>&, int64_t, ArgExtrOp); \
-        template void CUDAMath::apply_embed<T>(Tensor<T>&, const Tensor<int64_t>&, const Tensor<T>&, int64_t); \
         template void CUDAMath::apply_scatter_add(Tensor<T>&, const Tensor<int64_t>&, const Tensor<T>&, int64_t);
 
     #define INSTANTIATE_CAST(OutT, InT) \
@@ -1360,6 +1359,14 @@ namespace gradc {
         INSTANTIATE_CAST(int32_t, InT) \
         INSTANTIATE_CAST(int64_t, InT) 
 
+    #define INSTANTIATE_CUDA_MISC(T) \
+        template void CUDAMath::apply_rmsnorm_forward<T>(Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const RedMeta&, const std::vector<int64_t>&, T); \
+        template void CUDAMath::apply_rmsnorm_backward<T>(Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const RedMeta&, const std::vector<int64_t>&); \
+        template void CUDAMath::apply_causal_softmax_forward<T>(Tensor<T>&, const Tensor<T>&, T, int64_t); \
+        template void CUDAMath::apply_causal_softmax_backward<T>(Tensor<T>&, const Tensor<T>&, const Tensor<T>&, T, int64_t); \
+        template void CUDAMath::apply_embed<T>(Tensor<T>&, const Tensor<int64_t>&, const Tensor<T>&, int64_t); \
+        
+
     INSTANTIATE_CUDA_MATH_SINGLE(float)
     INSTANTIATE_CUDA_MATH_SINGLE(double)
     INSTANTIATE_CUDA_MATH_SINGLE(int32_t)
@@ -1372,6 +1379,9 @@ namespace gradc {
 
     INSTANTIATE_CUDA_MATMUL(float)
     INSTANTIATE_CUDA_MATMUL(double)
+
+    INSTANTIATE_CUDA_MISC(float)
+    INSTANTIATE_CUDA_MISC(double)
 
     #pragma endregion TEMPLATING
 }
