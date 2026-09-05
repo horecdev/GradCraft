@@ -55,7 +55,8 @@ namespace gradc {
                 }
             }
 
-            static void process_chunks(std::string_view full_text, std::vector<std::string_view>& pieces) {
+            static std::vector<std::string_view> process_chunks(std::string_view full_text) {
+                std::vector<std::string_view> pieces;
                 std::vector<std::string_view> specials = {"<|endoftext|>", "<|pad|>", "<|im_start|>", "<|im_end|>"};
                 int64_t current = 0;
                 while (current < full_text.length()) {
@@ -82,6 +83,8 @@ namespace gradc {
 
                     current = earliest_pos + next_special.length();
                 }
+
+                return pieces;
             }
     };
 
@@ -131,7 +134,9 @@ namespace gradc {
                 }
             }
 
-            void create_vocabulary() {
+            void create_vocabulary(const std::vector<std::string_view>& pieces) { // thats the pieces PreTokenizer modifies
+                prepare_sequences(pieces);
+
                 for (int32_t token_id = 260; token_id < m_num_tokens; ++token_id) {
                     std::map<std::pair<uint32_t, uint32_t>, uint32_t> pair_counts;
                     for (std::vector<uint32_t>& seq : m_sequences) {
@@ -181,8 +186,7 @@ namespace gradc {
             }
 
             std::vector<uint32_t> encode(std::string_view text) {
-                std::vector<std::string_view> pieces;
-                PreTokenizer::process_chunks(text, pieces);
+                std::vector<std::string_view> pieces = PreTokenizer::process_chunks(text);
 
                 std::vector<uint32_t> final_tokens;
                 final_tokens.reserve(text.length() / 3);
@@ -303,6 +307,46 @@ namespace gradc {
                     in.read(m_vocab[i].data(), len);
                 }
             }
+    };
+
+    struct DatasetManager {
+        static void create_vocab_out_of_files(std::string vocab_save_path, std::vector<std::string> paths) {
+            uint64_t total_bytes = 0;
+            for (const std::string& path : paths) {
+                if (std::filesystem::exists(path)) {
+                    total_bytes += std::filesystem::file_size(path);
+                }
+            }
+
+            std::vector<char> raw_data(total_bytes);
+
+            uint64_t write_offset = 0;
+            for (const std::string& path : paths) {
+                if (std::filesystem::exists(path)) {
+                    uint64_t file_bytes = std::filesystem::file_size(path);
+                    std::ifstream file(path, std::ios::binary);
+
+                    if (file) {
+                        file.read(raw_data.data() + write_offset, file_bytes);
+                        write_offset += file_bytes;
+                    }
+                }
+            }
+
+            std::string_view full_text(raw_data.data(), raw_data.size());
+            std::vector<std::string_view> pieces = PreTokenizer::process_chunks(full_text);
+
+            BytePairEncoding bpe;
+            bpe.create_vocabulary(pieces);
+            bpe.save_vocab(vocab_save_path);
+        }
+
+        
+
+        static void encode_dataset(std::string output_path, std::string vocab_load_path, std::vector<std::string> paths) {
+            BytePairEncoding bpe;
+            bpe.load_vocab(vocab_load_path);
+        }
     };
 
 }
