@@ -33,8 +33,8 @@ namespace gradc {
                     unsigned char c = static_cast<unsigned char>(text[stop]);
 
                     // you have to blast bitchass static_cast because isalpha etc expects unsigned char, but chars are signed by default
-                    if (std::isalpha(c)) {
-                        while (stop < length && std::isalpha(static_cast<unsigned char>(text[stop]))) { // checking for stop so we dont read text out of bounds
+                    if (std::isalpha(c) || c == '_') {
+                        while (stop < length && (std::isalpha(static_cast<unsigned char>(text[stop])) || text[stop] == '_')) { 
                             stop++;
                         }
                     }
@@ -48,14 +48,14 @@ namespace gradc {
                             stop++;
                         }
                     }
-                    else if (std::isspace(c) && length - stop > 1 && std::isalpha(static_cast<unsigned char>(text[stop + 1]))) {
+                    else if (std::isspace(c) && length - stop > 1 && (std::isalpha(static_cast<unsigned char>(text[stop + 1])) || text[stop + 1] == '_')) {
                         stop++; // add the space
-                        while (stop < length && std::isalpha(static_cast<unsigned char>(text[stop]))) { // add remaining chars
+                        while (stop < length && (std::isalpha(static_cast<unsigned char>(text[stop])) || text[stop] == '_')) { 
                             stop++;
                         }
                     }
                     else if (std::isspace(c)) {
-                        while (stop < length && (std::isspace(static_cast<unsigned char>(text[stop])) || std::isalpha(static_cast<unsigned char>(text[stop])))) {
+                        while (stop < length && (std::isspace(static_cast<unsigned char>(text[stop])))) {
                             stop++;
                         }
                     }
@@ -107,7 +107,7 @@ namespace gradc {
             std::vector<WordSeq> m_sequences;
             std::map<std::pair<uint32_t, uint32_t>, uint32_t> m_merges;
             std::vector<std::string> m_vocab;
-            int32_t m_num_tokens = 1024; // 2^15
+            int32_t m_num_tokens = 32768; // 2^15
         public:
             BytePairEncoding() {
                 m_vocab.resize(m_num_tokens);
@@ -154,8 +154,9 @@ namespace gradc {
                 std::cout << "Starting the token loop" << std::endl;
 
                 int num_threads = omp_get_max_threads();
+                int32_t current_token_id = 260;
 
-                for (int32_t token_id = 260; token_id < m_num_tokens; ++token_id) {
+                while (current_token_id < m_num_tokens) {
 
                     std::vector<std::unordered_map<std::pair<uint32_t, uint32_t>, uint64_t, PairHash>> local_counts(num_threads);
                     std::unordered_map<std::pair<uint32_t, uint32_t>, uint64_t, PairHash> global_counts;
@@ -175,63 +176,85 @@ namespace gradc {
                         }
                     }
 
-                    for (const auto& lc : local_counts) { // accumulate into the master count for each pair
+                    for (const auto& lc : local_counts) { 
                         for (const auto& [pair, count] : lc) {
                             global_counts[pair] += count;
                         }
                     }
 
-                    std::cout << "Global size: " + std::to_string(global_counts.size()) << std::endl;
+                    std::vector<std::pair<std::pair<uint32_t, uint32_t>, uint64_t>> sorted_pairs(global_counts.begin(), global_counts.end());
+                    std::sort(sorted_pairs.begin(), sorted_pairs.end(), [](const auto& a, const auto& b) {
+                        if (a.second != b.second) {
+                            return a.second > b.second; // sort by count
+                        }
+                        return a.first < b.first; // fallback to sorting by pairs
+                    });
 
-                    int64_t max_freq = 0;
-                    std::pair<uint32_t, uint32_t> max_pair;
-                    for (const auto& [pair, freq] : global_counts) {
-                        if (freq > max_freq) {
-                            max_freq = freq;
-                            max_pair = pair;
+                    int batch_size = std::min<int>(20, m_num_tokens - current_token_id); // min bc last step will be less than 100
+
+                    std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, PairHash> batch_merges;
+                    std::unordered_map<uint32_t, bool> used_tokens;
+
+                    for (const auto& [pair, freq] : sorted_pairs) {
+                        if (freq <= 1) {break;}
+
+    
+                        if (!used_tokens[pair.first] && !used_tokens[pair.second]) {
+                            batch_merges[pair] = current_token_id;
+                            m_merges[pair] = current_token_id;
+                            m_vocab[current_token_id] = m_vocab[pair.first] + m_vocab[pair.second];
+                            
+                            std::cout << "Token: " << current_token_id << " |" << m_vocab[current_token_id] << "| appeared " << std::to_string(freq) << " times." << std::endl;
+
+                            // lock two tokens out so no merged pair can use them (so it doesnt merge "the" into "th" and "he" in the same run)
+                            used_tokens[pair.first] = true;
+                            used_tokens[pair.second] = true;
+                            
+                            current_token_id++;
+                            if (std::ssize(batch_merges) == batch_size) {break;}
                         }
                     }
 
-                    if (max_freq <= 1) {
-                        throw std::runtime_error("Unable to create a vocab of 32768.");
+                    if (batch_merges.empty()) {
+                        throw std::runtime_error("Unable to create a vocab of 32768. Ran out of pairs.");
                     }
 
-                    // now we have to incorporate the pair into every sequence and put it into 
 
-                    m_merges[max_pair] = token_id;
-                    m_vocab[token_id] = m_vocab[max_pair.first] + m_vocab[max_pair.second];
-                    std::cout << "Created token: " + std::to_string(token_id) + " - " + m_vocab[token_id] << std::endl;
-
-                    #pragma omp parallel for schedule(guided) // each thread reaches for a vector and overwrites it replacing pair with new token
-                        for (int64_t i = 0; i < std::ssize(m_sequences); ++i) {
+                    #pragma omp parallel for schedule(guided) 
+                    for (int64_t i = 0; i < std::ssize(m_sequences); ++i) {
                         WordSeq& ws = m_sequences[i];
                         int64_t read_idx = 0;
                         int64_t write_idx = 0;
 
                         while (read_idx < std::ssize(ws.seq)) {
-                            if (read_idx < std::ssize(ws.seq) - 1 && ws.seq[read_idx] == max_pair.first && ws.seq[read_idx + 1] == max_pair.second) {
-                                ws.seq[write_idx] = token_id;
-                                read_idx += 2;
-                                write_idx += 1;
+                            if (read_idx < std::ssize(ws.seq) - 1) {
+                                std::pair<uint32_t, uint32_t> p = {ws.seq[read_idx], ws.seq[read_idx + 1]};
+                                auto it = batch_merges.find(p);
+                                
+                                // can merge in any order because the merge rules are safe (they dont fight for tokens)
+                                if (it != batch_merges.end()) {
+                                    ws.seq[write_idx] = it->second;
+                                    read_idx += 2;
+                                    write_idx += 1;
+                                    continue;
+                                }
                             }
-                            else {
-                                ws.seq[write_idx] = ws.seq[read_idx];
-                                read_idx++;
-                                write_idx++;
-                            }
+                            
+                            ws.seq[write_idx] = ws.seq[read_idx];
+                            read_idx++;
+                            write_idx++;
                         }
                         ws.seq.resize(write_idx);
                     }
-                }
-            }
+            }   }
 
             std::vector<uint32_t> encode(std::string_view text) {
                 std::vector<std::string_view> pieces = PreTokenizer::process_chunks(text);
+                std::vector<std::vector<uint32_t>> thread_tokens(pieces.size());
 
-                std::vector<uint32_t> final_tokens;
-                final_tokens.reserve(text.length() / 3);
-
-                for (const std::string_view& str : pieces) {
+                #pragma omp parallel for schedule(guided)
+                for (int64_t idx = 0; idx < std::ssize(pieces); ++idx) {
+                    const std::string_view& str = pieces[idx];
                     std::vector<uint32_t> seq;
 
                     if (str == "<|endoftext|>") {seq.push_back(256);}
@@ -278,8 +301,22 @@ namespace gradc {
                             }
                         }
                         seq.resize(write_idx);
+
                     }
-                    final_tokens.insert(final_tokens.end(), seq.begin(), seq.end()); // append all seq elems
+                    // move into ordered array so there are no race conditions
+                    thread_tokens[idx] = std::move(seq);
+                }
+                // by the end thread_tokens has in-order list of sequences that are already tokenized
+
+                std::vector<uint32_t> final_tokens;
+                int64_t total_capacity = 0;
+                for (const std::vector<uint32_t> vec : thread_tokens) {
+                    total_capacity += std::ssize(vec);
+                }
+                final_tokens.reserve(total_capacity);
+
+                for (auto& vec : thread_tokens) {
+                    final_tokens.insert(final_tokens.end(), vec.begin(), vec.end());
                 }
 
                 return final_tokens;
@@ -352,7 +389,7 @@ namespace gradc {
     struct TokenManager {
         static void create_vocab_out_of_files(std::string vocab_save_path, std::vector<std::string> paths) {
             int64_t total_bytes = 0;
-            const int64_t MAX_BYTES_PER_FILE = 50 * 1024 * 1024;
+            const int64_t MAX_BYTES_PER_FILE = (200 * 1024 * 1024) / std::ssize(paths); // the total is 200MB
 
             for (const std::string& path : paths) {
                 if (std::filesystem::exists(path)) {
@@ -392,7 +429,7 @@ namespace gradc {
             BytePairEncoding bpe;
             bpe.load_vocab(vocab_load_path);
 
-            std::ofstream out(output_path, std::ios::binary | std::ios::app); // can only ever append
+            std::ofstream out(output_path, std::ios::binary); // can only ever append
             if (!out) {throw std::runtime_error("Failed to open output bin file: " + output_path);}
 
             for (const std::string& path : paths) { // process one file at a time
@@ -406,6 +443,8 @@ namespace gradc {
                 in.read(buffer.data(), file_bytes);
 
                 std::string_view text(buffer.data(), file_bytes);
+
+                std::cout << "Processing: " + path << std::endl;
                 std::vector<uint32_t> tokens = bpe.encode(text);
 
                 int64_t bytes_to_write = tokens.size() * sizeof(uint32_t);

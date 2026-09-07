@@ -17,8 +17,8 @@ namespace gradc {
                 this->register_parameter("embeds", &m_embeds);
             }
 
-            Tensor<T> forward(Tensor<T> indices) {
-                Tensor<T> y = embed(indices, m_embeds);
+            Tensor<T> forward(Tensor<int64_t> indices) {
+                Tensor<T> y = embed(indices, m_embeds.tensor());
                 return y;
             }
     };
@@ -46,7 +46,7 @@ namespace gradc {
                     m_token_range.make_leaf();
                 }
                 
-                return embed(m_token_range[Slice(0, seq_len)], m_pos_embeds);
+                return embed(m_token_range[Slice(0, seq_len)], m_pos_embeds.tensor());
             }
     };
 

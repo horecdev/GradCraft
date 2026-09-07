@@ -83,7 +83,7 @@ namespace gradc {
                 this->register_module("lm_head", &m_lm_head);
             }
 
-            Tensor<T> forward(Tensor<T> indices) { // (B, T)
+            Tensor<T> forward(Tensor<int64_t> indices) { // (B, T)
                 int64_t seq_len = indices.shape()[1];
 
                 Tensor<T> tok_emb = m_token_embed.forward(indices);
@@ -95,7 +95,7 @@ namespace gradc {
                     x = block->forward(x);
                 }
 
-                x = m_final_norm(x);
+                x = m_final_norm.forward(x);
                 return m_lm_head.forward(x);
             }
     };

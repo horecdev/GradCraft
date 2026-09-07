@@ -14,6 +14,8 @@ namespace gradc {
     private:
         int m_device_count = 0;
         std::vector<std::unordered_map<int64_t, std::vector<void*>>> m_free_blocks;
+        int64_t m_current_usage = 0;
+        int64_t m_hwm = 0;
         CUDAMemPool() {
             cudaGetDeviceCount(&m_device_count);
             m_free_blocks.resize(m_device_count);
@@ -27,20 +29,25 @@ namespace gradc {
             return inst;
         }
 
+        float get_hwm_gb() {
+            return static_cast<float>(m_hwm) / (1024 * 1024 * 1024);
+        }
+
         void* allocate(int64_t bytes, Device device) {
             if (device.index >= m_device_count) {
                 std::string error_msg = std::format("Invalid GPU index (>=): {}. Available GPUs: {}", device.index, m_device_count);
                 throw std::runtime_error(error_msg);
             }
+
             cudaSetDevice(device.index);
             std::vector<void*>& blocks = m_free_blocks[device.index][bytes];
+            void* ptr = nullptr;
+
             if (!blocks.empty()) {
-                void* ptr = blocks.back();
+                ptr = blocks.back();
                 blocks.pop_back();
-                return ptr;
             }
             else {
-                void* ptr = nullptr;
                 cudaError_t err = cudaMallocAsync(&ptr, bytes, 0);
 
                 if (err != cudaSuccess) {
@@ -50,14 +57,15 @@ namespace gradc {
                     if (err != cudaSuccess) {
                         throw std::runtime_error("CUDA Error: " + std::string(cudaGetErrorString(err)));
                     }
-                    else {
-                        return ptr;
-                    }
-                }
-                else {
-                    return ptr;
                 }
             }
+
+            m_current_usage += bytes;
+            if (m_current_usage > m_hwm) {
+                m_hwm = m_current_usage;
+            }
+            
+            return ptr;
         }
 
         void free(void* ptr, int64_t bytes, Device device) {
@@ -65,9 +73,11 @@ namespace gradc {
                 std::string error_msg = std::format("Invalid GPU index (>=): {}. Available GPUs: {}", device.index, m_device_count);
                 throw std::runtime_error(error_msg);
             }
+
             cudaSetDevice(device.index);
             if (ptr != nullptr) {
                 m_free_blocks[device.index][bytes].push_back(ptr);
+                m_current_usage -= bytes;
             }
         }
 
