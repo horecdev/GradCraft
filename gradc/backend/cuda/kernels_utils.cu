@@ -134,7 +134,7 @@ namespace gradc {
         if (idx < batch_size) {
             int64_t flip_idx = indices_ptr[idx];
             int64_t full_idx = idx * distrib_dim + flip_idx;
-            res_ptr[full_idx] = 1;
+            res_ptr[full_idx] = static_cast<T>(1.0);
         }
     }
 
@@ -175,6 +175,9 @@ namespace gradc {
 
     template void CUDAUtils::fill_uniform<float>(float* ptr, float low, float high, int64_t size, Device device);
     template void CUDAUtils::fill_uniform<double>(double* ptr, double low, double high, int64_t size, Device device);
+
+    template void CUDAUtils::one_hot_encode<float>(float* res_ptr, int64_t* indices_ptr, int64_t batch_size, int64_t distrib_dim, Device device);
+    template void CUDAUtils::one_hot_encode<double>(double* res_ptr, int64_t* indices_ptr, int64_t batch_size, int64_t distrib_dim, Device device);
 
     
 }

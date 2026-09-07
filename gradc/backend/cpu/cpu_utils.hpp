@@ -54,7 +54,7 @@ namespace gradc {
             for (int64_t row = 0; row < batch_size; ++row) {
                 int64_t one_idx = indices_ptr[row];
                 int64_t batch_offset = row * distrib_dim;
-                res_ptr[batch_offset + one_idx] = 1;
+                res_ptr[batch_offset + one_idx] = static_cast<T>(1.0);
             }
         }
     };

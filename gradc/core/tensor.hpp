@@ -211,7 +211,8 @@ namespace gradc {
 
 
             // LOSSES
-            template <typename U> friend Tensor<U> softmax_crossentropy(Tensor<U> flat_logits, Tensor<U> flat_targets, int64_t distrib_dim, U eps) requires std::is_floating_point_v<U>;
+            template <typename U> friend Tensor<U> softmax_crossentropy_naive(Tensor<U> flat_logits, Tensor<U> flat_targets, int64_t distrib_dim, U eps) requires std::is_floating_point_v<U>;
+            template <typename U> friend Tensor<U> softmax_crossentropy_fast(Tensor<U> logits, Tensor<U> targets, U eps) requires std::is_floating_point_v<U>;
             template <typename U> friend Tensor<U> mse_loss(Tensor<U> preds, Tensor<U> targets) requires std::is_floating_point_v<U>;
             
             // BACKEND
@@ -277,6 +278,10 @@ namespace gradc {
             template <typename U> friend void print_dim(std::ostream& stream, const Tensor<U>& source, const PrintOptions& opts, int64_t current_dim, int64_t base_offset, bool is_last);
             template <typename U> friend Tensor<U> unbroadcast_grad(const Tensor<U>& raw_grad, const std::vector<int64_t>& orig_shape);
 
+            template <typename U>
+            requires std::is_floating_point_v<U>
+            friend Tensor<U> one_hot_encode(Tensor<int64_t> indices, int64_t distrib_dim);
+            
             template <typename TargetT> Tensor<TargetT> cast() const;
 
             Tensor to(Device device) const;

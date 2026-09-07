@@ -153,7 +153,7 @@ namespace gradc {
 
                 Device target_device = m_indices.device();
 
-                Tensor<T> result = Tensor<T>(m_result_shape, target_device, uninitialized);
+                Tensor<T> result = Tensor<T>(m_result_shape, T(0), target_device);
 
                 dispatch_one_hot_encode(target_device, result, m_indices);
 
