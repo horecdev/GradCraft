@@ -7,7 +7,7 @@
 namespace gradc {
     
     template <typename T>
-    class SoftmaxCrossEntropyLossNode : public Node<T> {
+    class SoftmaxCrossEntropyLossNaiveNode : public Node<T> {
         private:
             Tensor<T> m_flat_logits; // logits are (B, C) flattened
             Tensor<T> m_flat_targets; // also (B, C)
@@ -18,7 +18,7 @@ namespace gradc {
             T m_eps;
             
         public:
-            SoftmaxCrossEntropyLossNode(Tensor<T> flat_logits, Tensor<T> flat_targets, RedMeta softmax_red_meta, RedMeta loss_red_meta, int64_t batch_size, T eps)
+            SoftmaxCrossEntropyLossNaiveNode(Tensor<T> flat_logits, Tensor<T> flat_targets, RedMeta softmax_red_meta, RedMeta loss_red_meta, int64_t batch_size, T eps)
              : m_flat_logits(std::move(flat_logits)), m_flat_targets(std::move(flat_targets)), m_softmax_red_meta(std::move(softmax_red_meta)), m_loss_red_meta(std::move(loss_red_meta)), m_batch_size(batch_size), m_eps(eps) {}
 
             Tensor<T> realize() override {
@@ -103,6 +103,57 @@ namespace gradc {
 
             std::vector<TensorStateBase*> get_input_states() override {
                 return {m_flat_logits._get_state_base(), m_flat_targets._get_state_base()};
+            }
+    };
+
+    template <typename T>
+    class SoftmaxCrossEntropyLossFastNode : public Node<T> {
+        private:
+            Tensor<T> m_logits;
+            Tensor<int64_t> m_targets; // dense, but doesnt have to be flat lmao
+            Tensor<T> m_probs;
+            T m_eps;
+        public:
+            SoftmaxCrossEntropyLossFastNode(Tensor<T> logits, Tensor<int64_t> targets, T eps) : m_logits(std::move(logits)), m_targets(std::move(targets)), m_eps(eps) {}
+
+            void realize() override {
+                m_logits.realize();
+                m_targets.realize();
+
+                Device target_device = m_logits.device();
+
+                Tensor<T> loss = Tensor<T>(std::vector<int64_t>{}, T(0), target_device);
+
+                // we do NOT set probs to be nullptr based on whether we save grad. Its our workspace memory so to speak, we can just discard it by not saving tho
+                Tensor<T> probs;
+                if (m_logits.is_exclusive()) {
+                    probs = m_logits;
+                } else {
+                    probs = Tensor<T>(m_logits.shape(), target_device, uninitialized);
+                }
+
+                dispatch();
+
+                if (m_logits.requires_grad()) {
+                    m_probs = probs; // not unaryop::identity cuz probs is NOT returned
+                }
+
+                return loss;
+            }
+
+            void backward(Tensor<T>& out_grad, bool retain_graph) {
+                if (m_logits.requires_grad()) {
+                Device target_device = out_grad.device();
+                Tensor<T> dx = Tensor<T>(m_logits.shape(), target_device, uninitialized);
+                
+                dispatch();
+                
+                m_logits.accumulate_grad(dx);
+            }
+
+            if (!retain_graph) {
+                m_probs = Tensor<T>();
+            }
             }
     };
 

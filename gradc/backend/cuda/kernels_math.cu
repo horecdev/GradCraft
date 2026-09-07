@@ -1331,9 +1331,154 @@ namespace gradc {
         causal_softmax_backward_kernel_fast<<<blocks, threads>>>(p_dx, p_out_grad, p_probs, scale, seq_len);
     }
 
-    
-
     #pragma endregion CAUSAL SOFTMAX
+
+    #pragma region SOFTMAX CROSS-ENTROPY
+
+    template <typename T>
+    requires std::is_floating_point_v<T>
+    // p_loss is 0D scalar dense, p_probs is DENSE N-DIM, p_logits is contiguous N-DIM, p_targets is dense N-DIM (it just picks the right index for the right row)
+    __global__ void softmax_crossentropy_forward_kernel_fast(
+        T* __restrict__ p_loss, T* __restrict__ p_probs,
+        const T* __restrict__ p_logits, const int64_t* __restrict__ p_targets,
+        int64_t logits_offset,
+        int64_t total_rows, int64_t vocab_size, T eps
+    ) {
+        // launch (B*T) blocks
+        int64_t row = blockIdx.x;
+        int64_t tid = threadIdx.x;
+
+        const T* logits_row = p_logits + (row * vocab_size) + logits_offset;
+        T* probs_row = p_probs + (row * vocab_size);
+
+        T thread_max = -INFINITY;
+        for (int64_t i = tid; i < vocab_size; i += blockDim.x) {
+            if (p_logits[i] > thread_max) {
+                thread_max = logits_row[i];
+            }
+        }
+
+        __shared__ T s_scratch[256];
+        s_scratch[tid] = thread_max;
+        __syncthreads();
+        for (int64_t s = blockDim.x / 2; s > 0; s >>= 1) {
+            if (tid < s) {
+                s_scratch[tid] = max(s_scratch[tid], s_scratch[tid + s]);
+            }
+            __syncthreads();
+        }
+
+        T row_max = s_scratch[0];
+        __syncthreads();
+
+        T thread_sum = 0;
+        for (int64_t i = tid; i < vocab_size; i += blockDim.x) {
+            thread_sum += exp(logits_row[i] - row_max);
+        }
+
+        s_scratch[tid] = thread_sum;
+        __syncthreads();
+
+        for (int64_t s = blockDim.x / 2; s > 0; s >>= 1) {
+            if (tid < s) {
+                s_scratch[tid] += s_scratch[tid + s];
+            }
+            __syncthreads();
+        }
+
+        T row_sum = s_scratch[0];
+        __syncthreads();
+
+        for (int64_t i = tid; i < vocab_size; i += blockDim.x) {
+            probs_row[i] = exp(logits_row[i] - row_max) / row_sum;
+        }
+        __syncthreads();
+
+        if (tid == 0) {
+            int64_t target_idx = p_targets[row];
+            T target_prob = p_probs[target_idx];
+
+            T row_loss = -log(target_prob + eps);
+
+            cuda_functors::RED::Sum<T>().atomic(p_loss, row_loss / static_cast<T>(total_rows)); // atomic update the mean
+        }
+    }
+
+    template <typename T>
+    requires std::is_floating_point_v<T>
+    void CUDAMath::apply_sparse_softmax_crossentropy_forward(Tensor<T>& loss, Tensor<T>& probs, const Tensor<T>& logits, const Tensor<int64_t>& targets, T eps) {
+        cudaSetDevice(logits.device().index);
+
+        int64_t vocab_size = logits.shape().back();
+        int64_t total_rows = logits.volume() / vocab_size;
+
+        int64_t threads = 256;
+        int64_t blocks = total_rows; // fire one bock per row as usual
+        
+        T* p_loss = loss._get_storage()->data();
+        T* p_probs = probs._get_storage()->data();
+        const T* p_logits = logits._get_storage()->data(); 
+        const int64_t* p_targets = targets._get_storage()->data();
+        
+        softmax_crossentropy_forward_kernel_fast<<<blocks, threads>>>(
+            p_loss, p_probs, p_logits, p_targets, logits.offset(), total_rows, vocab_size, eps
+        );
+    }
+
+
+
+    template <typename T>
+    requires std::is_floating_point_v<T>
+    // p_dx is CONTIGUOUS (may NOT be dense), p_probs is DENSE, p_targets is DENSE, p_out_grad is 0D scalar DENSE
+    // p_dx can be 3D, 4D, anything.
+    __global__ void softmax_crossentropy_backward_kernel_fast(
+        T* __restrict__ p_dx, const T* __restrict__ p_probs, 
+        const int64_t* __restrict__ p_targets, const T* __restrict__ p_out_grad,
+        int64_t dx_offset,
+        int64_t total_rows, int64_t vocab_size
+    ) {
+        int64_t row = blockIdx.x; // launch B*T blocks
+        int64_t tid = threadIdx.x;
+
+        T scale = p_out_grad[0] / static_cast<T>(total_rows); // 99.9% of the time its just 1 / (B*T) since it was the avera
+
+        const T* probs_row = p_probs + (row * vocab_size);
+        T* dx_row = p_dx + (row * vocab_size) + dx_offset;
+        int64_t target_idx = p_targets[row];
+
+        for (int64_t i = tid; i < vocab_size; i += blockDim.x) {
+            T grad_val = probs_row[i] * scale; // p * s
+
+            if (i == target_idx) {
+                grad_val -= scale; // p * s - s = (p - 1) * s, all checks
+            }
+
+            dx_row[i] = grad_val;
+        }
+    }
+
+    template <typename T>
+    requires std::is_floating_point_v<T>
+    void CUDAMath::apply_sparse_softmax_crossentropy_backward(Tensor<T>& dx, const Tensor<T>& probs, const Tensor<int64_t>& targets, const Tensor<T>& out_grad) {
+        cudaSetDevice(probs.device().index);
+        
+        int64_t vocab_size = dx.shape().back();
+        int64_t total_rows = dx.volume() / vocab_size;
+        
+        int64_t threads = 256;
+        int64_t blocks = total_rows;
+        
+        T* p_dx = dx._get_storage()->data(); 
+        const T* p_probs = probs._get_storage()->data();
+        const int64_t* p_targets = targets._get_storage()->data();
+        const T* p_out_grad = out_grad._get_storage()->data();
+        
+        softmax_crossentropy_backward_kernel_fast<<<blocks, threads>>>(
+            p_dx, p_probs, p_targets, p_out_grad, dx.offset(), total_rows, vocab_size
+        );
+    }
+
+    #pragma endregion SOFTMAX CROSS-ENTROPY
 
     #pragma region TEMPLATING
 
@@ -1365,6 +1510,8 @@ namespace gradc {
         template void CUDAMath::apply_causal_softmax_forward<T>(Tensor<T>&, const Tensor<T>&, T, int64_t); \
         template void CUDAMath::apply_causal_softmax_backward<T>(Tensor<T>&, const Tensor<T>&, const Tensor<T>&, T, int64_t); \
         template void CUDAMath::apply_embed<T>(Tensor<T>&, const Tensor<int64_t>&, const Tensor<T>&, int64_t); \
+        template void CUDAMath::apply_sparse_softmax_crossentropy_forward<T>(Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<int64_t>&, T); \
+        template void CUDAMath::apply_sparse_softmax_crossentropy_backward<T>(Tensor<T>&, const Tensor<T>&, const Tensor<int64_t>&, const Tensor<T>&);
         
 
     INSTANTIATE_CUDA_MATH_SINGLE(float)

@@ -42,5 +42,11 @@ namespace gradc {
             template <typename T>
             requires std::is_floating_point_v<T>
             static void apply_causal_softmax_backward(Tensor<T>& dx, const Tensor<T>& out_grad, const Tensor<T>& probs, T scale, int64_t seq_len);
+            template <typename T>
+            requires std::is_floating_point_v<T>
+            static void apply_sparse_softmax_crossentropy_forward(Tensor<T>& loss, Tensor<T>& probs, const Tensor<T>& logits, const Tensor<int64_t>& targets, T eps);
+            template <typename T>
+            requires std::is_floating_point_v<T>
+            static void apply_sparse_softmax_crossentropy_backward(Tensor<T>& dx, const Tensor<T>& probs, const Tensor<int64_t>& targets, const Tensor<T>& out_grad);
     };
 }

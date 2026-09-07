@@ -7,3 +7,6 @@ secrets.txt
 download_hf_datasets.py
 .env
 raw_data/
+data/vocab/vocab.bin
+data/datasets/cosmo_cpp.bin
+data/

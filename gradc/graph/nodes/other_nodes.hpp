@@ -123,7 +123,7 @@ namespace gradc {
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad, bool retain_graph) {
+            void backward(const Tensor<T>& out_grad, bool retain_graph) override {
                 if (m_scores.requires_grad()) {
                     Device target_device = out_grad.device();
                     Tensor<T> dscores = Tensor<T>(m_scores.shape(), target_device, uninitialized);
@@ -132,6 +132,10 @@ namespace gradc {
 
                     m_scores.accumulate_grad(dscores);
                 }
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_scores._get_state_base()};
             }
     };
 }

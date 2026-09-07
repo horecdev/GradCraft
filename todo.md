@@ -180,11 +180,21 @@ DONE Write a BPE tokenizer encode/decode/create
 DONE Write save/load for m_merges and m_vocab in BPE
 DONE Write a TokenManager to create vocab / encode a full dataset
 DONE Add OpenMP to the tokenizer to speed it up
-- Chunk the dataset during encoding into 50MB pieces
+DONE Chunk the dataset during encoding into 50MB pieces
 - Create tokens with TokenManager on 2GB C++ / Cosmopedia and save.
 - Create the dataset with TokenManager
 DONE Write a DataLoader to spit out tensors on the CPU from the encoded .bin file. Rreturns leaf tensors to then call to_async() on.
 DONE Add HWM to CPUMemPool and CUDAMemPool
+- Fix compilation bugs in both
+DONE Create a forward kernel for SoftmaxCEL with 1D (B,) targets tensor (indices)
+DONE Create a backward kernel for SoftmaxCEL
+- Add dispatcher for fwd/bwd
+- Function for one_hot_enc for naive CPU/CUDA
+- SCEL NodeFast for cuda
+- Frontend for naive (rename, force dims etc)
+- Frontend for fast (diff node, force dense, loose dimensions, etc)
+- Frontend for softmax crossentropy that dispatches the right one based on param (just like rmsnorm)
+- Do something with the non-fast version requiring a one-hot encoded vector
 - Test how much you can fit into the model on a 3070Ti (num_params in a transformer)
 - Train on synthetic data and asses how much params you can fit with B=1 and scaling grads by 1/B.
 - Write the training loop for the first phase (internet blabber)

@@ -18,7 +18,7 @@ namespace gradc {
     }
 
     template <typename T>
-    Tensor<T> rmsnorm(Tensor<T> parent, Tensor<T> gamma, const std::vector<int64_t>& axes, T eps, bool cuda_fast=true) requires std::is_floating_point_v<T> {
+    Tensor<T> rmsnorm(Tensor<T> parent, Tensor<T> gamma, const std::vector<int64_t>& axes, T eps, bool cuda_fast) requires std::is_floating_point_v<T> {
         Device target_device = infer_assert_device(parent, gamma);
         RedMeta red_meta = infer_red_meta(parent.shape(), axes, true);
         std::vector<int64_t> norm_shape = get_normalized_shape(parent.shape(), axes);

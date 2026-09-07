@@ -61,12 +61,12 @@ namespace gradc {
                         m_causal_mask = m_causal_mask.value().to(x.device());
                         m_causal_mask.value().realize();
                         m_causal_mask.value().make_leaf();
-                    } 
+                    }
                     active_mask = m_causal_mask.value()[Slice(0, seq_len), Slice(0, seq_len)];
                 }
                 // we do not delete the mask if we are on cuda and cuda_fast. If you switch later, this check evaluates and it gets moved (or stays in place)
                 
-                Tensor<T> attn = sdpa(Q, K, V, m_is_causal, active_mask, /*scale*/ std::nullopt, cuda_fast); // [B, num_heads, T, head_dim]
+                Tensor<T> attn = sdpa(Q, K, V, m_is_causal, active_mask, /*scale*/ std::optional<T>(std::nullopt), cuda_fast); // [B, num_heads, T, head_dim]
                 attn = attn.permute({0, 2, 1, 3}).reshape({B, seq_len, m_num_heads * m_head_dim}); // [B, T, C]
 
                 return m_out_proj.forward(attn);

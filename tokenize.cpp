@@ -23,10 +23,10 @@ int main() {
             std::cout << "Vocab already exists. Skipping creating." << std::endl;
         }
 
-        // std::cout << "Encoding dataset." << std::endl;
-        // gradc::TokenManager::encode_dataset(output_path, vocab_path, all_files);
+        std::cout << "Encoding dataset." << std::endl;
+        gradc::TokenManager::encode_dataset(output_path, vocab_path, all_files);
 
-        // std::cout << "Tokenization complete.\n";
+        std::cout << "Tokenization complete.\n";
         return 0;
     }
     catch (const std::exception& e) {

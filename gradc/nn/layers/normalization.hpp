@@ -45,7 +45,7 @@ namespace gradc {
             }
 
             Tensor<T> forward(Tensor<T> x) {
-                return rmsnorm(x, m_gamma.tensor(), m_axes, m_eps);
+                return rmsnorm(x, m_gamma.tensor(), m_axes, m_eps, /*cuda_fast*/ true);
             }
     };
 }

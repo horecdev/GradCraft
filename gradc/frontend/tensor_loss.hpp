@@ -19,7 +19,7 @@ namespace gradc {
         int64_t batch_size = distrib_dim == 1 ? flat_logits.m_shape[0] : flat_logits.m_shape[1];
         bool requires_grad = flat_logits.requires_grad() || flat_targets.requires_grad();
         Tensor<T> result = Tensor<T>(loss_red_meta.result_shape, requires_grad, lazy, target_device);
-        result.m_state->m_creation_op = std::make_unique<SoftmaxCrossEntropyLossNode<T>>(std::move(flat_logits), std::move(flat_targets), std::move(softmax_red_meta), std::move(loss_red_meta), batch_size, eps);
+        result.m_state->m_creation_op = std::make_unique<SoftmaxCrossEntropyLossNaiveNode<T>>(std::move(flat_logits), std::move(flat_targets), std::move(softmax_red_meta), std::move(loss_red_meta), batch_size, eps);
 
         return result;
     }
