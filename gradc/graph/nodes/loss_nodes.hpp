@@ -132,7 +132,7 @@ namespace gradc {
                     probs = Tensor<T>(m_logits.shape(), target_device, uninitialized);
                 }
 
-                dispatch();
+                dispatch_softmax_crossentropy_forward(target_device, loss, probs, m_logits, m_targets, m_eps);
 
                 if (m_logits.requires_grad()) {
                     m_probs = probs; // not unaryop::identity cuz probs is NOT returned
@@ -143,17 +143,21 @@ namespace gradc {
 
             void backward(Tensor<T>& out_grad, bool retain_graph) {
                 if (m_logits.requires_grad()) {
-                Device target_device = out_grad.device();
-                Tensor<T> dx = Tensor<T>(m_logits.shape(), target_device, uninitialized);
-                
-                dispatch();
-                
-                m_logits.accumulate_grad(dx);
-            }
+                    Device target_device = out_grad.device();
+                    Tensor<T> dx = Tensor<T>(m_logits.shape(), target_device, uninitialized);
+                    
+                    dispatch_softmax_crossentropy_backward(target_device, dx, m_probs, m_targets, out_grad);
+                    
+                    m_logits.accumulate_grad(dx);
+                }
 
-            if (!retain_graph) {
-                m_probs = Tensor<T>();
-            }
+                if (m_targets.requires_grad()) {
+                    throw std::runtime_error("SoftmaxCEL index targets cannot require grad.");
+                }
+
+                if (!retain_graph) {
+                    m_probs = Tensor<T>();
+                }
             }
     };
 

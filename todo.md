@@ -188,13 +188,11 @@ DONE Add HWM to CPUMemPool and CUDAMemPool
 - Fix compilation bugs in both
 DONE Create a forward kernel for SoftmaxCEL with 1D (B,) targets tensor (indices)
 DONE Create a backward kernel for SoftmaxCEL
-- Add dispatcher for fwd/bwd
+DONE Add dispatcher for fwd/bwd
 - Function for one_hot_enc for naive CPU/CUDA
-- SCEL NodeFast for cuda
-- Frontend for naive (rename, force dims etc)
-- Frontend for fast (diff node, force dense, loose dimensions, etc)
-- Frontend for softmax crossentropy that dispatches the right one based on param (just like rmsnorm)
-- Do something with the non-fast version requiring a one-hot encoded vector
+DONE SCEL FastNode for cuda
+DONE Frontend for naive (rename basically)
+DONE Frontend for fast (diff node, force dense, loose dimensions, etc)
 - Test how much you can fit into the model on a 3070Ti (num_params in a transformer)
 - Train on synthetic data and asses how much params you can fit with B=1 and scaling grads by 1/B.
 - Write the training loop for the first phase (internet blabber)

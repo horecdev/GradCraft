@@ -8,7 +8,7 @@
 namespace gradc {
 
     template <typename T>
-    Tensor<T> softmax_crossentropy(Tensor<T> flat_logits, Tensor<T> flat_targets, int64_t distrib_dim, T eps) requires std::is_floating_point_v<T> {
+    Tensor<T> softmax_crossentropy_naive(Tensor<T> flat_logits, Tensor<T> flat_targets, int64_t distrib_dim, T eps) requires std::is_floating_point_v<T> {
         if (std::ssize(flat_logits.shape()) != std::ssize(flat_targets.shape()) || std::ssize(flat_logits.shape()) != 2) {
             throw std::runtime_error("softmax_crossentropy accepts only 2D tensors");
         }
@@ -20,6 +20,25 @@ namespace gradc {
         bool requires_grad = flat_logits.requires_grad() || flat_targets.requires_grad();
         Tensor<T> result = Tensor<T>(loss_red_meta.result_shape, requires_grad, lazy, target_device);
         result.m_state->m_creation_op = std::make_unique<SoftmaxCrossEntropyLossNaiveNode<T>>(std::move(flat_logits), std::move(flat_targets), std::move(softmax_red_meta), std::move(loss_red_meta), batch_size, eps);
+
+        return result;
+    }
+
+    template <typename T>
+    // always along the last dimension
+    Tensor<T> softmax_crossentropy_fast(Tensor<T> logits, Tensor<T> targets, T eps) requires std::is_floating_point_v<T> {
+        Device target_device = infer_assert_device(logits, targets);
+
+        if (!logits.is_contiguous()) {
+            logits = logits.contiguous();
+        }
+        if (!targets.is_dense()) {
+            targets = targets.contiguous();
+        }
+
+        bool requires_grad = logits.requires_grad();
+        Tensor<T> result = Tensor<T>(std::vector<int64_t>{}, requires_grad, lazy, target_device);
+        result.m_state->m_creation_op = std::make_unique<SoftmaxCrossEntropyLossFastNode<T>>(std::move(logits), std::move(targets), eps);
 
         return result;
     }

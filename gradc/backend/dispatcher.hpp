@@ -193,4 +193,24 @@ namespace gradc {
             CUDAMath::apply_causal_softmax_backward(dx, out_grad, probs, scale, seq_len);
         }
     }
+    
+    template <typename T>
+    inline void dispatch_softmax_crossentropy_forward(Device device, Tensor<T>& loss, Tensor<T>& probs, const Tensor<T>& logits, const Tensor<int64_t>& targets, T eps) {
+        if (device.is_cpu()) {
+            throw std::runtime_error("Tried running Softmax Crossentropy forward on the CPU.");
+        }
+        else if (device.is_cuda()) {
+            CUDAMath::apply_sparse_softmax_crossentropy_forward(loss, probs, logits, targets, eps);
+        }
+    }
+
+    template <typename T>
+    inline void dispatch_softmax_crossentropy_backward(Device device, Tensor<T>& dx, const Tensor<T>& probs, const Tensor<int64_t>& targets, const Tensor<T>& out_grad) {
+        if (device.is_cpu()) {
+            throw std::runtime_error("Tried running Softmax Crossentropy backward on the CPU.");
+        }
+        else if (device.is_cuda()) {
+            CUDAMath::apply_sparse_softmax_crossentropy_backward(dx, probs, targets, out_grad);
+        }
+    }
 }
