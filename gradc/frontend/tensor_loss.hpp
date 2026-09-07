@@ -26,7 +26,7 @@ namespace gradc {
 
     template <typename T>
     // always along the last dimension
-    Tensor<T> softmax_crossentropy_fast(Tensor<T> logits, Tensor<T> targets, T eps) requires std::is_floating_point_v<T> {
+    Tensor<T> softmax_crossentropy_fast(Tensor<T> logits, Tensor<int64_t> targets, T eps) requires std::is_floating_point_v<T> {
         Device target_device = infer_assert_device(logits, targets);
 
         if (!logits.is_contiguous()) {

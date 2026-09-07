@@ -185,7 +185,6 @@ DONE Create tokens with TokenManager on 2GB C++ / Cosmopedia and save.
 DONE Create the dataset with TokenManager
 DONE Write a DataLoader to spit out tensors on the CPU from the encoded .bin file. Rreturns leaf tensors to then call to_async() on.
 DONE Add HWM to CPUMemPool and CUDAMemPool
-- Fix compilation bugs in both (with CUDAFAST and without)
 DONE Create a forward kernel for SoftmaxCEL with 1D (B,) targets tensor (indices)
 DONE Create a backward kernel for SoftmaxCEL
 DONE Add dispatcher for fwd/bwd
@@ -194,6 +193,7 @@ DONE OneHotNode (takes in int64_t, returns a T with static cast)
 DONE SCEL FastNode for cuda
 DONE Frontend for naive (rename basically)
 DONE Frontend for fast (diff node, force dense, loose dimensions, etc)
+- Fix compilation bugs in both (with CUDAFAST and without)
 - Test how much you can fit into the model on a 3070Ti (num_params in a transformer)
 - Train on synthetic data and asses how much params you can fit with B=1 and scaling grads by 1/B.
 - Write the training loop for the first phase (internet blabber)

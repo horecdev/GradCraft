@@ -116,7 +116,7 @@ namespace gradc {
         public:
             SoftmaxCrossEntropyLossFastNode(Tensor<T> logits, Tensor<int64_t> targets, T eps) : m_logits(std::move(logits)), m_targets(std::move(targets)), m_eps(eps) {}
 
-            void realize() override {
+            Tensor<T> realize() override {
                 m_logits.realize();
                 m_targets.realize();
 
@@ -141,7 +141,7 @@ namespace gradc {
                 return loss;
             }
 
-            void backward(Tensor<T>& out_grad, bool retain_graph) {
+            void backward(const Tensor<T>& out_grad, bool retain_graph) override {
                 if (m_logits.requires_grad()) {
                     Device target_device = out_grad.device();
                     Tensor<T> dx = Tensor<T>(m_logits.shape(), target_device, uninitialized);
@@ -158,6 +158,10 @@ namespace gradc {
                 if (!retain_graph) {
                     m_probs = Tensor<T>();
                 }
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_logits._get_state_base(), m_targets._get_state_base()};
             }
     };
 
