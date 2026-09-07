@@ -124,6 +124,31 @@ namespace gradc {
         scale_uniform_kernel<<<blocks, threads>>>(ptr, low, high, size);
 
     }
+
+    template <typename T>
+    __global__ void one_hot_encode_kernel(
+        T* res_ptr, int64_t* indices_ptr, int64_t batch_size, int64_t distrib_dim
+    ) {
+        int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        if (idx < batch_size) {
+            int64_t flip_idx = indices_ptr[idx];
+            int64_t full_idx = idx * distrib_dim + flip_idx;
+            res_ptr[full_idx] = 1;
+        }
+    }
+
+    template <typename T>
+    void CUDAUtils::one_hot_encode(T* res_ptr, int64_t* indices_ptr, int64_t batch_size, int64_t distrib_dim, Device device) {
+        cudaSetDevice(device.index);
+
+        // fire one thread for every row - just flip the 0 to 1 at idx.
+
+        int64_t threads = 256;
+        int64_t blocks = (batch_size + threads - 1) / threads;
+
+        one_hot_encode_kernel<<<blocks, threads>>>(res_ptr, indices_ptr, batch_size, distrib_dim);
+    }
     
     template void CUDAUtils::set_scalar<float>(float*, float);
     template void CUDAUtils::set_scalar<double>(double*, double);

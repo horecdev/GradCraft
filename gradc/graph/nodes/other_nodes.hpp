@@ -138,4 +138,36 @@ namespace gradc {
                 return {m_scores._get_state_base()};
             }
     };
+
+    template <typename T>
+    class OneHotNode : public Node<T> {
+        private:
+            Tensor<int64_t> m_indices;
+            std::vector<int64_t> m_result_shape;
+
+        public:
+            OneHotNode(Tensor<int64_t> indices, std::vector<int64_t> result_shape) : m_indices(std::move(indices)), m_result_shape(std::move(result_shape)) {}
+
+            Tensor<T> realize() override {
+                m_indices.realize();
+
+                Device target_device = m_indices.device();
+
+                Tensor<T> result = Tensor<T>(m_result_shape, target_device, uninitialized);
+
+                dispatch_one_hot_encode(target_device, result, m_indices);
+
+                return result;
+            }
+
+            void backward(const Tensor<T>& out_grad) {
+                if (m_indices.requires_grad()) {
+                    throw std::runtime_error("Indices in OneHotNode backward cannot require grad.");
+                }
+            }
+
+            std::vector<TensorStateBase*> get_input_states() override {
+                return {m_indices._get_state_base()};
+            }
+    };
 }

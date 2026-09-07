@@ -45,5 +45,17 @@ namespace gradc {
                 ptr[i] = dist(gen);
             }
         }
+
+        template <typename T>
+        // res is 0 initialized
+        // res is [B, T, distrib_dim], indices are [B, T], batch_size is [B * T]
+        // res and indices must be DENSE.
+        static void one_hot_encode(T* res_ptr, int64_t* indices_ptr, int64_t batch_size, int64_t distrib_dim) { // batch_size is B*T
+            for (int64_t row = 0; row < batch_size; ++row) {
+                int64_t one_idx = indices_ptr[row];
+                int64_t batch_offset = row * distrib_dim;
+                res_ptr[batch_offset + one_idx] = 1;
+            }
+        }
     };
 }

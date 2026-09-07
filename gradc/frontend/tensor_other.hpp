@@ -91,4 +91,22 @@ namespace gradc {
         
         return bmm(probs, v);
     }
+
+    template <typename T>
+    requires std::is_floating_point_v<T>
+    Tensor<T> one_hot_encode(Tensor<int64_t> indices, int64_t distrib_dim) {
+        Device target_device = indices.device();
+
+        if (!indices.is_dense()) {
+            indices = indices.contiguous();
+        }
+
+        std::vector<int64_t> result_shape = indices.shape();
+        result_shape.push_back(distrib_dim);
+
+        Tensor<T> result = Tensor<T>(result_shape, false, lazy, target_device);
+        result.m_state->m_creation_op = std::make_unique<OneHotNode<T>>(std::move(indices), std::move(result_shape));
+    }
+
+
 }

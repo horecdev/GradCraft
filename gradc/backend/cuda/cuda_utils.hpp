@@ -17,5 +17,7 @@ namespace gradc {
             static void fill_normal(T* ptr, T mean, T std, int64_t size, Device device);
             template <typename T>
             static void fill_uniform(T* ptr, T low, T high, int64_t size, Device device);
+            template <typename T>
+            static void one_hot_encode(T* res_ptr, int64_t* indices_ptr, int64_t batch_size, int64_t distrib_dim, Device device);
     };
 }

@@ -181,15 +181,16 @@ DONE Write save/load for m_merges and m_vocab in BPE
 DONE Write a TokenManager to create vocab / encode a full dataset
 DONE Add OpenMP to the tokenizer to speed it up
 DONE Chunk the dataset during encoding into 50MB pieces
-- Create tokens with TokenManager on 2GB C++ / Cosmopedia and save.
-- Create the dataset with TokenManager
+DONE Create tokens with TokenManager on 2GB C++ / Cosmopedia and save.
+DONE Create the dataset with TokenManager
 DONE Write a DataLoader to spit out tensors on the CPU from the encoded .bin file. Rreturns leaf tensors to then call to_async() on.
 DONE Add HWM to CPUMemPool and CUDAMemPool
-- Fix compilation bugs in both
+- Fix compilation bugs in both (with CUDAFAST and without)
 DONE Create a forward kernel for SoftmaxCEL with 1D (B,) targets tensor (indices)
 DONE Create a backward kernel for SoftmaxCEL
 DONE Add dispatcher for fwd/bwd
-- Function for one_hot_enc for naive CPU/CUDA
+DONE Function for one_hot_enc for naive CPU/CUDA - kernel + cpu util + dispatcher
+DONE OneHotNode (takes in int64_t, returns a T with static cast)
 DONE SCEL FastNode for cuda
 DONE Frontend for naive (rename basically)
 DONE Frontend for fast (diff node, force dense, loose dimensions, etc)

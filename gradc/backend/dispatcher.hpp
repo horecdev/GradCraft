@@ -4,6 +4,7 @@
 #include "gradc/backend/cpu/math_functors.hpp"
 #include "gradc/backend/cpu/function_mapper.hpp"
 #include "cpu/apply.hpp"
+#include "cpu/cpu_utils.hpp"
 #include "gradc/backend/cuda/cuda_math.hpp"
 #include "../core/tensor.hpp"
 #include "../core/types.hpp"
@@ -211,6 +212,16 @@ namespace gradc {
         }
         else if (device.is_cuda()) {
             CUDAMath::apply_sparse_softmax_crossentropy_backward(dx, probs, targets, out_grad);
+        }
+    }
+
+    template <typename T>
+    inline void dispatch_one_hot_encode(Device device, Tensor<T> result, Tensor<int64_t> indices) {
+        if (device.is_cpu()) {
+            CPUUtils::one_hot_encode(result._get_storage()->data(), indices._get_storage()->data(), indices.volume(), result.shape().back());
+        }
+        else if (device.is_cuda()) {
+            CUDAUtils::one_hot_encode(result._get_storage()->data(), indices._get_storage()->data(), indices.volume(), result.shape().back(), device);
         }
     }
 }

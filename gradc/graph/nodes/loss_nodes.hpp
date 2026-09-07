@@ -152,7 +152,7 @@ namespace gradc {
                 }
 
                 if (m_targets.requires_grad()) {
-                    throw std::runtime_error("SoftmaxCEL index targets cannot require grad.");
+                    throw std::runtime_error("SoftmaxCELFast index targets cannot require grad.");
                 }
 
                 if (!retain_graph) {
