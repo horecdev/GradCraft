@@ -4,6 +4,7 @@
 #include "../../core/detail/tensor_detail.hpp"
 #include "../../core/tensor.hpp"
 #include "../node.hpp"
+#include "../../core/print.hpp"
 
 #include <cstdint>
 #include <utility>
@@ -152,12 +153,10 @@ namespace gradc {
 
                 if (m_left.is_exclusive() &&  m_left.shape() == m_target_shape && m_right.requires_grad() == false) {
                     dispatch(target_device, BinaryOpInPlace::Mul, m_left, m_right);
-
                     return m_left;
                 }
                 else if (m_right.is_exclusive() && m_right.shape() == m_target_shape && m_left.requires_grad() == false) {
                     dispatch(target_device, BinaryOpInPlace::Mul, m_right, m_left);
-
                     return m_right;
                 }
 
@@ -548,7 +547,7 @@ namespace gradc {
 
         public:
             BatchedMatMulNode<T>(Tensor<T> left, Tensor<T> right, BMMMeta blas_meta, std::vector<int64_t> left_original_shape, std::vector<int64_t> right_original_shape)
-             : m_left(std::move(left)), m_right(std::move(right)), m_blas_meta(std::move(blas_meta)), m_left_original_shape(std::move(left_original_shape)), m_right_original_shape(right_original_shape){}
+             : m_left(std::move(left)), m_right(std::move(right)), m_blas_meta(std::move(blas_meta)), m_left_original_shape(std::move(left_original_shape)), m_right_original_shape(std::move(right_original_shape)){}
             
             Tensor<T> realize() override {
                 Device target_device = m_left.device(); 
@@ -556,9 +555,13 @@ namespace gradc {
                 m_left.realize();
                 m_right.realize();
 
-                Tensor<T> result = Tensor<T>(m_blas_meta.result_shape, target_device, uninitialized);
-                dispatch_batched_gemm(target_device, result, m_left, m_right, m_blas_meta);
+                std::cout << "start of BMM" << std::endl;
 
+                Tensor<T> result = Tensor<T>(m_blas_meta.result_shape, target_device, uninitialized);
+                std::cout << "Dispatching the batched matmul" << std::endl;
+                std::cout << m_blas_meta.result_shape << " " << m_left_original_shape << " " << m_right_original_shape << std::endl;
+                dispatch_batched_gemm(target_device, result, m_left, m_right, m_blas_meta);
+                std::cout << "REalized BMM" << std::endl;
                 return result;
             }
 

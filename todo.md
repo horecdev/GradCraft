@@ -196,6 +196,8 @@ DONE Frontend for fast (diff node, force dense, loose dimensions, etc)
 DONE First test out the GPT crossentropy running for one_hot_encode without fast paths (fix compiler errors)
 DONE Then test out on the fast path with sparse indices (fix compiler errors)
 DONE Find out whether a model can fit with 160M params on the RTX (174M fits)
+- Fused AdamW kernel
+- Write a sampling loop
 - Compare math to pytorch at GPT 3070 with B=1 (grads too)
 - Write a function to save loss in a specified file
 - Benchmark RMSNormNaive and RMSNormFast (CUDA)
@@ -205,3 +207,5 @@ DONE Find out whether a model can fit with 160M params on the RTX (174M fits)
 - Compare speed of 3070Ti and 3090 - fill both' VRAM to prove more bandwidth = faster
 - Integrate target_batch_size and accumulated_batch, step only after its filled (pump it up artificially)
 - Write the training loop for the first phase (internet blabber)
+- Integrate checkpointing in the training loop every X million tokens
+- Aim for 4.200.000.000 tokens

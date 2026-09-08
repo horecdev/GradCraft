@@ -230,7 +230,6 @@ namespace gradc {
                     m_probs = Tensor<T>(m_logits.shape(), target_device, uninitialized);
                     dispatch(target_device, UnaryOp::Identity, m_probs, probs);
                 }
-                
                 return probs;
             }
 

@@ -391,7 +391,9 @@ namespace gradc {
             blasint blas_ldb = static_cast<blasint>(blas_meta.ldb);
             blasint blas_ldc = static_cast<blasint>(blas_meta.ldc);
 
+            std::cout << "Entering the BMM loop" << std::endl;
             for (int64_t i = 0; i < blas_meta.batch_count; ++i) {
+                std::cout << "Iter: " << i << std::endl;
                 T* current_out = p_out + (i * blas_meta.stride_c);
                 const T* current_left = p_left + (i * blas_meta.stride_a);
                 const T* current_right = p_right + (i * blas_meta.stride_b);

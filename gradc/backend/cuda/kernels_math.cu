@@ -30,6 +30,7 @@ namespace gradc {
             if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS) {
                 throw std::runtime_error("cuBLAS handle initialization failed.");
             }
+            cublasSetMathMode(handle, CUBLAS_TF32_TENSOR_OP_MATH);
         }
         return handle;
     }

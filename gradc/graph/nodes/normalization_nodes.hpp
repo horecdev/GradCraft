@@ -187,7 +187,6 @@ namespace gradc {
                 if (m_parent.requires_grad() || m_gamma.requires_grad()) {
                     m_inv_rms = std::move(inv_rms);
                 }
-
                 return result;
             }
 
@@ -265,7 +264,7 @@ namespace gradc {
                 Device target_device = m_parent.device();
 
                 if (m_parent.requires_grad() || m_gamma.requires_grad()) {
-                    m_inv_rms = Tensor<T>(m_normalized_shape, target_device, uninitialized);
+                    m_inv_rms = Tensor<T>(m_red_meta.temp_shape, target_device, uninitialized);
                 }
 
                 Tensor<T> result = Tensor<T>(m_parent.shape(), target_device, uninitialized);

@@ -78,7 +78,6 @@ namespace gradc {
                 Tensor<T> result = Tensor<T>(m_result_shape, target_device, uninitialized);
 
                 dispatch_embed(target_device, result, m_indices, m_embeds, m_embed_vol);
-
                 return result;
             }
 

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <new>
 #include <unordered_map>
+#include <iostream>
 
 class CPUMemPool {
     private:
@@ -26,6 +27,10 @@ class CPUMemPool {
 
         float get_hwm_gb() {
             return static_cast<float>(m_hwm) / (1024 * 1024 * 1024);
+        }
+
+        void log_hwm() {
+            std::cout << "HWM: " << get_hwm_gb() << " GB" << std::endl;
         }
 
         void* allocate(int64_t aligned_bytes) {
@@ -53,6 +58,7 @@ class CPUMemPool {
             m_current_usage += aligned_bytes;
             if (m_current_usage > m_hwm) {
                 m_hwm = m_current_usage;
+                log_hwm();
             }
 
             return ptr;
@@ -66,6 +72,7 @@ class CPUMemPool {
         }
 
         void clear() {
+            std::cout << "Running clear" << std::endl;
             for (auto& [size, blocks] : m_free_blocks) {
                 for (void* ptr : blocks) {
                     _aligned_free(ptr);

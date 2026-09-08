@@ -18,7 +18,7 @@ namespace gradc {
 
             std::mt19937_64 m_rng;
 
-            const int64_t CHUNK_TOKENS = 4 * 1024 * 1024; // we will fetch 16MB of tokens at a time randomly
+            const int64_t CHUNK_TOKENS = 256 * 1024; // we will fetch 1MB of tokens at a time randomly
 
             void load_random_chunk() {
                 std::uniform_int_distribution<int64_t> dist(0, m_total_tokens - CHUNK_TOKENS - 1);

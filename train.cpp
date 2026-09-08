@@ -9,8 +9,8 @@ int main() {
         DataLoader loader = DataLoader("C:/Local Projects/autograd_cpp/data/datasets/cosmo_cpp.bin");
 
         // prep
-        int64_t B = 2;
-        int64_t seq_len = 1024;
+        int64_t B = 1;
+        int64_t seq_len = 128;
         int64_t vocab_size = 32768;
         int64_t embed_dim = 768;
         int64_t num_heads = 12;
