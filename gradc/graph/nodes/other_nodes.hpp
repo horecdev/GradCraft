@@ -132,6 +132,10 @@ namespace gradc {
 
                     m_scores.accumulate_grad(dscores);
                 }
+
+                if (!retain_graph) {
+                    m_probs = Tensor<T>();
+                }
             }
 
             std::vector<TensorStateBase*> get_input_states() override {

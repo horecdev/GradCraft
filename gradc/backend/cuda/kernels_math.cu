@@ -1229,7 +1229,8 @@ namespace gradc {
         T thread_sum = 0;
         for (int64_t i = tid; i < seq_len; i += blockDim.x) {
             if (i <= seq_row) {
-                thread_sum += exp((scores_row[i] * scale) - row_max);
+                T e = exp((scores_row[i] * scale) - row_max);
+                thread_sum += e;
             }
         }
         s_scratch[tid] = thread_sum;
@@ -1247,7 +1248,8 @@ namespace gradc {
 
         for (int64_t i = tid; i < seq_len; i += blockDim.x) {
             if (i <= seq_row) {
-                probs_row[i] = exp((scores_row[i] * scale) - row_max) / row_sum;
+                T p = exp((scores_row[i] * scale) - row_max) / row_sum;
+                probs_row[i] = p;
             }
             else {
                 probs_row[i] = 0;
@@ -1373,7 +1375,8 @@ namespace gradc {
 
         T thread_sum = 0;
         for (int64_t i = tid; i < vocab_size; i += blockDim.x) {
-            thread_sum += exp(logits_row[i] - row_max);
+            T e = exp(logits_row[i] - row_max);
+            thread_sum += e;
         }
 
         s_scratch[tid] = thread_sum;
@@ -1390,7 +1393,8 @@ namespace gradc {
         __syncthreads();
 
         for (int64_t i = tid; i < vocab_size; i += blockDim.x) {
-            probs_row[i] = exp(logits_row[i] - row_max) / row_sum;
+            T p = exp(logits_row[i] - row_max) / row_sum;
+            probs_row[i] = p;
         }
         __syncthreads();
 

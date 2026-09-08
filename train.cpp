@@ -9,7 +9,7 @@ int main() {
         DataLoader loader = DataLoader("C:/Local Projects/autograd_cpp/data/datasets/cosmo_cpp.bin");
 
         // prep
-        int64_t B = 1;
+        int64_t B = 2;
         int64_t seq_len = 1024;
         int64_t vocab_size = 32768;
         int64_t embed_dim = 768;
@@ -40,22 +40,12 @@ int main() {
             Y = Y.to_async(gpu, copy_stream, event);
             Tensor<float> logits = model.forward(X);
 
-            Tensor<float> flat_logits = logits.reshape({-1, vocab_size});
-            Tensor<float> targets = one_hot_encode<float>(Y, vocab_size);
+            Tensor<float> loss = softmax_crossentropy_fast<float>(logits, Y, 1e-5f);
 
-            Tensor<float> flat_targets = targets.reshape({-1, vocab_size});
-
-            Tensor<float> loss = softmax_crossentropy_naive(flat_logits, flat_targets, 1, 1e-5f);
-
-            std::cout << "Before realize" << std::endl;
             loss.realize();
-            std::cout << "Before .item()" << std::endl;
             float loss_val = loss.item();
-            std::cout << "Before zerograd" << std::endl;
             model.zero_grad();
-            std::cout << "Before bwd" << std::endl;
             loss.backward();
-            std::cout << "Before step" << std::endl;
             optimizer.step();
 
             auto end_time = std::chrono::high_resolution_clock::now();
@@ -64,8 +54,7 @@ int main() {
             
             std::cout << "Step: " << i << " | Loss: " << loss_val << " | Time: " << (step_seconds * 1000.0) << " ms" << " | Speed: " << static_cast<int64_t>(tok_per_sec) << " tok/s" << std::endl;
         }
-        std::cout << "Finished." << std::endl;
-        std::cout << "HWM (GB): " << CUDAMemPool::get().get_hwm_gb() << std::endl;
+        CUDAMemPool::get().log_hwm();
         return 0;
 
         

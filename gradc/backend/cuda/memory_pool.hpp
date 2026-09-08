@@ -34,7 +34,7 @@ namespace gradc {
         }
 
         void log_hwm() {
-            std::cout << "Current HWM: " << get_hwm_gb() << std::endl;
+            std::cout << "Current HWM: " << get_hwm_gb() << " GB" << std::endl;
         }
 
         void* allocate(int64_t bytes, Device device) {

@@ -193,9 +193,15 @@ DONE OneHotNode (takes in int64_t, returns a T with static cast)
 DONE SCEL FastNode for cuda
 DONE Frontend for naive (rename basically)
 DONE Frontend for fast (diff node, force dense, loose dimensions, etc)
-- First test out the GPT crossentropy running for one_hot_encode without fast paths (fix compiler errors)
-- Then test out on the fast path with sparse indices (fix compiler errors)
-- Find whether a model can fit with 160M params on the RTX
-- Get tokens per sec on optimized vs unoptimized code vs pytorch
+DONE First test out the GPT crossentropy running for one_hot_encode without fast paths (fix compiler errors)
+DONE Then test out on the fast path with sparse indices (fix compiler errors)
+DONE Find out whether a model can fit with 160M params on the RTX (174M fits)
+- Compare math to pytorch at GPT 3070 with B=1 (grads too)
+- Write a function to save loss in a specified file
+- Benchmark RMSNormNaive and RMSNormFast (CUDA)
+- Benchmark SoftmaxCEL Fast and Naive (CUDA)
+- Show speedup by moving from CPU to CUDA in tok/s (small GPT on both - move to CUDA=speedup)
+- Compare speed against pytorch 174M at B=1 and B=4 while forcing it to use fp16 and turn off flash attention
+- Compare speed of 3070Ti and 3090 - fill both' VRAM to prove more bandwidth = faster
 - Integrate target_batch_size and accumulated_batch, step only after its filled (pump it up artificially)
 - Write the training loop for the first phase (internet blabber)
