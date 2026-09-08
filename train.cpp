@@ -32,7 +32,7 @@ int main() {
 
         int64_t tokens_per_step = B * seq_len;
 
-        for (int64_t i = 0; i < 10; ++i) {
+        for (int64_t i = 0; i < 5; ++i) {
             auto start_time = std::chrono::high_resolution_clock::now();
 
             auto [X, Y] = loader.next_batch(B, seq_len, Device(DeviceType::CPU));

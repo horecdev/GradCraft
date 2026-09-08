@@ -1,4 +1,4 @@
-#include "gradc/gradc.hpp"
+#include "gradc/gradc.hpp" // IWYU pragma: keep
 #include <iostream>
 #include <chrono>
 #include <iomanip>
@@ -6,8 +6,8 @@
 using namespace gradc;
 
 void run_device_benchmark(DeviceType type, const std::string& dev_name) {
-    int64_t B = 4, T = 512;
-    int64_t V = 128, C = 128, H = 4, L = 2;
+    int64_t B = 4, T = 128;
+    int64_t V = 32768, C = 768, H = 12, L = 16;
     
     Device dev(type, 0);
     std::cout << "Initializing 174M Model on " << dev_name << " (B=" << B << ", T=" << T << ")" << std::endl;
@@ -22,7 +22,7 @@ void run_device_benchmark(DeviceType type, const std::string& dev_name) {
 
     std::cout << "Starting benchmark.\n";
 
-    for (int step = 0; step < 5; ++step) {
+    for (int step = 0; step < 10; ++step) {
         auto start = std::chrono::high_resolution_clock::now();
 
         Tensor<float> logits = model.forward(X);
@@ -37,9 +37,7 @@ void run_device_benchmark(DeviceType type, const std::string& dev_name) {
             
             loss = softmax_crossentropy_naive(flat_logits, flat_targets, 1, 1e-5f); 
         }
-        std::cout << "Before realize" << std::endl;
         loss.realize();
-        std::cout << "After realize" << std::endl;
         float loss_val = loss.item();
 
         model.zero_grad();
@@ -64,7 +62,7 @@ void run_device_benchmark(DeviceType type, const std::string& dev_name) {
 
 int main() {
     try {
-        run_device_benchmark(DeviceType::CPU, "CPU");
+        //run_device_benchmark(DeviceType::CPU, "CPU");
 
         run_device_benchmark(DeviceType::CUDA, "RTX 3070 Ti");
 

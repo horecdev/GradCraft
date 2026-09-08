@@ -197,6 +197,7 @@ DONE First test out the GPT crossentropy running for one_hot_encode without fast
 DONE Then test out on the fast path with sparse indices (fix compiler errors)
 DONE Find out whether a model can fit with 160M params on the RTX (174M fits)
 - Fused AdamW kernel
+- Fused SwiGLU fwd/bwd (fast + frontend + fit everything to it) save VRAM, VRAM trips
 - Write a sampling loop
 - Compare math to pytorch at GPT 3070 with B=1 (grads too)
 - Write a function to save loss in a specified file

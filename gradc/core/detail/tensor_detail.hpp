@@ -113,11 +113,14 @@ namespace gradc {
             left_locally_contig = left.contiguous();
             std::vector<int64_t> left_locally_contig_shape_except_rightmost(left_locally_contig.shape().begin(), left_locally_contig.shape().end() - 1);
             std::vector<int64_t> left_locally_contig_strides_except_rightmost(left_locally_contig.strides().begin(), left_locally_contig.strides().end() - 1);
+            
+            int64_t correct_stride_last = left_locally_contig.strides().back();
+
             FusedView locally_contig_fuse = fuse_dimensions(left_locally_contig_shape_except_rightmost, {&left_locally_contig_strides_except_rightmost});
             left_locally_contig.m_shape = locally_contig_fuse.shared_shape;
             left_locally_contig.m_strides = locally_contig_fuse.strides[0];
             left_locally_contig.m_shape.push_back(left.shape().back());
-            left_locally_contig.m_strides.push_back(left.strides().back());
+            left_locally_contig.m_strides.push_back(correct_stride_last);
         }
         else {
             left_locally_contig = left;
@@ -182,7 +185,7 @@ namespace gradc {
         }
         else {
             safe_right = right.contiguous();
-            blas_meta.ldb = right.strides()[0];
+            blas_meta.ldb = safe_right.strides()[0];
             blas_meta.right_op = MatrixTensorOp::Normal;
         }
 
@@ -256,7 +259,7 @@ namespace gradc {
             right_locally_contig = right.contiguous();
             std::vector<int64_t> right_locally_contig_batch_shape(right_locally_contig.shape().begin(), right_locally_contig.shape().end() - 2);
             std::vector<int64_t> right_locally_contig_batch_strides(right_locally_contig.strides().begin(), right_locally_contig.strides().end() - 2);
-            
+
             int64_t correct_stride_k = right_locally_contig.strides()[right_n_dim - 2];
             int64_t correct_stride_n = right_locally_contig.strides()[right_n_dim - 1];
 

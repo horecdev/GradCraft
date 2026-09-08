@@ -58,7 +58,6 @@ class CPUMemPool {
             m_current_usage += aligned_bytes;
             if (m_current_usage > m_hwm) {
                 m_hwm = m_current_usage;
-                log_hwm();
             }
 
             return ptr;

@@ -36,15 +36,15 @@ target_include_directories(GradCore PUBLIC
 
 if(MSVC)
 # release
-    # target_compile_options(GradCore PRIVATE
-    #     $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4 /bigobj /O2 /fp:fast>
-    #     $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/bigobj,-O2,-fp:fast -O3 -use_fast_math -ftz=true>
-    # )
-
     target_compile_options(GradCore PRIVATE
-        $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4 /bigobj /Od>
-        $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/bigobj,-Od -G -g>
+        $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4 /bigobj /O2 /fp:fast>
+        $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/bigobj,-O2,-fp:fast -O3 -use_fast_math -ftz=true>
     )
+
+    # target_compile_options(GradCore PRIVATE
+    #     $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4 /bigobj /Od>
+    #     $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/bigobj,-Od -G -g>
+    # )
 
 endif()
 
@@ -70,6 +70,9 @@ target_link_libraries(benchmark PRIVATE GradCore)
 
 add_executable(bench_cpu_gpu benchmarks/bench_cpu_vs_gpu.cpp)
 target_link_libraries(bench_cpu_gpu PRIVATE GradCore)
+
+add_executable(bench_training benchmarks/bench_training.cpp)
+target_link_libraries(bench_training PRIVATE GradCore)
 
 if(MSVC)
     target_link_options(benchmark PRIVATE /INCREMENTAL:NO)
