@@ -1,5 +1,6 @@
 #include "gradc/gradc.hpp"
 #include <iostream>
+#include <chrono>
 
 using namespace gradc;
 int main() {
@@ -8,14 +9,14 @@ int main() {
         DataLoader loader = DataLoader("C:/Local Projects/autograd_cpp/data/datasets/cosmo_cpp.bin");
 
         // prep
-        int64_t B = 4;
-        int64_t seq_len = 32;
+        int64_t B = 1;
+        int64_t seq_len = 1024;
         int64_t vocab_size = 32768;
         int64_t embed_dim = 768;
         int64_t num_heads = 12;
         int64_t num_layers = 16;
 
-        NormalInit<float> init(0.0f, 0.02f);
+        NormalInit<float> init(0.0f, 0.003535f);
 
         cudaStream_t copy_stream = create_stream();
         cudaEvent_t event = create_event();
@@ -24,34 +25,44 @@ int main() {
         model.to(gpu);
 
         AdamW<float> optimizer(model.named_parameters(), 3e-4f);
+        CosineScheduler<float> scheduler(&optimizer, 3e-4f, 3e-5f, 5, 10);
 
         std::string num_params = std::format(std::locale("en_US.UTF-8"), "{:L}", model.num_params());
         std::cout << "Number of params: " << num_params << std::endl;;
 
-        for (int64_t i = 0; i < 5; ++i) {
+        int64_t tokens_per_step = B * seq_len;
+
+        for (int64_t i = 0; i < 10; ++i) {
+            auto start_time = std::chrono::high_resolution_clock::now();
+
             auto [X, Y] = loader.next_batch(B, seq_len, Device(DeviceType::CPU));
             X = X.to_async(gpu, copy_stream, event);
             Y = Y.to_async(gpu, copy_stream, event);
             Tensor<float> logits = model.forward(X);
 
-            std::cout << "Before reshape" << std::endl;
             Tensor<float> flat_logits = logits.reshape({-1, vocab_size});
-            std::cout << "Before one-hot" << std::endl;
             Tensor<float> targets = one_hot_encode<float>(Y, vocab_size);
 
-            std::cout << "Before reshape" << std::endl;
             Tensor<float> flat_targets = targets.reshape({-1, vocab_size});
 
-            std::cout << "Before SCE" << std::endl;
             Tensor<float> loss = softmax_crossentropy_naive(flat_logits, flat_targets, 1, 1e-5f);
+
             std::cout << "Before realize" << std::endl;
             loss.realize();
-            print_tensor(std::cout, loss);
-
+            std::cout << "Before .item()" << std::endl;
+            float loss_val = loss.item();
+            std::cout << "Before zerograd" << std::endl;
             model.zero_grad();
+            std::cout << "Before bwd" << std::endl;
             loss.backward();
+            std::cout << "Before step" << std::endl;
             optimizer.step();
+
+            auto end_time = std::chrono::high_resolution_clock::now();
+            double step_seconds = std::chrono::duration<double>(end_time - start_time).count();
+            double tok_per_sec = tokens_per_step / step_seconds;
             
+            std::cout << "Step: " << i << " | Loss: " << loss_val << " | Time: " << (step_seconds * 1000.0) << " ms" << " | Speed: " << static_cast<int64_t>(tok_per_sec) << " tok/s" << std::endl;
         }
         std::cout << "Finished." << std::endl;
         std::cout << "HWM (GB): " << CUDAMemPool::get().get_hwm_gb() << std::endl;

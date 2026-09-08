@@ -33,6 +33,10 @@ namespace gradc {
             return static_cast<float>(m_hwm) / (1024 * 1024 * 1024);
         }
 
+        void log_hwm() {
+            std::cout << "Current HWM: " << get_hwm_gb() << std::endl;
+        }
+
         void* allocate(int64_t bytes, Device device) {
             if (device.index >= m_device_count) {
                 std::string error_msg = std::format("Invalid GPU index (>=): {}. Available GPUs: {}", device.index, m_device_count);
@@ -86,6 +90,7 @@ namespace gradc {
                 std::string error_msg = std::format("Invalid GPU index (>=): {}. Available GPUs: {}", device.index, m_device_count);
                 throw std::runtime_error(error_msg);
             }
+            std::cout << "Clearing mempool" << std::endl;
             cudaSetDevice(device.index);
             auto& device_blocks = m_free_blocks[device.index];
             for (auto& [size, available_blocks] : device_blocks) {

@@ -20,11 +20,13 @@ namespace gradc {
                 std::unordered_map<std::string, T> result;
                 result["m_t"] = static_cast<T>(m_t);
                 result["m_lr"] = m_lr;
+
+                return result;
             }
 
             virtual void load_state_dict(const std::unordered_map<std::string, T>& state) { // optimizer MUST have lr allocated.
-                m_t = static_cast<int64_t>(state["m_t"]);
-                m_lr = state["m_lr"];
+                m_t = static_cast<int64_t>(state.at("m_t"));
+                m_lr = state.at("m_lr");
                 
                 // sync to optimizer
                 m_optimizer->update_lr(m_lr);

@@ -48,10 +48,10 @@ namespace gradc {
             void load_state_dict(const std::unordered_map<std::string, T>& state) override {
                 Scheduler<T>::load_state_dict(state); // load the base, push the lr inside
                 
-                m_max_lr = state["max_lr"];
-                m_min_lr = state["min_lr"];
-                m_warmup_steps = static_cast<int64_t>(state["warmup_steps"]);
-                m_max_steps = static_cast<int64_t>(state["max_steps"]);
+                m_max_lr = state.at("max_lr");
+                m_min_lr = state.at("min_lr");
+                m_warmup_steps = static_cast<int64_t>(state.at("warmup_steps"));
+                m_max_steps = static_cast<int64_t>(state.at("max_steps"));
             }
     };
 }
