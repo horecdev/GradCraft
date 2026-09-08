@@ -106,6 +106,8 @@ namespace gradc {
 
         Tensor<T> result = Tensor<T>(result_shape, false, lazy, target_device);
         result.m_state->m_creation_op = std::make_unique<OneHotNode<T>>(std::move(indices), std::move(result_shape));
+
+        return result;
     }
 
 

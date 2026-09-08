@@ -193,7 +193,9 @@ DONE OneHotNode (takes in int64_t, returns a T with static cast)
 DONE SCEL FastNode for cuda
 DONE Frontend for naive (rename basically)
 DONE Frontend for fast (diff node, force dense, loose dimensions, etc)
-- Fix compilation bugs in both (with CUDAFAST and without)
-- Test how much you can fit into the model on a 3070Ti (num_params in a transformer)
-- Train on synthetic data and asses how much params you can fit with B=1 and scaling grads by 1/B.
+- First test out the GPT crossentropy running for one_hot_encode without fast paths (fix compiler errors)
+- Then test out on the fast path with sparse indices (fix compiler errors)
+- Find whether a model can fit with 160M params on the RTX
+- Get tokens per sec on optimized vs unoptimized code vs pytorch
+- Integrate target_batch_size and accumulated_batch, step only after its filled (pump it up artificially)
 - Write the training loop for the first phase (internet blabber)

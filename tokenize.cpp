@@ -5,7 +5,7 @@ int main() {
         std::string vocab_dir = "C:/Local Projects/autograd_cpp/data/vocab";
         std::string dataset_dir = "C:/Local Projects/autograd_cpp/data/datasets";
         std::string vocab_path = vocab_dir + "/vocab.bin";
-        std::string output_path = dataset_dir + "/cosmo_cpp.bin";
+        std::string output_path = dataset_dir + "/cosmo_cpp_edit.bin";
 
         std::filesystem::create_directories(vocab_dir);
         std::filesystem::create_directories(dataset_dir);

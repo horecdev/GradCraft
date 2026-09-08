@@ -160,7 +160,7 @@ namespace gradc {
                 return result;
             }
 
-            void backward(const Tensor<T>& out_grad) {
+            void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
                 if (m_indices.requires_grad()) {
                     throw std::runtime_error("Indices in OneHotNode backward cannot require grad.");
                 }

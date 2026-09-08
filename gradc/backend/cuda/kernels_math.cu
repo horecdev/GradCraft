@@ -1093,7 +1093,7 @@ namespace gradc {
         s_sum[tid] = thread_sum;
         __syncthreads();
 
-        for (int64_t s = blockDim.x / 2; s >= 0; s >>= 1) {
+        for (int64_t s = blockDim.x / 2; s > 0; s >>= 1) {
             if (tid < s) {
                 s_sum[tid] += s_sum[tid + s];
             }
@@ -1235,7 +1235,7 @@ namespace gradc {
         s_scratch[tid] = thread_sum;
         __syncthreads();
 
-        for (int s = blockDim.x / 2; s >= 0; s >>= 1) {
+        for (int s = blockDim.x / 2; s > 0; s >>= 1) {
             if (tid < s) {
                 s_scratch[tid] += s_scratch[tid + s];
             }
@@ -1298,7 +1298,7 @@ namespace gradc {
         s_scratch[tid] = thread_sum;
         __syncthreads();
 
-        for (int64_t s = blockDim.x / 2; s >= 0; s >>= 1) {
+        for (int64_t s = blockDim.x / 2; s > 0; s >>= 1) {
             if (tid < s) {
                 s_scratch[tid] += s_scratch[tid + s];
             }
