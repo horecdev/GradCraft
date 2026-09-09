@@ -16,6 +16,7 @@ namespace gradc {
             Tensor<T> m_beta2_exp;
             std::unordered_map<std::string, Tensor<T>> m_first_moment;
             std::unordered_map<std::string, Tensor<T>> m_second_moment;
+            bool cuda_fast = true;
         public:
             AdamW(std::unordered_map<std::string, Parameter<T>*> named_params, T lr, T beta1 = static_cast<T>(0.9), T beta2 = static_cast<T>(0.999), T weight_decay = static_cast<T>(0.0), T eps = static_cast<T>(1e-8)) {
                 this->m_named_params = std::move(named_params);

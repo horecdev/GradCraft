@@ -54,6 +54,8 @@ namespace gradc {
             template <typename T>
             requires std::is_floating_point_v<T>
             static void apply_swiglu_backward(Tensor<T>& da, Tensor<T>& db, const Tensor<T>& out_grad, const Tensor<T>& a, const Tensor<T>& b, bool acc_a, bool acc_b);
-    
+            template <typename T>
+            requires std::is_floating_point_v<T>
+            static void apply_adamw_step(Tensor<T>& w, Tensor<T>& mean, Tensor<T>& var, const Tensor<T>& grad,  const Tensor<T>& lr, const Tensor<T>& beta1, const Tensor<T>& beta2, const Tensor<T>& beta1_exp, const Tensor<T>& beta2_exp, const Tensor<T>& weight_decay, const Tensor<T>& eps, bool no_decay);
     };
 }

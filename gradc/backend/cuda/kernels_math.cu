@@ -1599,6 +1599,78 @@ namespace gradc {
 
     #pragma endregion SwiGLU
 
+    #pragma region AdamW
+
+    template <typename T>
+    __global__ void adamw_step_kernel_fast(
+        T* __restrict__ p_w, T* __restrict__ p_mean, T* __restrict__ p_var,
+        const T* __restrict__ p_grad, 
+        const T* __restrict__ p_lr, const T* __restrict__ p_beta1, const T* __restrict__ p_beta2,
+        const T* __restrict__ p_beta1_exp, const T* __restrict__ p_beta2_exp,
+        const T* __restrict__ p_wd, const T* __restrict__ p_eps, 
+        int64_t total_elements, bool no_decay
+    ) {
+        int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        if (idx < total_elements) {
+            T lr = p_lr[0];
+            T beta1 = p_beta1[0];
+            T beta2 = p_beta2[0];
+            T b1_exp = p_beta1_exp[0];
+            T b2_exp = p_beta2_exp[0];
+            T eps = p_eps[0];
+
+            T w = p_w[idx];
+            T g = p_grad[idx];
+            T m = p_mean[idx];
+            T v = p_var[idx];
+
+            if (!no_decay) {
+                T wd = p_wd[0];
+                w = w * (static_cast<T>(1.0) - lr * wd);
+            }
+
+            m = beta1 * m + (static_cast<T>(1.0) - beta1) * g;
+            v = beta2 * v + (static_cast<T>(1.0) - beta2) * g * g;
+
+            p_mean[idx] = m;
+            p_var[idx] = v;
+
+            T m_hat = m / (static_cast<T>(1.0) - b1_exp);
+            T v_hat = v / (static_cast<T>(1.0) - b2_exp);
+
+            w = w - lr * m_hat / (sqrt(v_hat) + eps);
+
+            p_w[idx] = w;
+        }
+    }
+
+    template <typename T>
+    requires std::is_floating_point_v<T>
+    void CUDAMath::apply_adamw_step(Tensor<T>& w, Tensor<T>& mean, Tensor<T>& var, const Tensor<T>& grad, const Tensor<T>& lr, const Tensor<T>& beta1, const Tensor<T>& beta2, const Tensor<T>& beta1_exp, const Tensor<T>& beta2_exp, const Tensor<T>& weight_decay, const Tensor<T>& eps, bool no_decay) {
+        cudaSetDevice(w.device().index);
+        int64_t total_elems = w.volume();
+        int64_t threads = 256;
+        int64_t blocks = (total_elems + threads - 1) / threads;
+
+        T* p_w = w._get_storage()->data();
+        const T* p_grad = grad._get_storage()->data();
+        T* p_mean = mean._get_storage()->data();
+        T* p_var = var._get_storage()->data();
+
+        const T* p_lr = lr._get_storage()->data();
+        const T* p_beta1 = beta1._get_storage()->data();
+        const T* p_beta2 = beta2._get_storage()->data();
+        const T* p_b1_exp = beta1_exp._get_storage()->data();
+        const T* p_b2_exp = beta2_exp._get_storage()->data();
+        const T* p_wd = weight_decay._get_storage()->data();
+        const T* p_eps = eps._get_storage()->data();
+
+        adamw_step_kernel_fast<<<blocks, threads>>>(p_w, p_mean, p_var, p_grad, p_lr, p_beta1, p_beta2, p_b1_exp, p_b2_exp, p_wd, p_eps, total_elems, no_decay);
+    }
+    
+    #pragma endregion AdamW
+
     #pragma region TEMPLATING
 
     #define INSTANTIATE_CUDA_MATH_SINGLE(T) \
@@ -1632,7 +1704,8 @@ namespace gradc {
         template void CUDAMath::apply_sparse_softmax_crossentropy_forward<T>(Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<int64_t>&, T); \
         template void CUDAMath::apply_sparse_softmax_crossentropy_backward<T>(Tensor<T>&, const Tensor<T>&, const Tensor<int64_t>&, const Tensor<T>&, bool); \
         template void CUDAMath::apply_swiglu_forward<T>(Tensor<T>&, const Tensor<T>&, const Tensor<T>&); \
-        template void CUDAMath::apply_swiglu_backward<T>(Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, bool, bool);
+        template void CUDAMath::apply_swiglu_backward<T>(Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, bool, bool); \
+        template void CUDAMath::apply_adamw_step<T>(Tensor<T>&, Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, bool);
         
 
     INSTANTIATE_CUDA_MATH_SINGLE(float)
