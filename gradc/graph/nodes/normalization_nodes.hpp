@@ -278,16 +278,45 @@ namespace gradc {
             void backward(const Tensor<T>& out_grad, bool retain_graph) override {
                 if (m_parent.requires_grad() || m_gamma.requires_grad()) {
                     Device target_device = out_grad.device();
+                    
+                    Tensor<T> dx;
+                    bool acc_dx = false;
+                    if (m_parent.requires_grad()) {
+                        if (m_parent.grad().has_value()) {
+                            dx = m_parent.grad().value();
+                            acc_dx = true;
+                        } 
+                        else {
+                            dx = Tensor<T>(m_parent.shape(), target_device, uninitialized);
+                        }
+                    }
+                    
+                    Tensor<T> dgamma;
+                    bool acc_dgamma = false;
+                    if (m_gamma.requires_grad()) {
+                        if (m_gamma.grad().has_value()) {
+                            dgamma = m_gamma.grad().value();
+                            acc_dgamma = true; // its not passed down bc the kernel already uses atomicAdd
+                        } 
+                        else {
+                            dgamma = Tensor<T>(m_gamma.shape(), T(0), target_device); 
+                        }
+                    }
 
-                    Tensor<T> dx = m_parent.requires_grad() ? Tensor<T>(m_parent.shape(), target_device, uninitialized) : Tensor<T>();;
-                    Tensor<T> dgamma = m_gamma.requires_grad() ? Tensor<T>(m_gamma.shape(), T(0), target_device) : Tensor<T>();
                     Tensor<T> reshaped_gamma = lobotomized_reshape_view(m_gamma, m_normalized_shape);
-                    Tensor<T> reshaped_dgamma = lobotomized_reshape_view(dgamma, m_normalized_shape);
+                    Tensor<T> reshaped_dgamma;
+                    if (m_gamma.requires_grad()) {
+                        reshaped_dgamma = lobotomized_reshape_view(dgamma, m_normalized_shape);
+                    }
 
-                    dispatch_rmsnorm_backward(target_device, dx, reshaped_dgamma, out_grad, m_parent, reshaped_gamma, m_inv_rms, m_red_meta, m_normalized_shape);
+                    dispatch_rmsnorm_backward(target_device, dx, reshaped_dgamma, out_grad, m_parent, reshaped_gamma, m_inv_rms, m_red_meta, m_normalized_shape, acc_dx);
 
-                    if (m_parent.requires_grad()) {m_parent.accumulate_grad(dx);}
-                    if (m_gamma.requires_grad()) {m_gamma.accumulate_grad(dgamma);}
+                    if (m_parent.requires_grad() && !acc_dx) {
+                        m_parent._get_state()->m_grad = std::move(dx);
+                    }
+                    if (m_gamma.requires_grad() && !acc_dgamma) {
+                        m_gamma._get_state()->m_grad = std::move(dgamma);
+                    }
 
                     if (!retain_graph) {
                         m_inv_rms = Tensor<T>();

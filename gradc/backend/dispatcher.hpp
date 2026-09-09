@@ -166,12 +166,12 @@ namespace gradc {
     }
     
     template <typename T>
-    inline void dispatch_rmsnorm_backward(Device device, Tensor<T>& dx, Tensor<T>& dgamma, const Tensor<T>& out_grad, const Tensor<T>& parent, const Tensor<T>& gamma, const Tensor<T>& inv_rms, const RedMeta& red_meta, const std::vector<int64_t>& normalized_shape) {
+    inline void dispatch_rmsnorm_backward(Device device, Tensor<T>& dx, Tensor<T>& dgamma, const Tensor<T>& out_grad, const Tensor<T>& parent, const Tensor<T>& gamma, const Tensor<T>& inv_rms, const RedMeta& red_meta, const std::vector<int64_t>& normalized_shape, bool acc_dx) {
         if (device.is_cpu()) {
             throw std::runtime_error("Tried running RMSNormFast backward on the CPU.");
         }
         else if (device.is_cuda()) {
-            CUDAMath::apply_rmsnorm_backward(dx, dgamma, out_grad, parent, gamma, inv_rms, red_meta, normalized_shape);
+            CUDAMath::apply_rmsnorm_backward(dx, dgamma, out_grad, parent, gamma, inv_rms, red_meta, normalized_shape, acc_dx);
         }
     }
 
@@ -186,12 +186,12 @@ namespace gradc {
     }
 
     template <typename T>
-    inline void dispatch_causal_softmax_backward(Device device, Tensor<T>& dx, const Tensor<T>& out_grad, const Tensor<T>& probs, T scale, int64_t seq_len) {
+    inline void dispatch_causal_softmax_backward(Device device, Tensor<T>& dx, const Tensor<T>& out_grad, const Tensor<T>& probs, T scale, int64_t seq_len, bool acc_dx) {
         if (device.is_cpu()) {
             throw std::runtime_error("Tried running Softmax Causal backward on the CPU.");
         }
         else if (device.is_cuda()) {
-            CUDAMath::apply_causal_softmax_backward(dx, out_grad, probs, scale, seq_len);
+            CUDAMath::apply_causal_softmax_backward(dx, out_grad, probs, scale, seq_len, acc_dx);
         }
     }
     
@@ -206,12 +206,12 @@ namespace gradc {
     }
 
     template <typename T>
-    inline void dispatch_softmax_crossentropy_backward(Device device, Tensor<T>& dx, const Tensor<T>& probs, const Tensor<int64_t>& targets, const Tensor<T>& out_grad) {
+    inline void dispatch_softmax_crossentropy_backward(Device device, Tensor<T>& dx, const Tensor<T>& probs, const Tensor<int64_t>& targets, const Tensor<T>& out_grad, bool acc_dx) {
         if (device.is_cpu()) {
             throw std::runtime_error("Tried running Softmax Crossentropy backward on the CPU.");
         }
         else if (device.is_cuda()) {
-            CUDAMath::apply_sparse_softmax_crossentropy_backward(dx, probs, targets, out_grad);
+            CUDAMath::apply_sparse_softmax_crossentropy_backward(dx, probs, targets, out_grad, acc_dx);
         }
     }
 
@@ -241,7 +241,7 @@ namespace gradc {
             throw std::runtime_error("Tried running SwiGLU fast backward on the CPU.");
         }
         else if (device.is_cuda()) {
-            CUDAMath::apply_swiglu_backward(da, db, out_grad, a, b);
+            CUDAMath::apply_swiglu_backward(da, db, out_grad, a, b, acc_a, acc_b);
         }
     }
 }

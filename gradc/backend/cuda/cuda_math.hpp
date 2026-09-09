@@ -35,19 +35,19 @@ namespace gradc {
             static void apply_rmsnorm_forward(Tensor<T>& out, Tensor<T>& inv_rms, const Tensor<T>& parent, const Tensor<T>& gamma, const RedMeta& red_meta, const std::vector<int64_t>& normalized_shape, T eps);
             template <typename T>
             requires std::is_floating_point_v<T>
-            static void apply_rmsnorm_backward(Tensor<T>& dx, Tensor<T>& dgamma, const Tensor<T>& out_grad, const Tensor<T>& parent, const Tensor<T>& gamma, const Tensor<T>& inv_rms, const RedMeta& red_meta, const std::vector<int64_t>& normalized_shape);
+            static void apply_rmsnorm_backward(Tensor<T>& dx, Tensor<T>& dgamma, const Tensor<T>& out_grad, const Tensor<T>& parent, const Tensor<T>& gamma, const Tensor<T>& inv_rms, const RedMeta& red_meta, const std::vector<int64_t>& normalized_shape, bool acc_dx);
             template <typename T>
             requires std::is_floating_point_v<T>
             static void apply_causal_softmax_forward(Tensor<T>& probs, const Tensor<T>& scores, T scale, int64_t seq_len);
             template <typename T>
             requires std::is_floating_point_v<T>
-            static void apply_causal_softmax_backward(Tensor<T>& dx, const Tensor<T>& out_grad, const Tensor<T>& probs, T scale, int64_t seq_len);
+            static void apply_causal_softmax_backward(Tensor<T>& dx, const Tensor<T>& out_grad, const Tensor<T>& probs, T scale, int64_t seq_len, bool acc_dx);
             template <typename T>
             requires std::is_floating_point_v<T>
             static void apply_sparse_softmax_crossentropy_forward(Tensor<T>& loss, Tensor<T>& probs, const Tensor<T>& logits, const Tensor<int64_t>& targets, T eps);
             template <typename T>
             requires std::is_floating_point_v<T>
-            static void apply_sparse_softmax_crossentropy_backward(Tensor<T>& dx, const Tensor<T>& probs, const Tensor<int64_t>& targets, const Tensor<T>& out_grad);
+            static void apply_sparse_softmax_crossentropy_backward(Tensor<T>& dx, const Tensor<T>& probs, const Tensor<int64_t>& targets, const Tensor<T>& out_grad, bool acc_dx);
             template <typename T>
             requires std::is_floating_point_v<T>
             static void apply_swiglu_forward(Tensor<T>& out, const Tensor<T>& a, const Tensor<T>& b);

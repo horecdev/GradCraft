@@ -980,7 +980,7 @@ namespace gradc {
         T* __restrict__ p_dx, T* __restrict__ p_dgamma, 
         const T* __restrict__  p_out_grad, const T* __restrict__ p_parent, 
         const T* __restrict__ p_gamma, const T* __restrict__ p_inv_rms,
-        int64_t parent_offset, int64_t reduced_vol
+        int64_t parent_offset, int64_t reduced_vol, bool acc_dx
     ) {
         int64_t row = blockIdx.x;
         int64_t tid = threadIdx.x;
@@ -1024,7 +1024,13 @@ namespace gradc {
 
             if (p_dx != nullptr) {
                 T dx_hat = out_grad_row[i] * gamma_row[i];
-                dx_row[i] = inv_rms * (dx_hat - x_norm * sum_term);
+                T val = inv_rms * (dx_hat - x_norm * sum_term);
+                if (acc_dx) {
+                    dx_row[i] += val;
+                } 
+                else {
+                    dx_row[i] = val;
+                }
             }
 
             if (p_gamma != nullptr) {
@@ -1043,7 +1049,7 @@ namespace gradc {
         const T* __restrict__ p_gamma, const T* __restrict__ p_inv_rms,
         CUDAMeta reduced_shape, CUDAMeta normalized_shape, 
         CUDAMeta dx_strides, CUDAMeta out_grad_strides, CUDAMeta parent_strides,
-        int64_t parent_offset, int64_t reduced_vol
+        int64_t parent_offset, int64_t reduced_vol, bool acc_dx
     ) {
         int64_t row = blockIdx.x;
         int64_t tid = threadIdx.x;
@@ -1131,7 +1137,13 @@ namespace gradc {
             if (p_dx != nullptr) {
                 T gamma_val = p_gamma[i];
                 T dx_hat = out_grad_val * gamma_val;
-                p_dx[base_dx + mov_dx] = inv_rms * (dx_hat - x_norm * sum_term);
+                T val = inv_rms * (dx_hat - x_norm * sum_term);
+                if (acc_dx) {
+                    p_dx[base_dx + mov_dx] += val;
+                } 
+                else {
+                    p_dx[base_dx + mov_dx] = val;
+                }
             }
 
             if (p_dgamma != nullptr) {
@@ -1144,7 +1156,7 @@ namespace gradc {
     template <typename T> 
     requires std::is_floating_point_v<T>
     // dx, out_grad, dgamma, gamma, inv_rms always DENSE
-    void CUDAMath::apply_rmsnorm_backward(Tensor<T>& dx, Tensor<T>& dgamma, const Tensor<T>& out_grad, const Tensor<T>& parent, const Tensor<T>& gamma, const Tensor<T>& inv_rms, const RedMeta& red_meta, const std::vector<int64_t>& normalized_shape) {
+    void CUDAMath::apply_rmsnorm_backward(Tensor<T>& dx, Tensor<T>& dgamma, const Tensor<T>& out_grad, const Tensor<T>& parent, const Tensor<T>& gamma, const Tensor<T>& inv_rms, const RedMeta& red_meta, const std::vector<int64_t>& normalized_shape, bool acc_dx) {
         cudaSetDevice(out_grad.device().index);
         int64_t threads = 256;
         int64_t blocks = red_meta.result_vol;
@@ -1173,7 +1185,7 @@ namespace gradc {
         const T* p_inv_rms = inv_rms._get_storage()->data();
 
         if (is_fast) {
-            rmsnorm_backward_kernel_fast<<<blocks, threads>>>(p_dx, p_dgamma, p_out_grad, p_parent, p_gamma, p_inv_rms, parent.offset(), red_meta.reduced_vol);
+            rmsnorm_backward_kernel_fast<<<blocks, threads>>>(p_dx, p_dgamma, p_out_grad, p_parent, p_gamma, p_inv_rms, parent.offset(), red_meta.reduced_vol, acc_dx);
         }
         else {
             CUDAMeta gpu_reduced_shape = to_cuda_meta(red_meta.temp_shape);
@@ -1181,7 +1193,7 @@ namespace gradc {
             CUDAMeta gpu_dx_strides = to_cuda_meta(dx.strides());
             CUDAMeta gpu_out_grad_strides = to_cuda_meta(out_grad.strides());
             CUDAMeta gpu_parent_strides = to_cuda_meta(parent.strides());
-            rmsnorm_backward_kernel_strided<<<blocks, threads>>>(p_dx, p_dgamma, p_out_grad, p_parent, p_gamma, p_inv_rms, gpu_reduced_shape, gpu_normalized_shape, gpu_dx_strides, gpu_out_grad_strides, gpu_parent_strides, parent.offset(), red_meta.reduced_vol);
+            rmsnorm_backward_kernel_strided<<<blocks, threads>>>(p_dx, p_dgamma, p_out_grad, p_parent, p_gamma, p_inv_rms, gpu_reduced_shape, gpu_normalized_shape, gpu_dx_strides, gpu_out_grad_strides, gpu_parent_strides, parent.offset(), red_meta.reduced_vol, acc_dx);
         }
     }
 
@@ -1278,7 +1290,7 @@ namespace gradc {
     __global__ void causal_softmax_backward_kernel_fast(
         T* __restrict__ p_dx, 
         const T* __restrict__ p_out_grad, const T* __restrict__ p_probs,
-        T scale, int64_t seq_len
+        T scale, int64_t seq_len, bool acc_dx
     ) {
         // launch B * num_heads * T blocks again
         int64_t row = blockIdx.x;
@@ -1311,18 +1323,22 @@ namespace gradc {
         T row_sum = s_scratch[0];
         
         for (int64_t i = tid; i < seq_len; i += blockDim.x) {
+            T val = 0;
             if (i <= seq_row) {
-                dx_row[i] = scale * probs_row[i] * (out_grad_row[i] - row_sum);
+                val = scale * probs_row[i] * (out_grad_row[i] - row_sum);
+            }
+            if (acc_dx) {
+                dx_row[i] += val;
             }
             else {
-                dx_row[i] = 0;
+                dx_row[i] = val;
             }
         }
     }
     
     template <typename T> 
     requires std::is_floating_point_v<T>
-    void CUDAMath::apply_causal_softmax_backward(Tensor<T>& dx, const Tensor<T>& out_grad, const Tensor<T>& probs, T scale, int64_t seq_len) {
+    void CUDAMath::apply_causal_softmax_backward(Tensor<T>& dx, const Tensor<T>& out_grad, const Tensor<T>& probs, T scale, int64_t seq_len, bool acc_dx) {
         cudaSetDevice(probs.device().index);
         int64_t threads = 256;
         int64_t blocks = probs.shape()[0] * probs.shape()[1] * probs.shape()[2];
@@ -1331,7 +1347,7 @@ namespace gradc {
         const T* p_out_grad = out_grad._get_storage()->data();
         const T* p_probs = probs._get_storage()->data();
 
-        causal_softmax_backward_kernel_fast<<<blocks, threads>>>(p_dx, p_out_grad, p_probs, scale, seq_len);
+        causal_softmax_backward_kernel_fast<<<blocks, threads>>>(p_dx, p_out_grad, p_probs, scale, seq_len, acc_dx);
     }
 
     #pragma endregion CAUSAL SOFTMAX
@@ -1425,9 +1441,7 @@ namespace gradc {
         const T* p_logits = logits._get_storage()->data(); 
         const int64_t* p_targets = targets._get_storage()->data();
         
-        softmax_crossentropy_forward_kernel_fast<<<blocks, threads>>>(
-            p_loss, p_probs, p_logits, p_targets, logits.offset(), total_rows, vocab_size, eps
-        );
+        softmax_crossentropy_forward_kernel_fast<<<blocks, threads>>>(p_loss, p_probs, p_logits, p_targets, logits.offset(), total_rows, vocab_size, eps);
     }
 
 
@@ -1440,7 +1454,7 @@ namespace gradc {
         T* __restrict__ p_dx, const T* __restrict__ p_probs, 
         const int64_t* __restrict__ p_targets, const T* __restrict__ p_out_grad,
         int64_t dx_offset,
-        int64_t total_rows, int64_t vocab_size
+        int64_t total_rows, int64_t vocab_size, bool acc_dx
     ) {
         int64_t row = blockIdx.x; // launch B*T blocks
         int64_t tid = threadIdx.x;
@@ -1458,13 +1472,18 @@ namespace gradc {
                 grad_val -= scale; // p * s - s = (p - 1) * s, all checks
             }
 
-            dx_row[i] = grad_val;
+            if (acc_dx) {
+                dx_row[i] += grad_val;
+            }
+            else {
+                dx_row[i] = grad_val;
+            }
         }
     }
 
     template <typename T>
     requires std::is_floating_point_v<T>
-    void CUDAMath::apply_sparse_softmax_crossentropy_backward(Tensor<T>& dx, const Tensor<T>& probs, const Tensor<int64_t>& targets, const Tensor<T>& out_grad) {
+    void CUDAMath::apply_sparse_softmax_crossentropy_backward(Tensor<T>& dx, const Tensor<T>& probs, const Tensor<int64_t>& targets, const Tensor<T>& out_grad, bool acc_dx) {
         cudaSetDevice(probs.device().index);
         
         int64_t vocab_size = dx.shape().back();
@@ -1478,9 +1497,7 @@ namespace gradc {
         const int64_t* p_targets = targets._get_storage()->data();
         const T* p_out_grad = out_grad._get_storage()->data();
         
-        softmax_crossentropy_backward_kernel_fast<<<blocks, threads>>>(
-            p_dx, p_probs, p_targets, p_out_grad, dx.offset(), total_rows, vocab_size
-        );
+        softmax_crossentropy_backward_kernel_fast<<<blocks, threads>>>(p_dx, p_probs, p_targets, p_out_grad, dx.offset(), total_rows, vocab_size, acc_dx);
     }
 
     #pragma endregion SOFTMAX CROSS-ENTROPY
@@ -1608,12 +1625,12 @@ namespace gradc {
 
     #define INSTANTIATE_CUDA_MISC(T) \
         template void CUDAMath::apply_rmsnorm_forward<T>(Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const RedMeta&, const std::vector<int64_t>&, T); \
-        template void CUDAMath::apply_rmsnorm_backward<T>(Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const RedMeta&, const std::vector<int64_t>&); \
+        template void CUDAMath::apply_rmsnorm_backward<T>(Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const RedMeta&, const std::vector<int64_t>&, bool); \
         template void CUDAMath::apply_causal_softmax_forward<T>(Tensor<T>&, const Tensor<T>&, T, int64_t); \
-        template void CUDAMath::apply_causal_softmax_backward<T>(Tensor<T>&, const Tensor<T>&, const Tensor<T>&, T, int64_t); \
+        template void CUDAMath::apply_causal_softmax_backward<T>(Tensor<T>&, const Tensor<T>&, const Tensor<T>&, T, int64_t, bool); \
         template void CUDAMath::apply_embed<T>(Tensor<T>&, const Tensor<int64_t>&, const Tensor<T>&, int64_t); \
         template void CUDAMath::apply_sparse_softmax_crossentropy_forward<T>(Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<int64_t>&, T); \
-        template void CUDAMath::apply_sparse_softmax_crossentropy_backward<T>(Tensor<T>&, const Tensor<T>&, const Tensor<int64_t>&, const Tensor<T>&); \
+        template void CUDAMath::apply_sparse_softmax_crossentropy_backward<T>(Tensor<T>&, const Tensor<T>&, const Tensor<int64_t>&, const Tensor<T>&, bool); \
         template void CUDAMath::apply_swiglu_forward<T>(Tensor<T>&, const Tensor<T>&, const Tensor<T>&); \
         template void CUDAMath::apply_swiglu_backward<T>(Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, bool, bool);
         

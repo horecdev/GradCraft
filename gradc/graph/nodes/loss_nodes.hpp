@@ -128,7 +128,8 @@ namespace gradc {
                 Tensor<T> probs;
                 if (m_logits.is_exclusive()) {
                     probs = m_logits;
-                } else {
+                } 
+                else {
                     probs = Tensor<T>(m_logits.shape(), target_device, uninitialized);
                 }
 
@@ -144,17 +145,26 @@ namespace gradc {
             void backward(const Tensor<T>& out_grad, bool retain_graph) override {
                 if (m_logits.requires_grad()) {
                     Device target_device = out_grad.device();
-                    Tensor<T> dx = Tensor<T>(m_logits.shape(), target_device, uninitialized);
                     
-                    dispatch_softmax_crossentropy_backward(target_device, dx, m_probs, m_targets, out_grad);
+                    Tensor<T> dx;
+                    bool acc_dx = false;
+                    if (m_logits.grad().has_value()) {
+                        dx = m_logits.grad().value();
+                        acc_dx = true;
+                    } 
+                    else {
+                        dx = Tensor<T>(m_logits.shape(), target_device, uninitialized);
+                    }
                     
-                    m_logits.accumulate_grad(dx);
+                    dispatch_softmax_crossentropy_backward(target_device, dx, m_probs, m_targets, out_grad, acc_dx);
+                    
+                    if (!acc_dx) {
+                        m_logits._get_state()->m_grad = std::move(dx);
+                    }
                 }
-
                 if (m_targets.requires_grad()) {
                     throw std::runtime_error("SoftmaxCELFast index targets cannot require grad.");
                 }
-
                 if (!retain_graph) {
                     m_probs = Tensor<T>();
                 }

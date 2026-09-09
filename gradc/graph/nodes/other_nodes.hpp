@@ -125,13 +125,24 @@ namespace gradc {
             void backward(const Tensor<T>& out_grad, bool retain_graph) override {
                 if (m_scores.requires_grad()) {
                     Device target_device = out_grad.device();
-                    Tensor<T> dscores = Tensor<T>(m_scores.shape(), target_device, uninitialized);
-
-                    dispatch_causal_softmax_backward(target_device, dscores, out_grad, m_probs, m_scale, m_seq_len);
-
-                    m_scores.accumulate_grad(dscores);
+                    
+                    Tensor<T> dscores;
+                    bool acc_dx = false;
+                    
+                    if (m_scores.grad().has_value()) {
+                        dscores = m_scores.grad().value();
+                        acc_dx = true;
+                    } 
+                    else {
+                        dscores = Tensor<T>(m_scores.shape(), target_device, uninitialized);
+                    }
+                    
+                    dispatch_causal_softmax_backward(target_device, dscores, out_grad, m_probs, m_scale, m_seq_len, acc_dx);
+                    
+                    if (!acc_dx) {
+                        m_scores._get_state()->m_grad = std::move(dscores);
+                    }
                 }
-
                 if (!retain_graph) {
                     m_probs = Tensor<T>();
                 }
@@ -199,6 +210,7 @@ namespace gradc {
         void backward(Tensor<T> out_grad, [[maybe_unused]] bool retain_graph) override {
             if (!m_w1_out.requires_grad() && !m_w2_out.requires_grad()){return;}
 
+            // essentially: you check if grad exists. If it does, you accumulate and pass down the grad. If not, you create it, dont accumulate, and then move it in as the grad.
             Device target_device = out_grad.device();
             Tensor<T> da;
             bool acc_a = false;
