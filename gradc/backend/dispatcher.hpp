@@ -224,4 +224,24 @@ namespace gradc {
             CUDAUtils::one_hot_encode(result._get_storage()->data(), indices._get_storage()->data(), indices.volume(), result.shape().back(), device);
         }
     }
+
+    template <typename T>
+    inline void dispatch_swiglu_fast_forward(Device device, Tensor<T>& out, const Tensor<T>& a, const Tensor<T>& b) {
+        if (device.is_cpu()) {
+            throw std::runtime_error("Tried running SwiGLU fast forward on the CPU.");
+        }
+        else if (device.is_cuda()) {
+            CUDAMath::apply_swiglu_forward(out, a, b);
+        }
+    }
+
+    template <typename T>
+    inline void dispatch_swiglu_fast_backward(Device device, Tensor<T>& da, Tensor<T>& db, const Tensor<T>& out_grad, const Tensor<T>& a, const Tensor<T>& b) {
+        if (device.is_cpu()) {
+            throw std::runtime_error("Tried running SwiGLU fast backward on the CPU.");
+        }
+        else if (device.is_cuda()) {
+            CUDAMath::apply_swiglu_backward(da, db, out_grad, a, b);
+        }
+    }
 }

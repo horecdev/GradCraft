@@ -173,4 +173,54 @@ namespace gradc {
                 return {m_indices._get_state_base()};
             }
     };
+
+    template <typename T>
+    class SwiGLUFastNode : public Node<T> {
+        private:
+            Tensor<T> m_w1_out;
+            Tensor<T> m_w2_out;
+
+        public:
+            SwiGLUFastNode(Tensor<T> w1_out, Tensor<T> w2_out) : m_w1_out(std::move(w1_out)), m_w2_out(std::move(w2_out)) {}
+
+        Tensor<T> realize() override {
+            m_w1_out.realize();
+            m_w2_out.realize();
+
+            Device target_device = m_w1_out.device();
+
+            Tensor<T> result = Tensor<T>(m_w1_out.shape(), target_device, uninitialized);
+
+            dispatch_swiglu_fast_forward(target_device, result, m_w1_out, m_w2_out);
+
+            return result;
+        }
+
+        void backward(Tensor<T> out_grad, [[maybe_unused]] bool retain_graph) override {
+            if (m_w1_out.requires_grad() || m_w2_out.requires_grad()){
+                Device target_device = out_grad.device();
+                Tensor<T> da;
+                Tensor<T> db;
+                if (m_w1_out.requires_grad()) {
+                    da = Tensor<T>(m_w1_out.shape(), target_device, uninitialized);
+                }
+                if (m_w2_out.requires_grad()) {
+                    db = Tensor<T>(m_w2_out.shape(), target_device, uninitialized);
+                }
+
+                dispatch_swiglu_fast_backward(target_device, da, db, out_grad, m_w1_out, m_w2_out);
+
+                if (m_w1_out.requires_grad()) {
+                    m_w1_out.accumulate_grad(da);
+                }
+                if (m_w2_out.requires_grad()) {
+                    m_w2_out.accumulate_grad(db);
+                }
+            }
+        }
+
+        std::vector<TensorStateBase*> get_input_states() override {
+            return {m_w1_out._get_state_base(), m_w2_out._get_state_base()};
+        }
+    };
 }

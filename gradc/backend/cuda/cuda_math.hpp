@@ -48,5 +48,12 @@ namespace gradc {
             template <typename T>
             requires std::is_floating_point_v<T>
             static void apply_sparse_softmax_crossentropy_backward(Tensor<T>& dx, const Tensor<T>& probs, const Tensor<int64_t>& targets, const Tensor<T>& out_grad);
+            template <typename T>
+            requires std::is_floating_point_v<T>
+            static void apply_swiglu_forward(Tensor<T>& out, const Tensor<T>& a, const Tensor<T>& b);
+            template <typename T>
+            requires std::is_floating_point_v<T>
+            static void apply_swiglu_backward(Tensor<T>& da, Tensor<T>& db, const Tensor<T>& out_grad, const Tensor<T>& a, const Tensor<T>& b);
+    
     };
 }

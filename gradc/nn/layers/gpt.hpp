@@ -15,6 +15,7 @@ namespace gradc {
             Linear<T> m_w1;
             Linear<T> m_w2;
             Linear<T> m_w3;
+            bool cuda_fast = true;
         public:
             SwiGLUMLP(int64_t embed_dim, int64_t hidden_dim, const Initializer<T>& init)
              : m_w1(embed_dim, hidden_dim, init, ZerosInit<T>()), m_w2(embed_dim, hidden_dim, init, ZerosInit<T>()), m_w3(hidden_dim, embed_dim, init, ZerosInit<T>()) {
@@ -24,7 +25,14 @@ namespace gradc {
             }
 
             Tensor<T> forward(Tensor<T> x) {
-                return m_w3.forward(m_w1.forward(x).silu() * m_w2.forward(x)); // GLU but projected once again
+                Tensor<T> w1_out = m_w1.forward(x);
+                Tensor<T> w2_out = m_w2.forward(x);
+
+                if (cuda_fast && x.device().is_cuda()) {
+                    return swiglu_fast(w1_out, w2_out);
+                }
+                
+                return m_w3.forward(w1_out.silu() * w2_out);
             }
     };
 

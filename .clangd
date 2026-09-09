@@ -13,3 +13,4 @@ CompileFlags:
     - "-O2"
     - "-fsanitize=address"
     - "-MDd"
+    - "ftz=true"

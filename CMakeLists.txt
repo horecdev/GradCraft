@@ -38,7 +38,7 @@ if(MSVC)
 # release
     target_compile_options(GradCore PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4 /bigobj /O2 /fp:fast>
-        $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/bigobj,-O2,-fp:fast -O3 -use_fast_math -ftz=true>
+        $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/bigobj,-O2,-fp:fast -O3 -use_fast_math>
     )
 
     # target_compile_options(GradCore PRIVATE

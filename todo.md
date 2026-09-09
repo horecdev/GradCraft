@@ -197,10 +197,10 @@ DONE First test out the GPT crossentropy running for one_hot_encode without fast
 DONE Then test out on the fast path with sparse indices (fix compiler errors)
 DONE Find out whether a model can fit with 160M params on the RTX (174M fits)
 - Fused AdamW kernel
-- Fused SwiGLU fwd/bwd (fast + frontend + fit everything to it) save VRAM, VRAM trips
+DONE fused SwiGLU fwd/bwd (fast + frontend + fit everything to it) save VRAM
+- Saving on ram by accumulating directly in custom kernels (SwiGLU, RMSNorm, CausalSoftmax, SoftmaxCEL)
 - Write a sampling loop
-- Compare math to pytorch at GPT 3070 with B=1 (grads too)
-- Write a function to save loss in a specified file
+- Write a function to save loss in a specified file - some losshistory object??
 - Benchmark RMSNormNaive and RMSNormFast (CUDA)
 - Benchmark SoftmaxCEL Fast and Naive (CUDA)
 - Show speedup by moving from CPU to CUDA in tok/s (small GPT on both - move to CUDA=speedup)

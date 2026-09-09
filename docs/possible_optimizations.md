@@ -1,3 +1,4 @@
 - JIT Compiler for elementwise ops etc
 - Use out_grad that is deleted after backward() of a node. Right now its const ref, could just use it to reduce HWM
 - Make BMM loop over the stride dims [batch1, batch2] with odometer loop calling cublas, isntead of forcing .contiguous() copy.
+- Accumulate backward directly into tensors in custom kernels
