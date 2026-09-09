@@ -99,7 +99,7 @@ namespace gradc {
     }
 
     template <typename T>
-    std::unordered_map<std::string, T> load_scalar(const std::string& path) {
+    std::unordered_map<std::string, T> load_scalar_checkpoint(const std::string& path) {
         std::ifstream in(path, std::ios::binary);
         if (!in) {throw std::runtime_error("Failed to open file for loading: " + path);}
 

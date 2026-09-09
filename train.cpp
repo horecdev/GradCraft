@@ -5,58 +5,136 @@
 using namespace gradc;
 int main() {
     try {
+        // CONFIG
+        cudaStream_t copy_stream = create_stream();
+        cudaEvent_t event = create_event();
         Device gpu(DeviceType::CUDA, 0);
-        DataLoader loader = DataLoader("C:/Local Projects/autograd_cpp/data/datasets/cosmo_cpp.bin");
+        Device cpu(DeviceType::CPU);
 
-        // prep
-        int64_t B = 1;
-        int64_t seq_len = 128;
+        // HYPERPARAMS
+        int64_t B_target = 510; // 85 * 6 ~ 512
+        int64_t B_real = 6; // target 6 for 3090
+        int64_t seq_len = 1024;
         int64_t vocab_size = 32768;
         int64_t embed_dim = 768;
         int64_t num_heads = 12;
         int64_t num_layers = 16;
 
-        NormalInit<float> init(0.0f, 0.003535f);
+        // OPTIMIZER / SCHEDULER HYPERPARAMS
+        float max_lr = 3e-4f;
+        float min_lr = 3e-5f;
+        float calc_eps = 1e-5f;
+        float optim_eps = 1e-8f;
 
-        cudaStream_t copy_stream = create_stream();
-        cudaEvent_t event = create_event();
+        float beta1 = 0.9f;
+        float beta2 = 0.999f;
+        float weight_decay = 0.1f;
 
-        GPT<float> model(vocab_size, seq_len, embed_dim, num_heads, num_layers, init, 1e-5f);
+        // TRAINING HYPERPARAMS
+        int64_t grad_accum_steps = B_target / B_real;
+        int64_t total_steps = 8'272; // 8272 * 510 * 1024 = 4.3 billion tokens
+        int64_t warmup_steps = 827; // 10%
+
+        // DATA
+        DataLoader loader = DataLoader("C:/Local Projects/autograd_cpp/data/datasets/cosmo_cpp.bin");
+        
+        // MODEL
+        float std = 1 / std::sqrt(2 * num_layers);
+        NormalInit<float> init(0.0f, std);
+        GPT<float> model(vocab_size, seq_len, embed_dim, num_heads, num_layers, init, calc_eps);
         model.to(gpu);
 
-        AdamW<float> optimizer(model.named_parameters(), 3e-4f);
-        CosineScheduler<float> scheduler(&optimizer, 3e-4f, 3e-5f, 5, 10);
+        // OPTIMIZER AND SCHEDULER
+        AdamW<float> optimizer(model.named_parameters(), 3e-4f, beta1, beta2, weight_decay, optim_eps);
+        CosineScheduler<float> scheduler(&optimizer, min_lr, max_lr, warmup_steps, total_steps);
+
+        // CHECKPOINTING
+        bool load_checkpoint = false;
+        int64_t checkpoint_every = 500;
+
+        std::string latest_model_path = "C:/Local Projects/autograd_cpp/models/malloc-174/latest_model.bin";
+        std::string latest_optim_path = "C:/Local Projects/autograd_cpp/models/malloc-174/latest_optim.bin";
+        std::string latest_scheduler_path = "C:/Local Projects/autograd_cpp/models/malloc-174/latest_scheduler.bin";
+
+        std::string final_save_path = "C:/Local Projects/autograd_cpp/models/malloc-174/trained_model.bin";
+
+        int64_t start_step = 0;
+        if (load_checkpoint != false) {
+            std::cout << "Loading checkpoint..." << std::endl;
+
+            auto model_state = load_tensor_checkpoint<float>(latest_model_path);
+            model.load_state_dict(model_state);
+
+            auto optim_state = load_tensor_checkpoint<float>(latest_optim_path);
+            optimizer.load_state_dict(optim_state);
+
+            auto scheduler_state = load_scalar_checkpoint<float>(latest_scheduler_path);
+            scheduler.load_state_dict(scheduler_state);
+
+            start_step = scheduler.m_t;
+            std::cout << "Successfully loaded state from step: " << start_step << std::endl;
+        }
+
+        // LOG
+        int64_t print_every = 10;
+        int64_t tokens_per_interval = print_every * grad_accum_steps * B_real * seq_len;
 
         std::string num_params = std::format(std::locale("en_US.UTF-8"), "{:L}", model.num_params());
-        std::cout << "Number of params: " << num_params << std::endl;;
+        std::cout << "Starting training of GC-2. Number of params: " << num_params << std::endl;;
 
-        int64_t tokens_per_step = B * seq_len;
+        auto start_time = std::chrono::high_resolution_clock::now();
+        float last_loss_val = 0.0f;
 
-        for (int64_t i = 0; i < 5; ++i) {
-            auto start_time = std::chrono::high_resolution_clock::now();
-
-            auto [X, Y] = loader.next_batch(B, seq_len, Device(DeviceType::CPU));
-            X = X.to_async(gpu, copy_stream, event);
-            Y = Y.to_async(gpu, copy_stream, event);
-            Tensor<float> logits = model.forward(X);
-
-            Tensor<float> loss = softmax_crossentropy_fast<float>(logits, Y, 1e-5f);
-
-            loss.realize();
-            float loss_val = loss.item();
+        for (int64_t step = 0; step < total_steps; ++step) {
             model.zero_grad();
-            loss.backward();
+            for (int64_t micro_batch = 0; micro_batch < grad_accum_steps; ++micro_batch) {
+                auto [X, Y] = loader.next_batch(B_real, seq_len, Device(DeviceType::CPU));
+                X = X.to_async(gpu, copy_stream, event);
+                Y = Y.to_async(gpu, copy_stream, event);
+                Tensor<float> logits = model.forward(X);
+
+                Tensor<float> loss = softmax_crossentropy_fast<float>(logits, Y, calc_eps);
+                Tensor<float> scaled_loss = loss / static_cast<float>(grad_accum_steps); // SCEL does 1/6 but u gotta do 1/510
+
+                scaled_loss.realize();
+                
+                if (step % print_every == 0 && micro_batch == grad_accum_steps - 1) {
+                    last_loss_val = loss.item();
+                }
+
+                scaled_loss.backward();
+            }
+            scheduler.step();
             optimizer.step();
 
-            auto end_time = std::chrono::high_resolution_clock::now();
-            double step_seconds = std::chrono::duration<double>(end_time - start_time).count();
-            double tok_per_sec = tokens_per_step / step_seconds;
-            
-            std::cout << "Step: " << i << " | Loss: " << loss_val << " | Time: " << (step_seconds * 1000.0) << " ms" << " | Speed: " << static_cast<int64_t>(tok_per_sec) << " tok/s" << std::endl;
-        }
-        CUDAMemPool::get().log_hwm();
-        return 0;
+            if (step % print_every == 0) {
+                auto end_time = std::chrono::high_resolution_clock::now();
+                double interval_seconds = std::chrono::duration<double>(end_time - start_time).count();
+                double tok_per_sec = tokens_per_interval / interval_seconds;
+                
+                std::cout << "LOG| step: " << step << " | loss: " << last_loss_val << " | lr: " << scheduler.m_lr << " | tok/s: " << tok_per_sec <<  " | HWM: " << CUDAMemPool::get().get_hwm_gb() << " GB" << std::endl;
+                          
+                start_time = std::chrono::high_resolution_clock::now(); // reset the timer
+            }
 
+            if (step > start_step && step % checkpoint_every == 0) {
+                std::cout << "Saving checkpoint at step: " << step << std::endl;
+
+                save_tensor_checkpoint(model.state_dict(cpu), latest_model_path);
+                save_tensor_checkpoint(optimizer.state_dict(cpu), latest_optim_path);
+                save_scalar_checkpoint(scheduler.state_dict(), latest_scheduler_path);
+
+                std::cout << "Checkpoint finished successfully." << std::endl;
+            }
+        }
+
+        std::cout << "Training finished. Saving final model to: " << final_save_path;
+
+        save_tensor_checkpoint(model.state_dict(cpu), latest_model_path);
+
+        std::cout << "Saving successful." << std::endl;
+
+        return 0;
         
     }
     catch (const std::exception& e) {

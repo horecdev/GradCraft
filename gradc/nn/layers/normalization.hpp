@@ -38,6 +38,7 @@ namespace gradc {
         public:
             RMSNorm(const std::vector<int64_t>& param_shape, const std::vector<int64_t>& axes, const Initializer<T>& gamma_init, T eps = static_cast<T>(1e-6)) {
                 m_gamma = gamma_init.generate(param_shape, Device(DeviceType::CPU));
+                m_gamma.set_no_decay(true);
                 m_axes = std::move(axes);
                 m_eps = eps;
 

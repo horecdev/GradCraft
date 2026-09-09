@@ -13,6 +13,7 @@ namespace gradc {
             Linear(int64_t input_dim, int64_t output_dim, const Initializer<T>& w_init, const Initializer<T>& b_init) {
                 m_weight = Parameter<T>(w_init.generate({input_dim, output_dim}, Device(DeviceType::CPU))); // default generate on the CPU
                 m_bias = Parameter<T>(b_init.generate({output_dim}, Device(DeviceType::CPU)));
+                m_bias.set_no_decay(true);
 
                 this->register_parameter("W", &m_weight);
                 this->register_parameter("b", &m_bias);

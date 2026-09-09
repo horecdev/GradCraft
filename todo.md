@@ -197,18 +197,24 @@ DONE First test out the GPT crossentropy running for one_hot_encode without fast
 DONE Then test out on the fast path with sparse indices (fix compiler errors)
 DONE Find out whether a model can fit with 160M params on the RTX (174M fits)
 DONE Fused AdamW kernel
-- Incorporate AdamW in AdamW call if cudafast=true && iscuda
+DONE Incorporate AdamW in AdamW call if cudafast=true && iscuda
 DONE fused SwiGLU fwd/bwd (fast + frontend + fit everything to it) save VRAM
 DONE Saving on ram by accumulating directly in custom kernels (SwiGLU, RMSNorm, CausalSoftmax, SoftmaxCEL)
 DONE Compile, test.
+- fwd + bwd pass of train has parity with pytorch
+
+- Benchmark for production RTX 3090 vs RTX 3070 Ti at B=1, B=2, B=4, B=6 (HWM, tok/s) @ 3070Ti, 3090
+- Microbenchmarks for: RMSNorm, Causal SDPA, SCEL, SwiGLU, AdamW @ 3090
+- Benchmark for production CPU vs production CUDA @ 3090
+- Benchmark for GC vs Pytorch with B=1, B=2, B=4, B=6, full 174M @ 3090
+
+DONE Integrate target_batch_size and accumulated_batch, step only after its finished
+DONE Add checkpointing with paths
+DONE Save model at the end
+DONE Set up the weight decay correctly
+DONE Set up the logging correctly
+- Run the training on 3070 Ti, checkpoint and resume
+
 - Write a sampling loop
 - Write a function to save loss in a specified file - some losshistory object??
-- Benchmark RMSNormNaive and RMSNormFast (CUDA)
-- Benchmark SoftmaxCEL Fast and Naive (CUDA)
-- Show speedup by moving from CPU to CUDA in tok/s (small GPT on both - move to CUDA=speedup)
-- Compare speed against pytorch 174M at B=1 and B=4 while forcing it to use fp16 and turn off flash attention
-- Compare speed of 3070Ti and 3090 - fill both' VRAM to prove more bandwidth = faster
-- Integrate target_batch_size and accumulated_batch, step only after its filled (pump it up artificially)
-- Write the training loop for the first phase (internet blabber)
-- Integrate checkpointing in the training loop every X million tokens
 - Aim for 4.200.000.000 tokens
