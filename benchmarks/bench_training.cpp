@@ -1,4 +1,4 @@
-#include "gradc/gradc.hpp"
+#include "gradc/gradc.hpp" // IWYU pragma: keep
 #include <iostream>
 #include <chrono>
 #include <iomanip>
@@ -47,15 +47,17 @@ void run_benchmark(int64_t B, int64_t T, int warmup, int iters) {
     double tok_sec = total_tokens / (total_ms / 1000.0);
 
     std::cout << "Avg Time per Step: " << std::fixed << std::setprecision(2) << avg_ms << " ms\n";
-    std::cout << "Throughput:        " << static_cast<int64_t>(tok_sec) << " tok/s\n\n";
+    std::cout << "Throughput:        " << static_cast<int64_t>(tok_sec) << " tok/s\n";
     CUDAMemPool::get().log_hwm();
 }
 
 int main() {
     try {
-        std::cout << "--- gradc FP32 Baseline on RTX 3070 Ti ---\n";
-        run_benchmark(1, 1024, 10, 50);
-        //run_benchmark(4, 1024, 10, 50);
+        std::cout << "Benchmarking training run\n";
+        // run_benchmark(1, 1024, 10, 50);
+        // run_benchmark(2, 1024, 3, 10);
+        run_benchmark(4, 1024, 3, 10);
+        //run_benchmark(6, 1024, 3, 10);
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << "\n";
         return 1;

@@ -12,7 +12,7 @@ int main() {
         Device cpu(DeviceType::CPU);
 
         // HYPERPARAMS
-        int64_t B_target = 510; // 85 * 6 ~ 512
+        int64_t B_target = 510; // 85 * 6 = 510
         int64_t B_real = 6; // target 6 for 3090
         int64_t seq_len = 1024;
         int64_t vocab_size = 32768;
@@ -33,7 +33,7 @@ int main() {
         // TRAINING HYPERPARAMS
         int64_t grad_accum_steps = B_target / B_real;
         int64_t total_steps = 8'272; // 8272 * 510 * 1024 = 4.3 billion tokens
-        int64_t warmup_steps = 827; // 10%
+        int64_t warmup_steps = 0; // 10%
 
         // DATA
         DataLoader loader = DataLoader("C:/Local Projects/autograd_cpp/data/datasets/cosmo_cpp.bin");
@@ -45,18 +45,18 @@ int main() {
         model.to(gpu);
 
         // OPTIMIZER AND SCHEDULER
-        AdamW<float> optimizer(model.named_parameters(), 3e-4f, beta1, beta2, weight_decay, optim_eps);
-        CosineScheduler<float> scheduler(&optimizer, min_lr, max_lr, warmup_steps, total_steps);
+        AdamW<float> optimizer(model.named_parameters(), 0.0f, beta1, beta2, weight_decay, optim_eps);
+        CosineScheduler<float> scheduler(&optimizer, max_lr, min_lr, warmup_steps, total_steps);
 
         // CHECKPOINTING
-        bool load_checkpoint = false;
+        bool load_checkpoint = true;
         int64_t checkpoint_every = 500;
 
-        std::string latest_model_path = "C:/Local Projects/autograd_cpp/models/malloc-174/latest_model.bin";
-        std::string latest_optim_path = "C:/Local Projects/autograd_cpp/models/malloc-174/latest_optim.bin";
-        std::string latest_scheduler_path = "C:/Local Projects/autograd_cpp/models/malloc-174/latest_scheduler.bin";
+        std::string latest_model_path = "C:/Local Projects/autograd_cpp/models/MALLMOC-174/latest_model.bin";
+        std::string latest_optim_path = "C:/Local Projects/autograd_cpp/models/MALLMOC-174/latest_optim.bin";
+        std::string latest_scheduler_path = "C:/Local Projects/autograd_cpp/models/MALLMOC-174/latest_scheduler.bin";
 
-        std::string final_save_path = "C:/Local Projects/autograd_cpp/models/malloc-174/trained_model.bin";
+        std::string final_save_path = "C:/Local Projects/autograd_cpp/models/MALLMOC-174/trained_model.bin";
 
         int64_t start_step = 0;
         if (load_checkpoint != false) {
@@ -76,16 +76,25 @@ int main() {
         }
 
         // LOG
-        int64_t print_every = 10;
+        int64_t print_every = 2;
         int64_t tokens_per_interval = print_every * grad_accum_steps * B_real * seq_len;
+        std::string loss_log_path = "C:/Local Projects/autograd_cpp/models/MALLMOC-174/training_log.csv";
+        bool log_exists = std::filesystem::exists(loss_log_path);
+        std::ofstream log_file(loss_log_path, std::ios::app);
+        if (!log_file) {
+            throw std::runtime_error("Failed to open training log file.");
+        }
+        if (!log_exists || start_step == 0) {
+            log_file << "step,loss,lr,tok_per_sec\n";
+        }
 
         std::string num_params = std::format(std::locale("en_US.UTF-8"), "{:L}", model.num_params());
-        std::cout << "Starting training of GC-2. Number of params: " << num_params << std::endl;;
+        std::cout << "Starting training of MALLMOC-174. Number of params: " << num_params << std::endl;;
 
         auto start_time = std::chrono::high_resolution_clock::now();
         float last_loss_val = 0.0f;
 
-        for (int64_t step = 0; step < total_steps; ++step) {
+        for (int64_t step = start_step; step < total_steps; ++step) {
             model.zero_grad();
             for (int64_t micro_batch = 0; micro_batch < grad_accum_steps; ++micro_batch) {
                 auto [X, Y] = loader.next_batch(B_real, seq_len, Device(DeviceType::CPU));
@@ -112,7 +121,9 @@ int main() {
                 double interval_seconds = std::chrono::duration<double>(end_time - start_time).count();
                 double tok_per_sec = tokens_per_interval / interval_seconds;
                 
-                std::cout << "LOG| step: " << step << " | loss: " << last_loss_val << " | lr: " << scheduler.m_lr << " | tok/s: " << tok_per_sec <<  " | HWM: " << CUDAMemPool::get().get_hwm_gb() << " GB" << std::endl;
+                std::cout << "LOG| step: " << step << " | loss: " << last_loss_val << " | lr: " << scheduler.m_lr << " | tok/s: " << tok_per_sec << std::endl;
+                log_file << step << "," << last_loss_val << "," << scheduler.m_lr << "," << tok_per_sec << "\n";
+                log_file.flush(); // force to write
                           
                 start_time = std::chrono::high_resolution_clock::now(); // reset the timer
             }
@@ -128,11 +139,12 @@ int main() {
             }
         }
 
-        std::cout << "Training finished. Saving final model to: " << final_save_path;
+        std::cout << "Training of MALLMOC-174 finished. Saving final model to: " << final_save_path;
 
-        save_tensor_checkpoint(model.state_dict(cpu), latest_model_path);
-
+        save_tensor_checkpoint(model.state_dict(cpu), final_save_path);
+        
         std::cout << "Saving successful." << std::endl;
+
 
         return 0;
         

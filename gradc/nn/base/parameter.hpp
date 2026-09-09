@@ -61,7 +61,7 @@ namespace gradc {
                 return m_no_decay;
             }
 
-            bool set_no_decay(bool value) {
+            void set_no_decay(bool value) {
                 m_no_decay = value;
             }
     };

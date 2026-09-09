@@ -64,16 +64,26 @@ if(MSVC)
     target_link_options(tokenizer PRIVATE /INCREMENTAL:NO)
 endif()
 
-# benchmark
-add_executable(benchmark benchmark.cpp)
-target_link_libraries(benchmark PRIVATE GradCore)
-
+# benchmark cpu vs gpu (cpu vs 3090)
 add_executable(bench_cpu_gpu benchmarks/bench_cpu_vs_gpu.cpp)
 target_link_libraries(bench_cpu_gpu PRIVATE GradCore)
 
+if(MSVC)
+    target_link_options(bench_cpu_gpu PRIVATE /INCREMENTAL:NO)
+endif()
+
+# benchmark training on 3070 Ti vs 3090
 add_executable(bench_training benchmarks/bench_training.cpp)
 target_link_libraries(bench_training PRIVATE GradCore)
 
 if(MSVC)
-    target_link_options(benchmark PRIVATE /INCREMENTAL:NO)
+    target_link_options(bench_training PRIVATE /INCREMENTAL:NO)
+endif()
+
+# naive / fast paths
+add_executable(bench_kernels benchmarks/bench_kernels.cpp)
+target_link_libraries(bench_kernels PRIVATE GradCore)
+
+if(MSVC)
+    target_link_options(bench_kernels PRIVATE /INCREMENTAL:NO)
 endif()

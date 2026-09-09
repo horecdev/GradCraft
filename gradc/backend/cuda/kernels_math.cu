@@ -957,7 +957,7 @@ namespace gradc {
         }
 
         T* p_out = out._get_storage()->data();
-        T* p_inv_rms = inv_rms._get_storage()->data();
+        T* p_inv_rms = inv_rms._get_state() != nullptr ? inv_rms._get_storage()->data() : nullptr;
         const T* p_parent = parent._get_storage()->data();
         const T* p_gamma = gamma._get_storage()->data();
 
@@ -1177,8 +1177,8 @@ namespace gradc {
             }
         }
 
-        T* p_dx = dx._get_storage()->data();
-        T* p_dgamma = dgamma._get_storage()->data();
+        T* p_dx = dx._get_state() != nullptr ? dx._get_storage()->data() : nullptr;
+        T* p_dgamma = dgamma._get_state() != nullptr ? dgamma._get_storage()->data() : nullptr;
         const T* p_out_grad = out_grad._get_storage()->data();
         const T* p_parent = parent._get_storage()->data();
         const T* p_gamma = gamma._get_storage()->data();
@@ -1588,8 +1588,8 @@ namespace gradc {
         int64_t threads = 256;
         int64_t blocks = (volume + threads - 1) / threads;
         
-        T* p_da = da._get_storage()->data();
-        T* p_db = db._get_storage()->data();
+        T* p_da = da._get_state() != nullptr ? da._get_storage()->data() : nullptr;
+        T* p_db = db._get_state() != nullptr ? db._get_storage()->data() : nullptr;
         const T* p_out_grad = out_grad._get_storage()->data();
         const T* p_a = a._get_storage()->data();
         const T* p_b = b._get_storage()->data();

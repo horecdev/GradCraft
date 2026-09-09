@@ -16,7 +16,7 @@ namespace gradc {
             Tensor<T> m_beta2_exp;
             std::unordered_map<std::string, Tensor<T>> m_first_moment;
             std::unordered_map<std::string, Tensor<T>> m_second_moment;
-            bool cuda_fast = true;
+            bool m_cuda_fast = true;
         public:
             AdamW(std::unordered_map<std::string, Parameter<T>*> named_params, T lr, T beta1 = static_cast<T>(0.9), T beta2 = static_cast<T>(0.999), T weight_decay = static_cast<T>(0.0), T eps = static_cast<T>(1e-8)) {
                 this->m_named_params = std::move(named_params);
@@ -44,12 +44,12 @@ namespace gradc {
                 dispatch(target_device, BinaryOpInPlace::Mul, m_beta1_exp, m_beta1);
                 dispatch(target_device, BinaryOpInPlace::Mul, m_beta2_exp, m_beta2);
 
-                if (cuda_fast && target_device.is_cuda()) {
+                if (m_cuda_fast && target_device.is_cuda()) {
                     for (auto& [name, p_ptr] : this->m_named_params) {
                         if (!p_ptr->grad().has_value()) {
                             continue;
                         }
-                        dispatch_adamw_step(target_device,p_ptr->tensor(),p_ptr->grad().value(),m_first_moment[name],m_second_moment[name],this->m_lr,m_beta1,m_beta2,m_beta1_exp,m_beta2_exp,m_weight_decay,m_eps,p_ptr->no_decay());
+                        dispatch_adamw_step(target_device,p_ptr->tensor(),m_first_moment[name],m_second_moment[name],p_ptr->grad().value(), this->m_lr,m_beta1,m_beta2,m_beta1_exp,m_beta2_exp,m_weight_decay,m_eps,p_ptr->no_decay());
                     }
                     return;
                 }
@@ -239,6 +239,10 @@ namespace gradc {
                 else {
                     throw std::runtime_error("Tried loading AdamW optimizer with state_dict without key 'beta2_exp'");
                 }
+            }
+
+            void set_cuda_fast(bool cuda_fast) {
+                m_cuda_fast = cuda_fast;
             }
     };
 }
