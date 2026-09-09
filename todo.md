@@ -196,7 +196,8 @@ DONE Frontend for fast (diff node, force dense, loose dimensions, etc)
 DONE First test out the GPT crossentropy running for one_hot_encode without fast paths (fix compiler errors)
 DONE Then test out on the fast path with sparse indices (fix compiler errors)
 DONE Find out whether a model can fit with 160M params on the RTX (174M fits)
-- Fused AdamW 
+DONE Fused AdamW kernel
+- Incorporate AdamW in AdamW call if cudafast=true && iscuda
 DONE fused SwiGLU fwd/bwd (fast + frontend + fit everything to it) save VRAM
 DONE Saving on ram by accumulating directly in custom kernels (SwiGLU, RMSNorm, CausalSoftmax, SoftmaxCEL)
 DONE Compile, test.

@@ -244,4 +244,14 @@ namespace gradc {
             CUDAMath::apply_swiglu_backward(da, db, out_grad, a, b, acc_a, acc_b);
         }
     }
+
+    template <typename T>
+    inline void dispatch_adamw_step(Device device, Tensor<T>& w, Tensor<T>& mean, Tensor<T>& var, const Tensor<T>& grad, const Tensor<T>& lr, const Tensor<T>& beta1, const Tensor<T>& beta2, const Tensor<T>& beta1_exp, const Tensor<T>& beta2_exp, const Tensor<T>& weight_decay, const Tensor<T> eps, bool no_decay) {
+        if (device.is_cpu()) {
+            throw std::runtime_error("Tried running AdamW step on the CPU");
+        }
+        else if (device.is_cuda()) {
+            CUDAMath::apply_adamw_step(w, mean, var, grad, lr, beta1, beta2, beta1_exp, beta2_exp, weight_decay, eps, no_decay);
+        }   
+    }
 }

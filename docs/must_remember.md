@@ -50,3 +50,4 @@ A->backward() runs but the tensor dereference crashes because it was wiped.
 to keep it the same object (can be without storage) to be able to call .accumulate_grad
 25) All variants of .accumulate_grad in tensor class are made if creating a tensor just to then accumulate to a NEW tensor is useless.
 26) If it doesnt need parameters and its behaviour doesnt change in train/eval dont make a module out of it.
+27) All custom kernels backward() with cudafast have an accumulate parameter. Same with fast nodes. All that to omit additional copies

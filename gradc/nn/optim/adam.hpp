@@ -41,6 +41,20 @@ namespace gradc {
             void step() {
                 Device target_device = this->optim_device();
 
+                dispatch(target_device, BinaryOpInPlace::Mul, m_beta1_exp, m_beta1);
+                dispatch(target_device, BinaryOpInPlace::Mul, m_beta2_exp, m_beta2);
+
+                if (cuda_fast && target_device.is_cuda()) {
+                    for (auto& [name, p_ptr] : this->m_named_params) {
+                        if (!p_ptr->grad().has_value()) {
+                            continue;
+                        }
+                        dispatch_adamw_step(target_device,p_ptr->tensor(),p_ptr->grad().value(),m_first_moment[name],m_second_moment[name],this->m_lr,m_beta1,m_beta2,m_beta1_exp,m_beta2_exp,m_weight_decay,m_eps,p_ptr->no_decay());
+                    }
+                    return;
+                }
+                // the slow dispatch shi
+
                 Tensor<T> penalty_factor = Tensor<T>(std::vector<int64_t>{}, target_device, uninitialized);
                 dispatch(target_device, BinaryOp::Mul, penalty_factor, this->m_lr, m_weight_decay);
                 dispatch(target_device, BinaryOpInPlace::ISub, penalty_factor, Tensor<T>(static_cast<T>(1.0), target_device));
