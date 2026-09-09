@@ -207,7 +207,7 @@ namespace gradc {
             return result;
         }
 
-        void backward(Tensor<T> out_grad, [[maybe_unused]] bool retain_graph) override {
+        void backward(const Tensor<T>& out_grad, [[maybe_unused]] bool retain_graph) override {
             if (!m_w1_out.requires_grad() && !m_w2_out.requires_grad()){return;}
 
             // essentially: you check if grad exists. If it does, you accumulate and pass down the grad. If not, you create it, dont accumulate, and then move it in as the grad.

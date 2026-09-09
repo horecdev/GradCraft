@@ -52,7 +52,7 @@ namespace gradc {
             void accumulate_grad(const Tensor<T>& incoming_grad, bool is_sub = false);
             void accumulate_grad_normal_matmul(const Tensor<T>& left, const Tensor<T>& right, NMMMeta& blas_meta, const std::vector<int64_t>& orig_shape) requires std::is_floating_point_v<T>;
             void accumulate_grad_batched_matmul(const Tensor<T>& left, const Tensor<T>& right, BMMMeta& blas_meta, const std::vector<int64_t>& orig_shape) requires std::is_floating_point_v<T>;
-            void  accumulate_grad_embeds(const Tensor<int64_t>& indices, const Tensor<T>& out_grad, int64_t embed_vol);
+            void accumulate_grad_embeds(const Tensor<int64_t>& indices, const Tensor<T>& out_grad, int64_t embed_vol);
 
             void zero_grad();
 
@@ -281,6 +281,10 @@ namespace gradc {
             template <typename U>
             requires std::is_floating_point_v<U>
             friend Tensor<U> one_hot_encode(Tensor<int64_t> indices, int64_t distrib_dim);
+
+            template <typename U>
+            requires std::is_floating_point_v<U>
+            friend Tensor<U> swiglu_fast(Tensor<U> w1_out, Tensor<U> w2_out);
             
             template <typename TargetT> Tensor<TargetT> cast() const;
 

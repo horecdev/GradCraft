@@ -29,7 +29,7 @@ namespace gradc {
                 Tensor<T> w2_out = m_w2.forward(x);
 
                 if (cuda_fast && x.device().is_cuda()) {
-                    return swiglu_fast(w1_out, w2_out);
+                    return m_w3.forward(swiglu_fast(w1_out, w2_out));
                 }
                 
                 return m_w3.forward(w1_out.silu() * w2_out);

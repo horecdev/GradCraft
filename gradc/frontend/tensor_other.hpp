@@ -111,6 +111,7 @@ namespace gradc {
     }
 
     template <typename T>
+    requires std::is_floating_point_v<T>
     Tensor<T> swiglu_fast(Tensor<T> w1_out, Tensor<T> w2_out) {
         Device target_device = infer_assert_device(w1_out, w2_out);
 
@@ -120,7 +121,7 @@ namespace gradc {
         if (!w2_out.is_dense()) {
             w2_out = w2_out.contiguous();
         }
-        
+
         bool requires_grad = w1_out.requires_grad() || w2_out.requires_grad();
         Tensor<T> result = Tensor<T>(w1_out.shape(), requires_grad, lazy, target_device);
         result.m_state->m_creation_op = std::make_unique<SwiGLUFastNode<T>>(std::move(w1_out), std::move(w2_out));
