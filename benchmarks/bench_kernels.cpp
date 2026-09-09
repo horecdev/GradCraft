@@ -7,9 +7,8 @@
 
 using namespace gradc;
 
-void run_benchmark(const std::string& name, const std::function<void()>& fn, int warmup = 5, int iters = 5) {
+void run_benchmark(const std::string& name, const std::function<void()>& fn, int warmup = 5, int iters = 50) {
     for (int i = 0; i < warmup; ++i) {
-        std::cout << "running warmup at" << i << std::endl;
         fn();
     }
     
