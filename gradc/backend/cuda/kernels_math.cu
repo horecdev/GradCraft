@@ -1520,9 +1520,7 @@ namespace gradc {
         const T* p_a = a._get_storage()->data();
         const T* p_b = b._get_storage()->data();
         
-        swiglu_forward_kernel<<<blocks, threads>>>(
-            p_out, p_a, p_b, volume
-        );
+        swiglu_forward_kernel<<<blocks, threads>>>(p_out, p_a, p_b, volume);
     }
 
     template <typename T>
@@ -1530,7 +1528,7 @@ namespace gradc {
     __global__ void swiglu_backward_kernel(
         T* __restrict__ p_da, T* __restrict__ p_db,
         const T* __restrict__ p_out_grad, const T* __restrict__ p_a, const T* __restrict__ p_b,
-        int64_t volume
+        int64_t volume, bool acc_a, bool acc_b
     ) {
         int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx < volume) {
@@ -1542,22 +1540,33 @@ namespace gradc {
             if (p_db != nullptr) {
                 T silu = x * sig;
                 p_db[idx] = g * silu;
+                if (acc_b) {
+                    p_db[idx] += g * silu;
+                } 
+                else {
+                    p_db[idx] = g * silu;
+                }
             }
 
             if (p_da != nullptr) {
                 T y = p_b[idx];
                 T dsilu = sig * (static_cast<T>(1.0) + x * (static_cast<T>(1.0) - sig));
-                p_da[idx] = g * y * dsilu;
+                if (acc_a) {
+                    p_da[idx] += g * y * dsilu;
+                } 
+                else {
+                    p_da[idx] = g * y * dsilu;
+                }
             }
         }
     }
 
     template <typename T>
     requires std::is_floating_point_v<T>
-    void CUDAMath::apply_swiglu_backward(Tensor<T>& da, Tensor<T>& db, const Tensor<T>& out_grad, const Tensor<T>& a, const Tensor<T>& b) {
+    void CUDAMath::apply_swiglu_backward(Tensor<T>& da, Tensor<T>& db, const Tensor<T>& out_grad, const Tensor<T>& a, const Tensor<T>& b, bool acc_a, bool acc_b) {
         cudaSetDevice(da.device().index);
         
-        int64_t volume = da.volume();
+        int64_t volume = out_grad.volume();
         
         int64_t threads = 256;
         int64_t blocks = (volume + threads - 1) / threads;
@@ -1568,9 +1577,7 @@ namespace gradc {
         const T* p_a = a._get_storage()->data();
         const T* p_b = b._get_storage()->data();
         
-        swiglu_backward_kernel<<<blocks, threads>>>(
-            p_da, p_db, p_out_grad, p_a, p_b, volume
-        );
+        swiglu_backward_kernel<<<blocks, threads>>>(p_da, p_db, p_out_grad, p_a, p_b, volume, acc_a, acc_b);
     }
 
     #pragma endregion SwiGLU
@@ -1608,7 +1615,7 @@ namespace gradc {
         template void CUDAMath::apply_sparse_softmax_crossentropy_forward<T>(Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<int64_t>&, T); \
         template void CUDAMath::apply_sparse_softmax_crossentropy_backward<T>(Tensor<T>&, const Tensor<T>&, const Tensor<int64_t>&, const Tensor<T>&); \
         template void CUDAMath::apply_swiglu_forward<T>(Tensor<T>&, const Tensor<T>&, const Tensor<T>&); \
-        template void CUDAMath::apply_swiglu_backward<T>(Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&);
+        template void CUDAMath::apply_swiglu_backward<T>(Tensor<T>&, Tensor<T>&, const Tensor<T>&, const Tensor<T>&, const Tensor<T>&, bool, bool);
         
 
     INSTANTIATE_CUDA_MATH_SINGLE(float)

@@ -236,7 +236,7 @@ namespace gradc {
     }
 
     template <typename T>
-    inline void dispatch_swiglu_fast_backward(Device device, Tensor<T>& da, Tensor<T>& db, const Tensor<T>& out_grad, const Tensor<T>& a, const Tensor<T>& b) {
+    inline void dispatch_swiglu_fast_backward(Device device, Tensor<T>& da, Tensor<T>& db, const Tensor<T>& out_grad, const Tensor<T>& a, const Tensor<T>& b, bool acc_a, bool acc_b) {
         if (device.is_cpu()) {
             throw std::runtime_error("Tried running SwiGLU fast backward on the CPU.");
         }

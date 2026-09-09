@@ -53,7 +53,7 @@ namespace gradc {
             static void apply_swiglu_forward(Tensor<T>& out, const Tensor<T>& a, const Tensor<T>& b);
             template <typename T>
             requires std::is_floating_point_v<T>
-            static void apply_swiglu_backward(Tensor<T>& da, Tensor<T>& db, const Tensor<T>& out_grad, const Tensor<T>& a, const Tensor<T>& b);
+            static void apply_swiglu_backward(Tensor<T>& da, Tensor<T>& db, const Tensor<T>& out_grad, const Tensor<T>& a, const Tensor<T>& b, bool acc_a, bool acc_b);
     
     };
 }

@@ -197,25 +197,41 @@ namespace gradc {
         }
 
         void backward(Tensor<T> out_grad, [[maybe_unused]] bool retain_graph) override {
-            if (m_w1_out.requires_grad() || m_w2_out.requires_grad()){
-                Device target_device = out_grad.device();
-                Tensor<T> da;
-                Tensor<T> db;
-                if (m_w1_out.requires_grad()) {
+            if (!m_w1_out.requires_grad() && !m_w2_out.requires_grad()){return;}
+
+            Device target_device = out_grad.device();
+            Tensor<T> da;
+            bool acc_a = false;
+            if (m_w1_out.requires_grad()) {
+                if (m_w1_out.grad().has_value()) {
+                    da = m_w1_out.grad().value();
+                    acc_a = true;
+                }
+                else {
                     da = Tensor<T>(m_w1_out.shape(), target_device, uninitialized);
                 }
-                if (m_w2_out.requires_grad()) {
+            }
+
+            Tensor<T> db;
+            bool acc_b = false;
+            if (m_w2_out.requires_grad()) {
+                if (m_w2_out.grad().has_value()) {
+                    db = m_w2_out.grad().value();
+                    acc_b = true;
+                } 
+                else {
                     db = Tensor<T>(m_w2_out.shape(), target_device, uninitialized);
                 }
+            }
 
-                dispatch_swiglu_fast_backward(target_device, da, db, out_grad, m_w1_out, m_w2_out);
+            dispatch_swiglu_fast_backward(target_device, da, db, out_grad, m_w1_out, m_w2_out, acc_a, acc_b);
 
-                if (m_w1_out.requires_grad()) {
-                    m_w1_out.accumulate_grad(da);
-                }
-                if (m_w2_out.requires_grad()) {
-                    m_w2_out.accumulate_grad(db);
-                }
+            // check if the tensor was freshly created
+            if (m_w1_out.requires_grad() && !acc_a) {
+                m_w1_out._get_state()->m_grad = std::move(da);
+            }
+            if (m_w2_out.requires_grad() && !acc_b) {
+                m_w2_out._get_state()->m_grad = std::move(db);
             }
         }
 
