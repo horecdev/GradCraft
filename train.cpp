@@ -33,7 +33,7 @@ int main() {
         // TRAINING HYPERPARAMS
         int64_t grad_accum_steps = B_target / B_real;
         int64_t total_steps = 8'272; // 8272 * 512 * 1024 = 4.3 billion tokens
-        int64_t warmup_steps = 0; // 10%
+        int64_t warmup_steps = 827; // 10%
 
         // DATA
         DataLoader loader = DataLoader("C:/Local Projects/autograd_cpp/data/datasets/cosmo_cpp.bin");
@@ -50,7 +50,7 @@ int main() {
 
         // CHECKPOINTING
         bool load_checkpoint = true;
-        int64_t checkpoint_every = 200;
+        int64_t checkpoint_every = 2;
 
         std::string latest_model_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/latest_model.bin";
         std::string latest_optim_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/latest_optim.bin";
@@ -76,7 +76,7 @@ int main() {
         }
 
         // LOG
-        int64_t print_every = 10;
+        int64_t print_every = 2;
         int64_t tokens_per_interval = print_every * grad_accum_steps * B_real * seq_len;
         std::string loss_log_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/training_log.csv";
         bool log_exists = std::filesystem::exists(loss_log_path);
@@ -103,7 +103,7 @@ int main() {
                 Tensor<float> logits = model.forward(X);
 
                 Tensor<float> loss = softmax_crossentropy_fast<float>(logits, Y, calc_eps);
-                Tensor<float> scaled_loss = loss / static_cast<float>(grad_accum_steps); // SCEL does 1/6 but u gotta do 1/510
+                Tensor<float> scaled_loss = loss / static_cast<float>(grad_accum_steps); // SCEL does 1/4 but u gotta do 1/512
 
                 scaled_loss.realize();
                 
