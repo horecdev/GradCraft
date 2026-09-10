@@ -35,17 +35,17 @@ target_include_directories(GradCore PUBLIC
 )
 
 if(MSVC)
-# release
+    # ==================== RELEASE MODE ====================
     target_compile_options(GradCore PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4 /bigobj /O2 /fp:fast>
         $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/bigobj,-O2,-fp:fast -O3 -use_fast_math>
     )
 
+    # ===================== DEBUG MODE =====================
     # target_compile_options(GradCore PRIVATE
     #     $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4 /bigobj /Od>
     #     $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/bigobj,-Od -G -g>
     # )
-
 endif()
 
 # train

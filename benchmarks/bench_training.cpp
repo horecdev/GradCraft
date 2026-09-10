@@ -54,10 +54,10 @@ void run_benchmark(int64_t B, int64_t T, int warmup, int iters) {
 int main() {
     try {
         std::cout << "Benchmarking training run\n";
-        // run_benchmark(1, 1024, 10, 50);
-        // run_benchmark(2, 1024, 3, 10);
-        run_benchmark(4, 1024, 3, 10);
-        //run_benchmark(6, 1024, 3, 10);
+        //run_benchmark(1, 1024, 10, 50);
+        //run_benchmark(2, 1024, 10, 50);
+        //run_benchmark(4, 1024, 10, 50);
+        run_benchmark(5, 1024, 10, 50);
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << "\n";
         return 1;

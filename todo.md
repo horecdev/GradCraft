@@ -204,7 +204,7 @@ DONE Compile, test.
 DONE fwd + bwd pass of train has result parity with pytorch
 DONE Run the training on 3070 Ti, checkpoint and resume
 
-- Benchmark for production RTX 3090 vs RTX 3070 Ti at B=1, B=2, B=4, B=6 (HWM, tok/s) @ 3070Ti, 3090
+DONE Benchmark for production RTX 3090 vs RTX 3070 Ti at B=1, B=2, B=4, B=6 (HWM, tok/s) @ 3070Ti, 3090
 - Microbenchmarks for: RMSNorm, Causal SDPA, SCEL, SwiGLU, AdamW @ 3090
 - Benchmark for production CPU vs production CUDA @ 3090
 - Benchmark for GC vs Pytorch with B=1, B=2, B=4, B=6, full 174M @ 3090
@@ -213,8 +213,7 @@ DONE Add checkpointing with paths
 DONE Save model at the end
 DONE Set up the weight decay correctly
 DONE Set up the logging correctly
-
-
-- Write a sampling loop
-- Write a function to save loss in a specified file - some losshistory object??
-- Let it run
+- Write a sampling loop (static GPTGenerator generate() function which takes refs)
+DONE Save loss during run
+- Fire up the 174M on 3090
+- Write a killer readme.md which will be the base for further videos.

@@ -144,5 +144,8 @@ def run_benchmark(batch_size: int = 1, seq_len: int = 1024, warmup_steps: int = 
     print(f"Peak VRAM (HWM):   {peak_vram_gb:.2f} GB\n")
 
 if __name__ == "__main__":
-    #run_benchmark(batch_size=1, seq_len=1024)
+    print(torch.cuda.is_available())
     run_benchmark(batch_size=1, seq_len=1024)
+    run_benchmark(batch_size=2, seq_len=1024)
+    run_benchmark(batch_size=4, seq_len=1024)
+    run_benchmark(batch_size=5, seq_len=1024)
