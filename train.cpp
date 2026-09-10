@@ -33,7 +33,7 @@ int main() {
         // TRAINING HYPERPARAMS
         int64_t grad_accum_steps = B_target / B_real;
         int64_t total_steps = 8'272; // 8272 * 512 * 1024 = 4.3 billion tokens
-        int64_t warmup_steps = 827; // 10%
+        int64_t warmup_steps = 400; // ~5%
 
         // DATA
         DataLoader loader = DataLoader("C:/Local Projects/autograd_cpp/data/datasets/cosmo_cpp.bin");
@@ -49,8 +49,8 @@ int main() {
         CosineScheduler<float> scheduler(&optimizer, max_lr, min_lr, warmup_steps, total_steps);
 
         // CHECKPOINTING
-        bool load_checkpoint = true;
-        int64_t checkpoint_every = 2;
+        bool load_checkpoint = false;
+        int64_t checkpoint_every = 500;
 
         std::string latest_model_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/latest_model.bin";
         std::string latest_optim_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/latest_optim.bin";
@@ -59,7 +59,7 @@ int main() {
         std::string final_save_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/trained_model.bin";
 
         int64_t start_step = 0;
-        if (load_checkpoint != false) {
+        if (load_checkpoint == true) {
             std::cout << "Loading checkpoint..." << std::endl;
 
             auto model_state = load_tensor_checkpoint<float>(latest_model_path);
@@ -76,7 +76,7 @@ int main() {
         }
 
         // LOG
-        int64_t print_every = 2;
+        int64_t print_every = 10;
         int64_t tokens_per_interval = print_every * grad_accum_steps * B_real * seq_len;
         std::string loss_log_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/training_log.csv";
         bool log_exists = std::filesystem::exists(loss_log_path);
