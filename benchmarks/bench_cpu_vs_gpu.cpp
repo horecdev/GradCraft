@@ -62,9 +62,9 @@ void run_device_benchmark(DeviceType type, const std::string& dev_name) {
 
 int main() {
     try {
-        //run_device_benchmark(DeviceType::CPU, "CPU");
+        run_device_benchmark(DeviceType::CPU, "CPU");
 
-        run_device_benchmark(DeviceType::CUDA, "RTX 3090");
+        //run_device_benchmark(DeviceType::CUDA, "RTX 3070 Ti");
 
     } catch (const std::exception& e) {
         std::cerr << "Fatal Error: " << e.what() << std::endl;

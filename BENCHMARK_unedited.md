@@ -1,6 +1,6 @@
 1. Ryzen 5 5600 vs RTX 3090 B=4, T=128
 RTX3090 @ B=4, T=128 - 3900 tok/s
-Ryzen 5 5600 @ B=4, T=128 - (single threaded)
+Ryzen 5 5600 @ B=4, T=128 - 7 tok/s (single threaded)
 
 2. RTX 3070 Ti vs RTX 3090 in training
 RTX 3070 Ti
