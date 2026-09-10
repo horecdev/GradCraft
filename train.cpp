@@ -12,8 +12,8 @@ int main() {
         Device cpu(DeviceType::CPU);
 
         // HYPERPARAMS
-        int64_t B_target = 510; // 85 * 6 = 510
-        int64_t B_real = 6; // target 6 for 3090
+        int64_t B_target = 512; // 85 * 6 = 510
+        int64_t B_real = 4; // target 6 for 3090
         int64_t seq_len = 1024;
         int64_t vocab_size = 32768;
         int64_t embed_dim = 768;
@@ -32,7 +32,7 @@ int main() {
 
         // TRAINING HYPERPARAMS
         int64_t grad_accum_steps = B_target / B_real;
-        int64_t total_steps = 8'272; // 8272 * 510 * 1024 = 4.3 billion tokens
+        int64_t total_steps = 8'272; // 8272 * 512 * 1024 = 4.3 billion tokens
         int64_t warmup_steps = 0; // 10%
 
         // DATA
@@ -50,13 +50,13 @@ int main() {
 
         // CHECKPOINTING
         bool load_checkpoint = true;
-        int64_t checkpoint_every = 500;
+        int64_t checkpoint_every = 200;
 
-        std::string latest_model_path = "C:/Local Projects/autograd_cpp/models/MALLMOC-174/latest_model.bin";
-        std::string latest_optim_path = "C:/Local Projects/autograd_cpp/models/MALLMOC-174/latest_optim.bin";
-        std::string latest_scheduler_path = "C:/Local Projects/autograd_cpp/models/MALLMOC-174/latest_scheduler.bin";
+        std::string latest_model_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/latest_model.bin";
+        std::string latest_optim_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/latest_optim.bin";
+        std::string latest_scheduler_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/latest_scheduler.bin";
 
-        std::string final_save_path = "C:/Local Projects/autograd_cpp/models/MALLMOC-174/trained_model.bin";
+        std::string final_save_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/trained_model.bin";
 
         int64_t start_step = 0;
         if (load_checkpoint != false) {
@@ -76,9 +76,9 @@ int main() {
         }
 
         // LOG
-        int64_t print_every = 2;
+        int64_t print_every = 10;
         int64_t tokens_per_interval = print_every * grad_accum_steps * B_real * seq_len;
-        std::string loss_log_path = "C:/Local Projects/autograd_cpp/models/MALLMOC-174/training_log.csv";
+        std::string loss_log_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/training_log.csv";
         bool log_exists = std::filesystem::exists(loss_log_path);
         std::ofstream log_file(loss_log_path, std::ios::app);
         if (!log_file) {
@@ -121,7 +121,7 @@ int main() {
                 double interval_seconds = std::chrono::duration<double>(end_time - start_time).count();
                 double tok_per_sec = tokens_per_interval / interval_seconds;
                 
-                std::cout << "LOG| step: " << step << " | loss: " << last_loss_val << " | lr: " << scheduler.m_lr << " | tok/s: " << tok_per_sec << std::endl;
+                std::cout << "STEP: " << step << " | LOSS: " << last_loss_val << " | LR: " << scheduler.m_lr << " | TOK/S: " << tok_per_sec << std::endl;
                 log_file << step << "," << last_loss_val << "," << scheduler.m_lr << "," << tok_per_sec << "\n";
                 log_file.flush(); // force to write
                           
