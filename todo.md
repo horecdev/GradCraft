@@ -217,7 +217,5 @@ DONE Write a sampling loop (static GPTGenerator generate() function which takes 
 DONE Save loss during run
 DONE Fire up the 174M training on 3090
 DONE Write BENCHMARK.md with all your data from devices
-- Collect data for fine-tuning
-- Prepare it into <|im_start|> / <|im_end|> convo format, save in a file
-- Loss masking
-- Write a killer README.md which will be the base for further videos.
+- Write an ARCHITECTURE.md which will be the base for future videos explaining EVERY SINGLE SHIT
+- Based on that, fuse BENCHMARK.md and ARCHITECTURE.md + MALLMOC-174 showcase (prompt like: This is a function to reverse a string: std::string reverse_string(....))
