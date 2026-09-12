@@ -7,13 +7,18 @@ using namespace gradc;
 
 void run_device_benchmark(DeviceType type, const std::string& dev_name) {
     int64_t B = 4, T = 128;
-    int64_t V = 32768, C = 768, H = 12, L = 16;
+    int64_t V = 32768, C = 768, H = 12, L = 20;
     
     Device dev(type, 0);
-    std::cout << "Initializing 174M Model on " << dev_name << " (B=" << B << ", T=" << T << ")" << std::endl;
+    std::cout << "Initializing Model on " << dev_name << " (B=" << B << ", T=" << T << ")" << std::endl;
 
-    NormalInit<float> init(0.0f, 0.003535f);
-    GPT<float> model(V, T, C, H, L, init, 1e-5f);
+    float base_std = 0.02f;
+    float residual_std = 0.02f / std::sqrt(2.0f * L);
+
+    NormalInit<float> base_init(0.0f, base_std);
+    NormalInit<float> residual_init(0.0f, residual_std);
+
+    GPT<float> model(V, T, C, H, L, base_init, residual_init, 1e-5f);
     model.to(dev);
 
     // dummy inputs

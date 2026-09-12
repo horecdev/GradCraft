@@ -13,12 +13,12 @@ int main() {
 
         // HYPERPARAMS
         int64_t B_target = 512; // 85 * 6 = 510
-        int64_t B_real = 4; // target 6 for 3090
+        int64_t B_real = 1; // target 6 for 3090
         int64_t seq_len = 1024;
         int64_t vocab_size = 32768;
         int64_t embed_dim = 768;
         int64_t num_heads = 12;
-        int64_t num_layers = 19;
+        int64_t num_layers = 20;
 
         // OPTIMIZER / SCHEDULER HYPERPARAMS
         float max_lr = 3e-4f;
@@ -90,11 +90,11 @@ int main() {
             throw std::runtime_error("Failed to open training log file.");
         }
         if (!log_exists || start_step == 0) {
-            log_file << "step,loss,lr,tok_per_sec\n";
+            log_file << "step,loss,norm,lr,tok_per_sec\n";
         }
 
         std::string num_params = std::format(std::locale("en_US.UTF-8"), "{:L}", model.num_params());
-        std::cout << "Starting training of MALLMOC-174. Number of params: " << num_params << std::endl;;
+        std::cout << "Starting training of MALLMOC. Number of params: " << num_params << std::endl;;
 
         auto start_time = std::chrono::high_resolution_clock::now();
         float last_loss_val = 0.0f;
@@ -128,8 +128,8 @@ int main() {
                 double interval_seconds = std::chrono::duration<double>(end_time - start_time).count();
                 double tok_per_sec = tokens_per_interval / interval_seconds;
                 
-                std::cout << "STEP: " << step << " | LOSS: " << last_loss_val << " | GLOBAL NORM: " << global_norm << " | LR: " << scheduler.m_lr << " | TOK/S: " << tok_per_sec << std::endl;
-                log_file << step << "," << last_loss_val << "," << scheduler.m_lr << "," << tok_per_sec << "\n";
+                std::cout << "STEP: " << step << " | LOSS: " << last_loss_val << " | NORM: " << global_norm << " | LR: " << scheduler.m_lr << " | TOK/S: " << tok_per_sec << std::endl;
+                log_file << step << "," << last_loss_val << "," << global_norm << "," << scheduler.m_lr << "," << tok_per_sec << "\n";
                 log_file.flush(); // force to write
                           
                 start_time = std::chrono::high_resolution_clock::now(); // reset the timer

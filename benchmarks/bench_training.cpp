@@ -10,14 +10,22 @@ void run_benchmark(int64_t B, int64_t T, int warmup, int iters) {
     
     std::cout << "Config: B=" << B << ", T=" << T << ", Model=174M\n";
 
-    NormalInit<float> init(0.0f, 0.003535f);
-    GPT<float> model(32768, T, 768, 12, 16, init, 1e-5f);
+    int64_t num_layers = 20;
+
+    float base_std = 0.02f;
+    float residual_std = 0.02f / std::sqrt(2.0f * num_layers);
+
+    NormalInit<float> base_init(0.0f, base_std);
+    NormalInit<float> residual_init(0.0f, residual_std);
+    GPT<float> model(32768, T, 768, 12, num_layers, base_init, residual_init, 1e-5f);
     model.to(dev);
 
     Tensor<int64_t> X = Tensor<int64_t>::zeros({B, T}, dev);
     Tensor<int64_t> Y = Tensor<int64_t>::zeros({B, T}, dev);
     X.realize();
     Y.realize();
+
+    std::cout << "Number of params: " << model.num_params() << std::endl;;
 
     for (int i = 0; i < warmup; ++i) {
         Tensor<float> logits = model.forward(X);
@@ -54,10 +62,10 @@ void run_benchmark(int64_t B, int64_t T, int warmup, int iters) {
 int main() {
     try {
         std::cout << "Benchmarking training run\n";
-        //run_benchmark(1, 1024, 10, 50);
+        run_benchmark(1, 1024, 10, 50);
         //run_benchmark(2, 1024, 10, 50);
         //run_benchmark(4, 1024, 10, 50);
-        run_benchmark(5, 1024, 10, 50);
+        //run_benchmark(5, 1024, 10, 50);
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << "\n";
         return 1;

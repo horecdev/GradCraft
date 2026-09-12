@@ -21,7 +21,7 @@ namespace gradc {
         public:
             MultiHeadAttention(int64_t embed_dim, int64_t num_heads, bool is_causal, int64_t max_seq_len, const Initializer<T>& proj_w_init, const Initializer<T>& residual_w_init, const Initializer<T>& proj_b_init)
              : m_q_proj(Linear<T>(embed_dim, embed_dim, proj_w_init, proj_b_init)), m_k_proj(Linear<T>(embed_dim, embed_dim, proj_w_init, proj_b_init)), 
-                m_v_proj(Linear<T>(embed_dim, embed_dim, proj_w_init, proj_b_init)), m_out_proj(Linear<T>(embed_dim, embed_dim, proj_w_init, proj_b_init)),
+                m_v_proj(Linear<T>(embed_dim, embed_dim, proj_w_init, proj_b_init)), m_out_proj(Linear<T>(embed_dim, embed_dim, residual_w_init, proj_b_init)),
                 m_is_causal(is_causal)
             {
                 if (embed_dim % num_heads != 0) {

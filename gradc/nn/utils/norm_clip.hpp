@@ -13,14 +13,14 @@ namespace gradc {
             GlobalNormClipper(T max_norm = static_cast<T>(1.0)) : m_max_norm(max_norm) {}
 
             T normalize(const std::vector<Parameter<T>*>& params) {
-                if (params.empty()) {return;}
+                if (params.empty()) {return 0.0f;}
 
                 Device device = params[0]->device();
 
                 Tensor<T> total_sq = Tensor<T>(std::vector<int64_t>{}, T(0), device);
 
                 for (Parameter<T>* p : params) {
-                    if (!p->grad().has_value()) continue;
+                    if (!p->grad().has_value()) {continue;}
                     Tensor<T> grad = p->grad().value();
                     
                     Tensor<T> sq = Tensor<T>(grad.shape(), device, uninitialized);
@@ -47,7 +47,7 @@ namespace gradc {
                     Tensor<T> scale_tensor = Tensor<T>(std::vector<int64_t>{}, scale_factor, device);
 
                     for (Parameter<T>* p : params) {
-                        if (!p->grad().has_value()) continue;
+                        if (!p->grad().has_value()) {continue;}
                         Tensor<T> grad = p->grad().value();
                         
                         dispatch(device, BinaryOpInPlace::Mul, grad, scale_tensor);
