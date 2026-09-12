@@ -41,23 +41,23 @@ Training throughput and VRAM High-Water-Mark on an RTX 3090 with sequence length
 
 ---
 
-### 3. VRAM Scaling (8GB vs 24GB VRAM)
+### 3. VRAM Scaling (8GB vs 24GB VRAM) @ 180M Model
 
 | GPU | Batch Size ($B$) | Throughput (tok/s) | Peak VRAM (HWM) | OK? |
 | :--- | :--- | :--- | :--- | :--- |
-| **RTX 3070 Ti (8GB)** | $B=1$ | 3,376 | 4.27 GB | OK |
-| | $B=2$ | 66 | 7.88 GB | **PCIe Thrashing** (Spilled to Host) |
+| **RTX 3070 Ti (8GB)** | $B=1$ | 2,959 | 5.10 GB | OK |
+| | $B=2$ | 90 | 9.58 GB | **PCIe Thrashing** (Spilled to Host) |
 | | $B=4$ | — | — | **OOM** |
 | **RTX 3090 (24GB)** | $B=1$ | 4,189 | 4.27 GB | OK |
 | | $B=2$ | 4,521 | 7.88 GB | OK |
 | | $B=4$ | 4,639 | 15.11 GB | OK |
 | | $B=5$ | 4,830 | 18.73 GB | OK |
 
-*Note: At $B=2$ on the RTX 3070 Ti, allocation exceeds VRAM limits, causing CUDA to use system RAM and giving a ~98% drop in throughput.*
+*Note: At $B=2$ on the RTX 3070 Ti, allocation exceeds VRAM limits, causing CUDA to use system RAM and giving a giant drop in throughput.*
 
 ---
 
-### 4. CPU vs. GPU Compute Scaling
+### 4. CPU vs. GPU Compute Scaling @ 180M Model
 
 Execution performance comparing host execution vs. device dispatch ($B=4, T=128$).
 

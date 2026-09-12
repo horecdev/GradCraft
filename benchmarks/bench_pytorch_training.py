@@ -104,7 +104,7 @@ class PyTorchGPT(nn.Module):
 def run_benchmark(batch_size: int = 1, seq_len: int = 1024, warmup_steps: int = 10, bench_steps: int = 50):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"--- PyTorch FP32 Baseline on {torch.cuda.get_device_name(0)} ---")
-    print(f"Config: B={batch_size}, T={seq_len}, Model=174M")
+    print(f"Config: B={batch_size}, T={seq_len}, Model=180M")
 
     model = PyTorchGPT(vocab_size=32768, seq_len=seq_len, dim=768, n_heads=12, n_layers=16).to(device)
     loss_fn = nn.CrossEntropyLoss()

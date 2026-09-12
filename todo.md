@@ -195,7 +195,7 @@ DONE Frontend for naive (rename basically)
 DONE Frontend for fast (diff node, force dense, loose dimensions, etc)
 DONE First test out the GPT crossentropy running for one_hot_encode without fast paths (fix compiler errors)
 DONE Then test out on the fast path with sparse indices (fix compiler errors)
-DONE Find out whether a model can fit with 160M params on the RTX (174M fits)
+DONE Find out whether a model can fit with 160M params on the RTX (180M fits)
 DONE Fused AdamW kernel
 DONE Incorporate AdamW in AdamW call if cudafast=true && iscuda
 DONE fused SwiGLU fwd/bwd (fast + frontend + fit everything to it) save VRAM
@@ -204,10 +204,6 @@ DONE Compile, test.
 DONE fwd + bwd pass of train has result parity with pytorch
 DONE Run the training on 3070 Ti, checkpoint and resume
 
-DONE Benchmark for production RTX 3090 vs RTX 3070 Ti at B=1, B=2, B=4, B=5 (HWM, tok/s) @ 3070Ti, 3090
-DONE Microbenchmarks for: RMSNorm, Causal SDPA, SCEL, SwiGLU, AdamW @ 3090
-DONE Benchmark for production CPU vs production CUDA @ 3090
-DONE Benchmark for GC vs Pytorch with B=1, B=2, B=4, B=5, full 174M @ 3090
 DONE Integrate target_batch_size and accumulated_batch, step only after its finished
 DONE Add checkpointing with paths
 DONE Save model at the end
@@ -215,16 +211,21 @@ DONE Set up the weight decay correctly
 DONE Set up the logging correctly
 DONE Write a sampling loop (static GPTGenerator generate() function which takes refs)
 DONE Save loss during run
-DONE Fire up the 174M training on 3090
+DONE Fire up the 180M training on 3090
 DONE Write BENCHMARK.md with all your data from devices
-- Write an ARCHITECTURE.md which will be the base for future videos explaining EVERY SINGLE SHIT
-- Based on that, fuse BENCHMARK.md and ARCHITECTURE.md + MALLMOC-174 showcase (prompt like: This is a function to reverse a string: std::string reverse_string(....))
 
 DONE Give w3 and w_out_proj 0.02/sqrt(2*num_layers)
 DONE Give everything else std=0.02
 DONE Implement gradient clipping with max norm = 1.0
-- add it to training loop
+DONE add it to training loop
 DONE Remove 25 000 000 params by fusing m_embeds and m_final_proj in GPT - use the same weight
-DONE Add layers to get around 174M
+DONE Add layers to get around 180M
 DONE Adjust both eps to 1e-5
-- move to linux
+
+- Benchmark for production RTX 3090 vs RTX 3070 Ti at B=1, B=2, B=4, B=5 (HWM, tok/s) @ 3070Ti, 3090
+- Microbenchmarks for: RMSNorm, Causal SDPA, SCEL, SwiGLU, AdamW @ 3090
+- Benchmark for production CPU vs production CUDA @ 3090
+- Benchmark for GC vs Pytorch with B=1, B=2, B=4, B=5, full 180M @ 3090
+
+- Write an ARCHITECTURE.md which will be the base for future videos explaining EVERY SINGLE SHIT
+- Based on that, fuse BENCHMARK.md and ARCHITECTURE.md + MALLMOC-180 showcase (prompt like: This is a function to reverse a string: std::string reverse_string(....))

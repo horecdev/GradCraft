@@ -8,7 +8,7 @@ using namespace gradc;
 void run_benchmark(int64_t B, int64_t T, int warmup, int iters) {
     Device dev(DeviceType::CUDA, 0);
     
-    std::cout << "Config: B=" << B << ", T=" << T << ", Model=174M\n";
+    std::cout << "Config: B=" << B << ", T=" << T << ", Model=180M\n";
 
     int64_t num_layers = 20;
 
@@ -63,7 +63,7 @@ int main() {
     try {
         std::cout << "Benchmarking training run\n";
         run_benchmark(1, 1024, 10, 50);
-        //run_benchmark(2, 1024, 10, 50);
+        run_benchmark(2, 1024, 1, 2);
         //run_benchmark(4, 1024, 10, 50);
         //run_benchmark(5, 1024, 10, 50);
     } catch (const std::exception& e) {

@@ -57,11 +57,11 @@ int main() {
         bool load_checkpoint = false;
         int64_t checkpoint_every = 500;
 
-        std::string latest_model_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/latest_model.bin";
-        std::string latest_optim_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/latest_optim.bin";
-        std::string latest_scheduler_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/latest_scheduler.bin";
+        std::string latest_model_path = "C:/Local Projects/autograd_cpp/models/mallmoc-180/latest_model.bin";
+        std::string latest_optim_path = "C:/Local Projects/autograd_cpp/models/mallmoc-180/latest_optim.bin";
+        std::string latest_scheduler_path = "C:/Local Projects/autograd_cpp/models/mallmoc-180/latest_scheduler.bin";
 
-        std::string final_save_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/trained_model.bin";
+        std::string final_save_path = "C:/Local Projects/autograd_cpp/models/mallmoc-180/trained_model.bin";
 
         int64_t start_step = 0;
         if (load_checkpoint == true) {
@@ -83,7 +83,7 @@ int main() {
         // LOG
         int64_t print_every = 10;
         int64_t tokens_per_interval = print_every * grad_accum_steps * B_real * seq_len;
-        std::string loss_log_path = "C:/Local Projects/autograd_cpp/models/mallmoc-174/training_log.csv";
+        std::string loss_log_path = "C:/Local Projects/autograd_cpp/models/mallmoc-180/training_log.csv";
         bool log_exists = std::filesystem::exists(loss_log_path);
         std::ofstream log_file(loss_log_path, std::ios::app);
         if (!log_file) {
@@ -146,7 +146,7 @@ int main() {
             }
         }
 
-        std::cout << "Training of MALLMOC-174 finished. Saving final model to: " << final_save_path;
+        std::cout << "Training of MALLMOC-180 finished. Saving final model to: " << final_save_path;
 
         save_tensor_checkpoint(model.state_dict(cpu), final_save_path);
         
