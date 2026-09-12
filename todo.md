@@ -219,3 +219,12 @@ DONE Fire up the 174M training on 3090
 DONE Write BENCHMARK.md with all your data from devices
 - Write an ARCHITECTURE.md which will be the base for future videos explaining EVERY SINGLE SHIT
 - Based on that, fuse BENCHMARK.md and ARCHITECTURE.md + MALLMOC-174 showcase (prompt like: This is a function to reverse a string: std::string reverse_string(....))
+
+DONE Give w3 and w_out_proj 0.02/sqrt(2*num_layers)
+DONE Give everything else std=0.02
+DONE Implement gradient clipping with max norm = 1.0
+- add it to training loop
+DONE Remove 25 000 000 params by fusing m_embeds and m_final_proj in GPT - use the same weight
+DONE Add layers to get around 174M
+DONE Adjust both eps to 1e-5
+- move to linux

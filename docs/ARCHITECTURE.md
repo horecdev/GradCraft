@@ -49,8 +49,8 @@ else if (m_device.is_cuda()) {
 ```
 
 ### Key points
-* **32-Byte CPU Alignment:** CPU allocations are forced to be a multiple of 32 to enable SIMD.
-* **Device-Aware CUDA Pool:** `CUDAMemPool` groups blocks by both bytes and device, preventing, say, `CUDA:0` from getting a pointer meant for `CUDA:1`.
+* **Memory aligned to 32 bytes:** CPU allocations are forced to be a multiple of 32 to enable SIMD.
+* **CUDA pool is device-aware:** `CUDAMemPool` groups blocks by both bytes and device, preventing, say, `CUDA:0` from getting a pointer meant for `CUDA:1`.
 
 ## 3. `Storage<T>` & RAII
 To **NOT** deal with segfaults and deep copies, `GradCraft` wraps all pool allocations inside a RAII `Storage<T>` container. 
@@ -78,8 +78,8 @@ struct Storage {
 
 ### Key points
 * **Strict RAII:** Copy constructors are deleted, so no `Storage<T>` can ever be duplicated by accident. Higher level objects (such as `TensorState` that will be mentioned soon) are forced to manage it via `std::shared_ptr`. When the ref count falls to 0, the destructor automatically returns the block back to memory pool.
-* **Lazy Evaluation (`allocate = false`):** `GradCraft` is lazily-evaluated. With this flag you can first build the DAG (directed acyclic graph) without requesting any RAM/VRAM until `.realize()` is called.
-* **Saving Memory Bandwidth (`fill = false`):** Very often a tensor is created purely as a destination buffer for a math operation (addition of 2 tensors, `RMSNorm`, etc.). Forcing a `cudaMemset` to zero out memory that will be immediately overwritten is pointless and wastes PCIe/Memory bandwidth. Using `fill = false` hands you an instantly available uninitialized tensor you can write to.
+* **Lazy evaluated engine (`allocate = false`):** `GradCraft` is lazily-evaluated. With this flag you can first build the DAG (directed acyclic graph) without requesting any RAM/VRAM until `.realize()` is called.
+* **Saving memory bandwidth (`fill = false`):** Very often a tensor is created purely as a destination buffer for a math operation (addition of 2 tensors, `RMSNorm`, etc.). Forcing a `cudaMemset` to zero out memory that will be immediately overwritten is pointless and wastes PCIe/Memory bandwidth. Using `fill = false` hands you an instantly available uninitialized tensor you can write to.
 
 ## 4. `TensorState<T>` & Computation Graph (Read up to section 6. Dont try to understand raw `TensorState` and `Tensor` out of context without `Nodes` and frontend functions.)
 In order to do backprop, the engine must track exactly how the loss was calculated. However, if we tied the computational history directly to the raw memory buffer (`Storage<T>`), creating a "view" (like transposing a matrix, reshaping, permuting...) would force a memory copy.
@@ -99,9 +99,9 @@ struct TensorState : public TensorStateBase {
 };
 ```
 ### Key points
-* **Exclusive History (`std::unique_ptr<Node<T>>`):** A computational node (e.g. AddNode) uniquely belongs to the specific result it created. A `TensorState` does **NOT** share its history. If you have a tensor that was created via addition (TensorState has an AddNode) and then you transpose it, a **NEW** `TensorState` is created with a TransposeNode.
-* **Shared Buffers (`std::shared_ptr<Storage<T>>`):** While history is exclusive, we want to minimize memory usage. If you perform the transpose operation mentioned above, a new `TensorState` is created with a TransposeNode, but it points to the exact same `Storage<T>`. View operations READ but do not WRITE to memory, therefore they can just READ in whatever order it pleases from the same buffer.
-* **One Gradient:** The accumulated gradient (`m_grad`) lives inside the `TensorState`. This guarantees that if multiple tensors reference the exact same `TensorState`, their gradients safely accumulate into the same buffer during `.backward()`. Tensors only ever reference the same `TensorState` if they are aliases.
+* **History is ALWAYS exclusive (`std::unique_ptr<Node<T>>`):** A computational node (e.g. AddNode) uniquely belongs to the specific result it created. A `TensorState` does **NOT** share its history. If you have a tensor that was created via addition (TensorState has an AddNode) and then you transpose it, a **NEW** `TensorState` is created with a TransposeNode.
+* **Storage buffers CAN be shared (`std::shared_ptr<Storage<T>>`):** While history is exclusive, we want to minimize memory usage. If you perform the transpose operation mentioned above, a new `TensorState` is created with a TransposeNode, but it points to the exact same `Storage<T>`. View operations READ but do not WRITE to memory, therefore they can just READ in whatever order it pleases from the same buffer.
+* **ONE gradient:** The accumulated gradient (`m_grad`) lives inside the `TensorState`. This guarantees that if multiple tensors reference the exact same `TensorState`, their gradients safely accumulate into the same buffer during `.backward()`. Tensors only ever reference the same `TensorState` if they are aliases.
 
 ## 5. `Tensor<T>` Lightweight Wrapper
 
@@ -122,8 +122,8 @@ private:
 ```
 
 ### Key points
-* **Instant Aliasing `shared_ptr<TensorState<T>>`:** When you copy a tensor (`Tensor B = A` or copy assignment), no memory is copied and no new nodes are created. `B` simply copies the shared_ptr to `A`'s `TensorState`. They are ideal aliases - they share the same memory, the same mathematical history and the same gradient. When one is realized, the other is also realized. If both are used in math and `.backward()` is called, they both accumulate to the same gradient buffer.
-* **Zero-Copy Shape/Stride/Offset Manipulation:** The `m_shape`, `m_strides` and `m_offset` vectors define the "view". Operations like `.slice()`, `.unsqueeze()` or `.permute()` do not touch the GPU memory. They simply create a new `Tensor`, calculate the new mathematical shape/strides/offset, assign it a new `TensorState` (to track the view operation for the autograd) and point it at the exact same `Storage`.
+* **Tensor aliasing `shared_ptr<TensorState<T>>`:** When you copy a tensor (`Tensor B = A` or copy assignment), no memory is copied and no new nodes are created. `B` simply copies the shared_ptr to `A`'s `TensorState`. They are ideal aliases - they share the same memory, the same mathematical history and the same gradient. When one is realized, the other is also realized. If both are used in math and `.backward()` is called, they both accumulate to the same gradient buffer.
+* **Zero-copy shape/stride/offset manipulation:** The `m_shape`, `m_strides` and `m_offset` vectors define the "view". Operations like `.slice()`, `.unsqueeze()` or `.permute()` do not touch the GPU memory. They simply create a new `Tensor`, calculate the new mathematical shape/strides/offset, assign it a new `TensorState` (to track the view operation for the autograd) and point it at the exact same `Storage`.
 * **Need For Gradients (`m_requires_grad`):** The engine tracks which tensors have to be included during calculation of gradients at the graph-building stage (eagerly).
 
 ## 6. The Computaional Graph & Frontend (Nodes & Callable functions)
@@ -168,7 +168,7 @@ class TanHNode : public Node<T> {
 ### Key points
 * Generally nodes are what bridges the `TensorState` of the inputs, to the `TensorState` of the result. That is because `Tensor` holds a `TensorState` which holds a `Node` which holds a `Tensor` which holds a `TensorState` which holds a `Node`... down to a `Tensor` _leaf tensor_ - a `Tensor` which has no `Node` but has numbers inside of it already, what means it does not have to know how to calculate itself.
 * Whenever a frontend function is used on a tensor, the engine does not compute the result immediately. Instead, it creates a lazy result (no allocation) and attaches a `Node` to its `TensorState` with a parent passed (or multiple parents).  
-* Whenever `Node.realize()` is called and Node is not a view node, a fresh **NON-lazy, lobotomized** `Tensor` is created, and an operation is dispatched to fill its `Storage<T>`. Then its returned.
+* Whenever `Node.realize()` is called and `Node` is **NOT** a view node, a fresh **NON-lazy, lobotomized** `Tensor` is created, and an operation is dispatched to fill its `Storage<T>`. Then its returned.
 
 After the whole graph has been built, then `.realize()` can be called on a `Tensor` which will automatically resolve what it has to calculate and in what order. How?
 
@@ -186,13 +186,13 @@ void Tensor<T>::realize() {
 }
 ```
 
-On the `std::swap(m_state->m_storage->m_data, computed_result.m_state->m_storage->m_data)` line.  
+### About the `std::swap(m_state->m_storage->m_data, computed_result.m_state->m_storage->m_data)` line.  
 
 Multiple `TensorStates` can look at the same `Storage` via `shared_ptr`. They all expect to have the same data and the same `shared_ptr`. We have to accept this assumption for now, because view nodes exploit that heavy. More on that shortly.
 
 ### Key points
 * Leaf tensors are NOT realized since they are filled with numbers at the start.
-* We steal the `Storage` pointer from the result of `Node.realize()`
+* We steal the `Storage` pointer from the `Tensor` `computed_result` of `Node.realize()`
 * View nodes `.realize()` result Tensors have the same shared_ptr pointer to `Storage` as the Tensor we are realizing. More on that in a second.
 * Since Tensors share `TensorState` realization of one realizes all.
 * Every single `TensorState` has `bool m_is_realized` so that aliases dont realize many times wasting memory
@@ -254,7 +254,7 @@ C.realize();
 10. `TanHNode` returns the brand new `Tensor` to `C.realize()` as `computed_result`.
 11. The `shared_ptr` is different and `C` inner `Storage` pointer is swapped with `computede_result` one.
 
-...And `C` is filled with correct values.
+...and `C` is now filled with correct values.
 
 ### Key points:
 * Every single `Node` must first realize its parents.
@@ -330,5 +330,7 @@ C.realize();
 ### Key points
 * If `temp_sum` simply overwrote its `shared_ptr<Storage>` with the new one from `computed_result`, `C`'s `Storage` would be left pointing to the old uninitialized dummy storage. By swapping the inner raw `m_data` pointer inside the shared `Storage` object, the memory update instantly propagates to every view `Tensor` in the graph that uses the same `Storage`. This is how we get allocation-free views.
 
-## 7. Toposort & Backward Flow.
+Knowing how nodes and frontend interact, here is the general three-function contract that every `Node` has to satisfy.
 
+
+## 7. Autograd & `.backward()` Flow.

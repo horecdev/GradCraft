@@ -17,8 +17,8 @@ namespace gradc {
             Linear<T> m_w3;
             bool cuda_fast = true;
         public:
-            SwiGLUMLP(int64_t embed_dim, int64_t hidden_dim, const Initializer<T>& init)
-             : m_w1(embed_dim, hidden_dim, init, ZerosInit<T>()), m_w2(embed_dim, hidden_dim, init, ZerosInit<T>()), m_w3(hidden_dim, embed_dim, init, ZerosInit<T>()) {
+            SwiGLUMLP(int64_t embed_dim, int64_t hidden_dim, const Initializer<T>& base_init, const Initializer<T>& residual_init)
+             : m_w1(embed_dim, hidden_dim, base_init, ZerosInit<T>()), m_w2(embed_dim, hidden_dim, base_init, ZerosInit<T>()), m_w3(hidden_dim, embed_dim, residual_init, ZerosInit<T>()) {
                 this->register_module("w1", &m_w1);
                 this->register_module("w2", &m_w2);
                 this->register_module("w3", &m_w3);
@@ -46,9 +46,11 @@ namespace gradc {
             SwiGLUMLP<T> m_mlp; // feed forward
 
         public:
-            TransformerBlock(int64_t embed_dim, int64_t num_heads, int64_t max_seq_len, const Initializer<T>& init, T eps = static_cast<T>(1e-5))
-             : m_norm1({embed_dim}, {-1}, OnesInit<T>(), eps), m_attn(embed_dim, num_heads, true, max_seq_len, init, ZerosInit<T>()),
-               m_norm2({embed_dim}, {-1}, OnesInit<T>(), eps), m_mlp(embed_dim, embed_dim * 3, init) {
+            TransformerBlock(int64_t embed_dim, int64_t num_heads, int64_t max_seq_len, const Initializer<T>& base_init, const Initializer<T>& residual_init, T eps = static_cast<T>(1e-5))
+             : m_norm1({embed_dim}, {-1}, OnesInit<T>(), eps), 
+               m_attn(embed_dim, num_heads, true, max_seq_len, base_init, residual_init, ZerosInit<T>()),
+               m_norm2({embed_dim}, {-1}, OnesInit<T>(), eps), 
+               m_mlp(embed_dim, embed_dim * 3, base_init, residual_init) {
 
                 this->register_module("norm1", &m_norm1);
                 this->register_module("attn", &m_attn);
@@ -71,11 +73,10 @@ namespace gradc {
             PosEncoding<T> m_pos_embed;
             std::vector<std::unique_ptr<TransformerBlock<T>>> m_blocks;
             RMSNorm<T> m_final_norm;
-            Linear<T> m_lm_head;
         public:
-            GPT(int64_t vocab_size, int64_t max_seq_len, int64_t embed_dim, int64_t num_heads, int64_t num_layers, const Initializer<T>& init, T eps = static_cast<T>(1e-5))
-             : m_token_embed(vocab_size, {embed_dim}, NormalInit<T>(0, 0.02)), m_pos_embed(max_seq_len, {embed_dim}, init),
-               m_final_norm({embed_dim}, {-1}, OnesInit<T>(), eps), m_lm_head(embed_dim, vocab_size, init, ZerosInit<T>()) {
+            GPT(int64_t vocab_size, int64_t max_seq_len, int64_t embed_dim, int64_t num_heads, int64_t num_layers, const Initializer<T>& base_init, const Initializer<T>& residual_init, T eps = static_cast<T>(1e-5))
+             : m_token_embed(vocab_size, {embed_dim}, NormalInit<T>(0, 0.02)), m_pos_embed(max_seq_len, {embed_dim}, base_init),
+               m_final_norm({embed_dim}, {-1}, OnesInit<T>(), eps) {
 
                 this->register_module("token_embed", &m_token_embed);
                 this->register_module("pos_embed", &m_pos_embed);
@@ -83,12 +84,11 @@ namespace gradc {
                 for (int64_t i = 0; i < num_layers; ++i) {
                     // allocate the transformer block on the heap. hold the POINTER in a vector. Register the pointer on the heap. 
                     // the adress of vector of pointers will change (reallocation) but the pointers it holds will not.
-                    m_blocks.push_back(std::make_unique<TransformerBlock<T>>(embed_dim, num_heads, max_seq_len, init, eps)); 
+                    m_blocks.push_back(std::make_unique<TransformerBlock<T>>(embed_dim, num_heads, max_seq_len, base_init, residual_init, eps)); 
                     this->register_module("block_" + std::to_string(i), m_blocks.back().get());
                 }
 
                 this->register_module("final_norm", &m_final_norm);
-                this->register_module("lm_head", &m_lm_head);
             }
 
             Tensor<T> forward(Tensor<int64_t> indices) { // (B, T)
@@ -104,7 +104,8 @@ namespace gradc {
                 }
 
                 x = m_final_norm.forward(x);
-                return m_lm_head.forward(x);
+                Tensor<T> w_tied = m_token_embed.weight().transpose(0, 1);
+                return matmul(x, w_tied);
             }
     };
 }

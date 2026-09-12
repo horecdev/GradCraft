@@ -22,6 +22,10 @@ namespace gradc {
                 Tensor<T> y = embed(indices, m_embeds.tensor());
                 return y;
             }
+
+            const Tensor<T>& weight() const {
+                return m_embeds.tensor();
+            }
     };
 
     template <typename T>

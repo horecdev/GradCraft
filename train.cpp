@@ -18,13 +18,13 @@ int main() {
         int64_t vocab_size = 32768;
         int64_t embed_dim = 768;
         int64_t num_heads = 12;
-        int64_t num_layers = 16;
+        int64_t num_layers = 19;
 
         // OPTIMIZER / SCHEDULER HYPERPARAMS
         float max_lr = 3e-4f;
         float min_lr = 3e-5f;
         float calc_eps = 1e-5f;
-        float optim_eps = 1e-8f;
+        float optim_eps = 1e-5f;
 
         float beta1 = 0.9f;
         float beta2 = 0.999f;
@@ -39,14 +39,19 @@ int main() {
         DataLoader loader = DataLoader("C:/Local Projects/autograd_cpp/data/datasets/cosmo_cpp.bin");
         
         // MODEL
-        float std = 1 / std::sqrt(2 * num_layers);
-        NormalInit<float> init(0.0f, std);
-        GPT<float> model(vocab_size, seq_len, embed_dim, num_heads, num_layers, init, calc_eps);
+        float base_std = 0.02f;
+        float residual_std = 0.02f / std::sqrt(2.0f * num_layers);
+        NormalInit<float> base_init(0.0f, base_std);
+        NormalInit<float> residual_init(0.0f, residual_std);
+        GPT<float> model(vocab_size, seq_len, embed_dim, num_heads, num_layers, base_init, residual_init, calc_eps);
         model.to(gpu);
 
         // OPTIMIZER AND SCHEDULER
         AdamW<float> optimizer(model.named_parameters(), 0.0f, beta1, beta2, weight_decay, optim_eps);
         CosineScheduler<float> scheduler(&optimizer, max_lr, min_lr, warmup_steps, total_steps);
+
+        // REGULARIZATION
+        GlobalNormClipper<float> clipper(1.0f);
 
         // CHECKPOINTING
         bool load_checkpoint = false;
@@ -113,6 +118,8 @@ int main() {
 
                 scaled_loss.backward();
             }
+            float global_norm = clipper.normalize(model.parameters());
+
             scheduler.step();
             optimizer.step();
 
@@ -121,7 +128,7 @@ int main() {
                 double interval_seconds = std::chrono::duration<double>(end_time - start_time).count();
                 double tok_per_sec = tokens_per_interval / interval_seconds;
                 
-                std::cout << "STEP: " << step << " | LOSS: " << last_loss_val << " | LR: " << scheduler.m_lr << " | TOK/S: " << tok_per_sec << std::endl;
+                std::cout << "STEP: " << step << " | LOSS: " << last_loss_val << " | GLOBAL NORM: " << global_norm << " | LR: " << scheduler.m_lr << " | TOK/S: " << tok_per_sec << std::endl;
                 log_file << step << "," << last_loss_val << "," << scheduler.m_lr << "," << tok_per_sec << "\n";
                 log_file.flush(); // force to write
                           
