@@ -212,8 +212,7 @@ DONE Set up the logging correctly
 DONE Write a sampling loop (static GPTGenerator generate() function which takes refs)
 DONE Save loss during run
 DONE Fire up the 180M training on 3090
-DONE Write BENCHMARK.md with all your data from devices
-
+DONE Microbenchmarks for: RMSNorm, Causal SDPA, SCEL, SwiGLU, AdamW @ 3090
 DONE Give w3 and w_out_proj 0.02/sqrt(2*num_layers)
 DONE Give everything else std=0.02
 DONE Implement gradient clipping with max norm = 1.0
@@ -223,9 +222,9 @@ DONE Add layers to get around 180M
 DONE Adjust both eps to 1e-5
 
 - Benchmark for production RTX 3090 vs RTX 3070 Ti at B=1, B=2, B=4, B=5 (HWM, tok/s) @ 3070Ti, 3090
-- Microbenchmarks for: RMSNorm, Causal SDPA, SCEL, SwiGLU, AdamW @ 3090
 - Benchmark for production CPU vs production CUDA @ 3090
 - Benchmark for GC vs Pytorch with B=1, B=2, B=4, B=5, full 180M @ 3090
+- BENCHMARK.md with all your data from devices
 
-- Write an ARCHITECTURE.md which will be the base for future videos explaining EVERY SINGLE SHIT
-- Based on that, fuse BENCHMARK.md and ARCHITECTURE.md + MALLMOC-180 showcase (prompt like: This is a function to reverse a string: std::string reverse_string(....))
+DONE Write an ARCHITECTURE.md 
+- Write README.md
