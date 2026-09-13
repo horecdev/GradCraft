@@ -21,7 +21,8 @@ Comparison of unoptimized chains of primitive operations vs fused `CUDA` kernels
 | **`Softmax Cross-Entropy`** (Fwd + Bwd) | 1020.01 ms | 9.36 ms | **108.9x** |
 | **`AdamW Step`** | 53.97 ms | 0.67 ms | **80.5x** |
 
-*Note: The speedup is **MASSIVE**. That's because a primitive `RMSNorm` `.realize()` dispatches, 9 (**NINE!!**) kernels, while a fast one fires up exactly **ONE** kernel. It reads once, not **NINE** times.
+*Note: The speedup is **MASSIVE**. That's because a primitive `RMSNorm` `.realize()` dispatches, 9 (**NINE!!**) kernels, while a fast one fires up exactly **ONE** kernel. It reads once, not **NINE** times.*
+
 ---
 
 ### 2. `GradCraft` vs `PyTorch` Eager (`FP32`, No `FlashAttention`) @ 180M Model
