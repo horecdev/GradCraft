@@ -27,7 +27,7 @@ void run_device_benchmark(DeviceType type, const std::string& dev_name) {
 
     std::cout << "Starting benchmark.\n";
 
-    for (int step = 0; step < 10; ++step) {
+    for (int step = 0; step < 50; ++step) {
         auto start = std::chrono::high_resolution_clock::now();
 
         Tensor<float> logits = model.forward(X);
@@ -56,7 +56,7 @@ void run_device_benchmark(DeviceType type, const std::string& dev_name) {
         double ms = std::chrono::duration<double, std::milli>(end - start).count();
         double tok_sec = (B * T) / (ms / 1000.0);
 
-        if (step < 2) {
+        if (step < 10) {
             std::cout << "Step " << step << " (Warmup) | Loss: " << std::fixed << std::setprecision(4) << loss_val << std::endl;
         } else {
             std::cout << "Step " << step << " | Time: " << std::fixed << std::setprecision(2) << ms << " ms | Speed: " << static_cast<int64_t>(tok_sec) << " tok/s" << std::endl;
@@ -67,9 +67,9 @@ void run_device_benchmark(DeviceType type, const std::string& dev_name) {
 
 int main() {
     try {
-        run_device_benchmark(DeviceType::CPU, "CPU");
+        //run_device_benchmark(DeviceType::CPU, "CPU");
 
-        //run_device_benchmark(DeviceType::CUDA, "RTX 3070 Ti");
+        run_device_benchmark(DeviceType::CUDA, "RTX 3070 Ti");
 
     } catch (const std::exception& e) {
         std::cerr << "Fatal Error: " << e.what() << std::endl;
