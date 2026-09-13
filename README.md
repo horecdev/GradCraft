@@ -4,7 +4,7 @@ A custom, 12,000-line C++ Deep Learning framework built entirely from scratch. I
 
 `GradCraft` consists of an autograd engine, memory pools (for both `CPU` and `CUDA`), tons of math and algos (tons is an understatement honestly), and handwritten kernels. 
 
-It reaches **50%** eager `PyTorch` speed while training a 180 000 000 param GPT under the same conditions (no `FlashAttention`, `fp32`).  
+It reaches **45-50%** eager `PyTorch` speed while training a 180 000 000 param GPT under the same conditions (no `FlashAttention`, `fp32`).  
 More benchmarks are in [BENCHMARK.md](BENCHMARK.md)
 
 ## Proof
