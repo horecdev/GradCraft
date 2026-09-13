@@ -1,7 +1,0 @@
-{
-    "clangd.arguments": [
-        "--compile-commands-dir=${workspaceFolder}/build",
-        "--header-insertion=never",
-        "--query-driver=C:\\Program Files\\Microsoft Visual Studio\\**\\cl.exe"
-    ],
-}
