@@ -63,9 +63,8 @@ int main() {
     try {
         std::cout << "Benchmarking training run\n";
         run_benchmark(1, 1024, 10, 50);
-        run_benchmark(2, 1024, 1, 2);
-        //run_benchmark(4, 1024, 10, 50);
-        //run_benchmark(5, 1024, 10, 50);
+        run_benchmark(2, 1024, 10, 50);
+        run_benchmark(4, 1024, 10, 50);
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << "\n";
         return 1;
