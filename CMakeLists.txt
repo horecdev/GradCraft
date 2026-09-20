@@ -51,6 +51,9 @@ target_link_libraries(train PRIVATE GradCore)
 add_executable(tokenizer tokenize.cpp)
 target_link_libraries(tokenizer PRIVATE GradCore)
 
+add_executable(inference inference.cpp)
+target_link_libraries(inference PRIVATE GradCore)
+
 # benchmarks
 add_executable(bench_cpu_gpu benchmarks/bench_cpu_vs_gpu.cpp)
 target_link_libraries(bench_cpu_gpu PRIVATE GradCore)
@@ -64,7 +67,9 @@ target_link_libraries(bench_kernels PRIVATE GradCore)
 if(MSVC)
     target_link_options(train PRIVATE /INCREMENTAL:NO)
     target_link_options(tokenizer PRIVATE /INCREMENTAL:NO)
+    target_link_options(inference PRIVATE /INCREMENTAL:NO)
     target_link_options(bench_cpu_gpu PRIVATE /INCREMENTAL:NO)
     target_link_options(bench_training PRIVATE /INCREMENTAL:NO)
     target_link_options(bench_kernels PRIVATE /INCREMENTAL:NO)
+    
 endif()
