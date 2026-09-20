@@ -496,7 +496,7 @@ namespace gradc {
         shared_idxs[t_idx] = thread_best_idx;
         __syncthreads();
 
-        for (int stride = blockDim.x; stride > 0; stride >>= 1) {
+        for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
             if (t_idx < stride) {
                 if (op(shared_vals[t_idx + stride], shared_vals[t_idx])) {
                     shared_vals[t_idx] = shared_vals[t_idx + stride];

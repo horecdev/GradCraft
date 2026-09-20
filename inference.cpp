@@ -35,10 +35,10 @@ int main() {
         model.load_state_dict(model_state);
         std::cout << "Weights loaded successfully.\n" << std::endl;
 
-        int64_t max_tokens = 40; 
+        int64_t max_tokens = 80; 
         int64_t num_sequences = 1;
         //std::optional<float> temperature = std::nullopt;
-        std::optional<float> temperature = 0.8f;
+        std::optional<float> temperature = 1.2f;
 
         std::string prompt;
         std::cout << "MALLMOC ready. Enter prompt (type 'quit' to exit): \n";
