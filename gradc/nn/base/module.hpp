@@ -23,7 +23,7 @@ namespace gradc {
                 }
             }
 
-            bool eval() {
+            void eval() {
                 m_is_training = false;
                 for (const auto& [name, module] : m_submodules) {
                     module->eval();

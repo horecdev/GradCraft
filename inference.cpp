@@ -35,8 +35,9 @@ int main() {
         model.load_state_dict(model_state);
         std::cout << "Weights loaded successfully.\n" << std::endl;
 
-        int64_t max_tokens = 150; 
+        int64_t max_tokens = 40; 
         int64_t num_sequences = 1;
+        //std::optional<float> temperature = std::nullopt;
         std::optional<float> temperature = 0.8f;
 
         std::string prompt;
@@ -54,7 +55,7 @@ int main() {
             std::vector<std::string> results = GPTGenerator<float>::run_inference(model, bpe, seq_len, prompt, max_tokens, num_sequences, cpu, gpu, temperature);
 
             std::cout << "--- Output ---\n";
-            std::cout << prompt << results[0] << "\n----------------\n";
+            std::cout << results[0] << "\n----------------\n";
         }
 
         return 0;

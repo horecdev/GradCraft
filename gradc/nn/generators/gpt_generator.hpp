@@ -34,9 +34,11 @@ namespace gradc {
                 // now gotta slice 1024 tokens MAX up to std::ssize(tensor_tokens) master buffer
 
                 Tensor<int64_t> moved_tokens = tensor_tokens.to(infer_device);
+                moved_tokens.realize();
                 int64_t* moved_tokens_ptr = moved_tokens._get_storage()->data();
 
                 for (int64_t step = current_length; step < max_tokens; ++step) {
+                    std::cout << "Running step: " << step << std::endl;
                     Tensor<int64_t> context = moved_tokens[_, Slice(std::max(0LL, step - context_length), step)];
 
                     Tensor<T> logits = gpt.forward(context);
@@ -63,6 +65,7 @@ namespace gradc {
                                 cudaMemcpyDeviceToDevice
                             );
                         }
+                        std::cout << "Successfully ran the argmax stuff" << std::endl;
                     }
                     else { // do softmax to get probs that sum to 1.0, move to CPU to run sampling, then copy memory back
                         Tensor<T> probs = (last_logits / temperature.value()).softmax(-1); 
@@ -103,10 +106,6 @@ namespace gradc {
 
                     for (int64_t t = 0; t < max_tokens; ++t) {
                         int64_t token_id = final_ptr[b * max_tokens + t];
-                        
-                        if (token_id == 259) { // <|im_end|>
-                            break;
-                        }
                         
                         current_seq.push_back(static_cast<uint32_t>(token_id));
                     }

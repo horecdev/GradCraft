@@ -542,7 +542,7 @@ namespace gradc {
             for (int64_t i = 0; i < dim_size; ++i) {
                 T new_val = p_source[source_idx + (i * dim_stride)];
                 if (op(new_val, best_val)) {
-                    best_val = p_source[source_idx];
+                    best_val = new_val;
                     best_idx = i;
                 }
             }
