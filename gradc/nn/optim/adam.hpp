@@ -65,8 +65,6 @@ namespace gradc {
                 Tensor<T> one_minus_beta2 = Tensor<T>(std::vector<int64_t>{}, target_device, uninitialized);
                 dispatch(target_device, BinaryOp::Sub, one_minus_beta2, Tensor<T>(static_cast<T>(1.0), target_device), m_beta2);
 
-                dispatch(target_device, BinaryOpInPlace::Mul, m_beta1_exp, m_beta1);
-                dispatch(target_device, BinaryOpInPlace::Mul, m_beta2_exp, m_beta2);
                 // both exp are B^t 
                 // now calc 1 - B^t
                 Tensor<T> mean_bias = Tensor<T>(std::vector<int64_t>{}, target_device, uninitialized);
