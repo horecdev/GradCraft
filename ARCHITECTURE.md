@@ -624,22 +624,22 @@ if (m_cuda_fast && target_device.is_cuda()) {
 
 ## Wrapping it All Up.
 
-As I am writing this there is a 180 000 000 param LLM called **MALLMOC** (LLM + MALLOC = MALLMOC) training on my RTX 3090 GPU.
+As I am writing this there is a 90 000 000 param LLM called **MALLMOC** (LLM + MALLOC = MALLMOC) training on my RTX 3090 GPU.
 
 Building `GradCraft` was a brutal, incredibly rewarding and teaching experience. It took over 10,000 lines of C++, hundreds of lines of CUDA kernels and hours of debugging segfaults.
 
-To prove that the architecture actually works and it trained *something* here is MALLMOC-180 (once it finished training)
+To prove that the architecture actually works and it trained *something* here is MALLMOC-90 (once it finished training). It speaks Python (not C++ because it's way more complex).
 
 `PROMPT:`
-```cpp
-// Here is a function to reverse a string:
-std::string reverse_string(const std::string& s) {
+```py
+def reverse_string(s: str) -> str:
+    """Reverses the input string and returns it."
 ```
 `PROMPT + ANSWER:`
-```cpp
+```py
 input stuff when it finally trains
 ```
 
-Summing up: you could just do `std::reverse()` or you could write a 12,000 line deep learning framework with your own kernels, and train a 180M clanker to do the job for you. For me the choice was obvious.
+Summing up: you could just do `[::-1]` or you could write a 12,000 line deep learning framework with your own kernels, and train a 90M clanker to do the job for you. For me the choice was obvious.
 
 Thanks for reading. All the code is in the repo.

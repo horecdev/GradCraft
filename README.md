@@ -4,21 +4,20 @@ A custom, 12,000-line C++ Deep Learning framework built entirely from scratch. I
 
 `GradCraft` consists of an autograd engine, memory pools (for both `CPU` and `CUDA`), tons of math and algos (tons is an understatement honestly), and handwritten kernels. 
 
-It reaches **45-50%** eager `PyTorch` speed while training a 180 000 000 param GPT under the same conditions (no `FlashAttention`, `fp32`).  
+It reaches **45-50%** eager `PyTorch` speed while training a 90 000 000 param GPT under the same conditions (no `FlashAttention`, `fp32`).  
 More benchmarks are in [BENCHMARK.md](BENCHMARK.md)
 
 ## Proof
-To prove the math holds up I trained a 180M param LLM called **MALLMOC** (LLM + MALLOC = MALLMOC) in `GradCraft` on an RTX 3090.
+To prove the math holds up I trained a (90M) param LLM called **MALLMOC** (LLM + MALLOC = MALLMOC) in `GradCraft` on an RTX 3090.
 
 `PROMPT:`
-```cpp
-// Here is a function to reverse a string:
-std::string reverse_string(const std::string& s) {
+```py
+def reverse_string(s: str) -> str:
+    """Reverses the input string and returns it."
 ```
-
 `PROMPT + ANSWER:`
-```cpp
-
+```py
+input stuff when it finally trains
 ```
 
 As you can see, the clanker correctly reversed the string. He is only pre-trained, so you cannot prompt him directly unfortunately.
