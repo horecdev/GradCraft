@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-set(CMAKE_TOOLCHAIN_FILE "C:/Development/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
-project(CalculationGraphEngine CXX CUDA)
+project(GradCraft CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,13 +7,17 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_CUDA_STANDARD 20)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-set(CMAKE_CUDA_ARCHITECTURES 86)
+
+# default to rtx 30 series
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES 86)
+endif()
 
 find_package(CUDAToolkit REQUIRED)
 find_package(OpenBLAS REQUIRED)
 find_package(OpenMP REQUIRED)
 
-# core
+# core lib
 add_library(GradCore STATIC
     gradc/gradc.hpp
     gradc/backend/cuda/kernels_math.cu
@@ -35,63 +38,37 @@ target_include_directories(GradCore PUBLIC
 )
 
 if(MSVC)
-    # ==================== RELEASE MODE ====================
     target_compile_options(GradCore PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4 /bigobj /O2 /fp:fast>
         $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/bigobj,-O2,-fp:fast -O3 -use_fast_math>
     )
-
-    # ===================== DEBUG MODE =====================
-    # target_compile_options(GradCore PRIVATE
-    #     $<$<COMPILE_LANGUAGE:CXX>:/Zi /W4 /bigobj /Od>
-    #     $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/bigobj,-Od -G -g>
-    # )
 endif()
 
-# train
+# execs
 add_executable(train train.cpp)
 target_link_libraries(train PRIVATE GradCore)
 
-if(MSVC)
-    target_link_options(train PRIVATE /INCREMENTAL:NO)
-endif()
-
-# tokenizer
 add_executable(tokenizer tokenize.cpp)
 target_link_libraries(tokenizer PRIVATE GradCore)
 
-if(MSVC)
-    target_link_options(tokenizer PRIVATE /INCREMENTAL:NO)
-endif()
-
-# inference
 add_executable(inference inference.cpp)
-target_link_libraries(inference PRIVATE GradCore)
+target_link_libraries(tokenizer PRIVATE GradCore)
 
-if(MSVC)
-    target_link_options(inference PRIVATE /INCREMENTAL:NO)
-endif()
-
-# benchmark cpu vs gpu (cpu vs 3090)
+# benchmarks
 add_executable(bench_cpu_gpu benchmarks/bench_cpu_vs_gpu.cpp)
 target_link_libraries(bench_cpu_gpu PRIVATE GradCore)
 
-if(MSVC)
-    target_link_options(bench_cpu_gpu PRIVATE /INCREMENTAL:NO)
-endif()
-
-# benchmark training on 3070 Ti vs 3090
 add_executable(bench_training benchmarks/bench_training.cpp)
 target_link_libraries(bench_training PRIVATE GradCore)
 
-if(MSVC)
-    target_link_options(bench_training PRIVATE /INCREMENTAL:NO)
-endif()
-
-# naive / fast paths
 add_executable(bench_kernels benchmarks/bench_kernels.cpp)
 target_link_libraries(bench_kernels PRIVATE GradCore)
 
 if(MSVC)
+    target_link_options(train PRIVATE /INCREMENTAL:NO)
+    target_link_options(tokenizer PRIVATE /INCREMENTAL:NO)
+    target_link_options(inference PRIVATE /INCREMENTAL:NO)
+    target_link_options(bench_cpu_gpu PRIVATE /INCREMENTAL:NO)
+    target_link_options(bench_training PRIVATE /INCREMENTAL:NO)
     target_link_options(bench_kernels PRIVATE /INCREMENTAL:NO)
 endif()
