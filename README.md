@@ -13,7 +13,7 @@ To prove the math holds up I trained a (90M) param LLM called **MALLMOC** (LLM +
 `PROMPT:`
 ```py
 def reverse_string(s: str) -> str:
-    """Reverses the input string and returns it."
+    """Reverses the input string and returns it."""
 ```
 `PROMPT + ANSWER:`
 ```py

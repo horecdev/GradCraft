@@ -633,7 +633,7 @@ To prove that the architecture actually works and it trained *something* here is
 `PROMPT:`
 ```py
 def reverse_string(s: str) -> str:
-    """Reverses the input string and returns it."
+    """Reverses the input string and returns it."""
 ```
 `PROMPT + ANSWER:`
 ```py
