@@ -12,31 +12,31 @@ int main() {
         Device cpu(DeviceType::CPU);
 
         // HYPERPARAMS
-        int64_t B_target = 512; // 85 * 6 = 510
-        int64_t B_real = 4;
-        int64_t seq_len = 1024;
-        int64_t vocab_size = 32768;
+        int64_t B_target = 512; 
+        int64_t B_real = 16;
+        int64_t seq_len = 512;
+        int64_t vocab_size = 8192;
         int64_t embed_dim = 768;
         int64_t num_heads = 12;
-        int64_t num_layers = 20;
+        int64_t num_layers = 11;
 
         // OPTIMIZER / SCHEDULER HYPERPARAMS
-        float max_lr = 3e-4f;
-        float min_lr = 3e-5f;
+        float max_lr = 6e-4f;
+        float min_lr = 6e-5f;
         float calc_eps = 1e-5f;
         float optim_eps = 1e-5f;
 
         float beta1 = 0.9f;
-        float beta2 = 0.999f;
+        float beta2 = 0.95f;
         float weight_decay = 0.1f;
 
         // TRAINING HYPERPARAMS
         int64_t grad_accum_steps = B_target / B_real;
-        int64_t total_steps = 8'272; // 8272 * 512 * 1024 = 4.3 billion tokens
-        int64_t warmup_steps = 400; // ~5%
+        int64_t total_steps = 6300;
+        int64_t warmup_steps = 300; // ~5%
 
         // DATA
-        DataLoader loader = DataLoader("C:/Local Projects/GradCraft/data/datasets/cosmo_cpp.bin");
+        DataLoader loader = DataLoader("C:/Local Projects/GradCraft/data/datasets/python_edu.bin", 512, 67);
         
         // MODEL
         float base_std = 0.02f;
@@ -57,11 +57,11 @@ int main() {
         bool load_checkpoint = false;
         int64_t checkpoint_every = 500;
 
-        std::string latest_model_path = "C:/Local Projects/GradCraft/models/mallmoc-180/latest_model.bin";
-        std::string latest_optim_path = "C:/Local Projects/GradCraft/models/mallmoc-180/latest_optim.bin";
-        std::string latest_scheduler_path = "C:/Local Projects/GradCraft/models/mallmoc-180/latest_scheduler.bin";
+        std::string latest_model_path = "C:/Local Projects/GradCraft/models/mallmoc-90/latest_model.bin";
+        std::string latest_optim_path = "C:/Local Projects/GradCraft/models/mallmoc-90/latest_optim.bin";
+        std::string latest_scheduler_path = "C:/Local Projects/GradCraft/models/mallmoc-90/latest_scheduler.bin";
 
-        std::string final_save_path = "C:/Local Projects/GradCraft/models/mallmoc-180/trained_model.bin";
+        std::string final_save_path = "C:/Local Projects/GradCraft/models/mallmoc-90/trained_model.bin";
 
         int64_t start_step = 0;
         if (load_checkpoint == true) {
@@ -83,7 +83,7 @@ int main() {
         // LOG
         int64_t print_every = 10;
         int64_t tokens_per_interval = print_every * grad_accum_steps * B_real * seq_len;
-        std::string loss_log_path = "C:/Local Projects/GradCraft/models/mallmoc-180/training_log.csv";
+        std::string loss_log_path = "C:/Local Projects/GradCraft/models/mallmoc-90/training_log.csv";
         bool log_exists = std::filesystem::exists(loss_log_path);
         std::ofstream log_file(loss_log_path, std::ios::app);
         if (!log_file) {
@@ -101,6 +101,9 @@ int main() {
 
         for (int64_t step = start_step; step < total_steps; ++step) {
             model.zero_grad();
+
+            Tensor<float> step_loss_accum = Tensor<float>::zeros({}, gpu);
+
             for (int64_t micro_batch = 0; micro_batch < grad_accum_steps; ++micro_batch) {
                 auto [X, Y] = loader.next_batch(B_real, seq_len, Device(DeviceType::CPU));
                 X = X.to_async(gpu, copy_stream, event);
@@ -111,9 +114,11 @@ int main() {
                 Tensor<float> scaled_loss = loss / static_cast<float>(grad_accum_steps); // SCEL does 1/4 but u gotta do 1/512
 
                 scaled_loss.realize();
+
+                dispatch(gpu, BinaryOpInPlace::Add, step_loss_accum, scaled_loss);
                 
                 if (step % print_every == 0 && micro_batch == grad_accum_steps - 1) {
-                    last_loss_val = loss.item();
+                    last_loss_val = step_loss_accum.item();
                 }
 
                 scaled_loss.backward();
@@ -146,7 +151,7 @@ int main() {
             }
         }
 
-        std::cout << "Training of MALLMOC-180 finished. Saving final model to: " << final_save_path;
+        std::cout << "Training of MALLMOC-90 finished. Saving final model to: " << final_save_path;
 
         save_tensor_checkpoint(model.state_dict(cpu), final_save_path);
         

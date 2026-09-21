@@ -15,11 +15,11 @@ int main() {
         bpe.load_vocab("C:/Local Projects/GradCraft/data/vocab/vocab.bin"); 
 
         // must match training!!!!!!!!
-        int64_t seq_len = 1024;
-        int64_t vocab_size = 32768;
+        int64_t seq_len = 512;
+        int64_t vocab_size = 8192;
         int64_t embed_dim = 768;
         int64_t num_heads = 12;
-        int64_t num_layers = 20;
+        int64_t num_layers = 11;
         float calc_eps = 1e-5f;
 
         std::cout << "Initializing MALLMOC-180 on GPU." << std::endl;
@@ -37,8 +37,8 @@ int main() {
 
         int64_t max_tokens = 80; 
         int64_t num_sequences = 1;
-        //std::optional<float> temperature = std::nullopt;
-        std::optional<float> temperature = 1.2f;
+        std::optional<float> temperature = std::nullopt;
+        //std::optional<float> temperature = 1.2f;
 
         std::string prompt;
         std::cout << "MALLMOC ready. Enter prompt (type 'quit' to exit): \n";
@@ -46,6 +46,10 @@ int main() {
         while (true) {
             std::cout << "\n> ";
             std::getline(std::cin, prompt);
+            size_t pos;
+            while ((pos = prompt.find("\\n")) != std::string::npos) {
+                prompt.replace(pos, 2, "\n");
+            }
             
             if (prompt == "quit") break;
             if (prompt.empty()) continue;

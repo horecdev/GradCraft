@@ -35,8 +35,20 @@ namespace gradc {
                     unsigned char c = static_cast<unsigned char>(text[stop]);
 
                     // you have to blast bitchass static_cast because isalpha etc expects unsigned char, but chars are signed by default
+                    if (c == ' ' && stop + 1 < length && !std::isspace(static_cast<unsigned char>(text[stop + 1]))) {
+                        stop++;
+                        c = static_cast<unsigned char>(text[stop]);
+                    } 
+                    else if (std::isspace(c)) {
+                        while (stop < length && std::isspace(static_cast<unsigned char>(text[stop]))) {
+                            stop++;
+                        }
+                        pieces.push_back(text.substr(start, stop - start));
+                        continue;
+                    }
+
                     if (std::isalpha(c) || c == '_') {
-                        while (stop < length && (std::isalpha(static_cast<unsigned char>(text[stop])) || text[stop] == '_')) { 
+                        while (stop < length && (std::isalpha(static_cast<unsigned char>(text[stop])) || text[stop] == '_')) {
                             stop++;
                         }
                     }
@@ -46,18 +58,7 @@ namespace gradc {
                         }
                     }
                     else if (std::ispunct(c)) {
-                        while (stop < length && std::ispunct(static_cast<unsigned char>(text[stop]))) {
-                            stop++;
-                        }
-                    }
-                    else if (std::isspace(c) && length - stop > 1 && (std::isalpha(static_cast<unsigned char>(text[stop + 1])) || text[stop + 1] == '_')) {
-                        stop++; // add the space
-                        while (stop < length && (std::isalpha(static_cast<unsigned char>(text[stop])) || text[stop] == '_')) { 
-                            stop++;
-                        }
-                    }
-                    else if (std::isspace(c)) {
-                        while (stop < length && (std::isspace(static_cast<unsigned char>(text[stop])))) {
+                        while (stop < length && std::ispunct(static_cast<unsigned char>(text[stop])) && text[stop] != '_') {
                             stop++;
                         }
                     }
@@ -109,7 +110,7 @@ namespace gradc {
             std::vector<WordSeq> m_sequences;
             std::map<std::pair<uint32_t, uint32_t>, uint32_t> m_merges;
             std::vector<std::string> m_vocab;
-            int32_t m_num_tokens = 32768; // 2^15
+            int32_t m_num_tokens = 8192;
         public:
             BytePairEncoding() {
                 m_vocab.resize(m_num_tokens);
@@ -218,7 +219,7 @@ namespace gradc {
                     }
 
                     if (batch_merges.empty()) {
-                        throw std::runtime_error("Unable to create a vocab of 32768. Ran out of pairs.");
+                        throw std::runtime_error("Unable to create a vocab of " + std::to_string(m_num_tokens) + ". Ran out of pairs.");
                     }
 
 
