@@ -1,4 +1,4 @@
-#include "gradc/gradc.hpp"
+#include "gradc/gradc.hpp" // IWYU pragma: keep
 #include "gradc/nn/generators/gpt_generator.hpp"
 #include <iostream>
 #include <string>
@@ -39,6 +39,7 @@ int main() {
         int64_t num_sequences = 1;
         std::optional<float> temperature = std::nullopt;
         //std::optional<float> temperature = 1.2f;
+        int64_t top_k = 20;
 
         std::string prompt;
         std::cout << "MALLMOC ready. Enter prompt (type 'quit' to exit): \n";
@@ -56,7 +57,7 @@ int main() {
 
             std::cout << "Generating...\n" << std::endl;
             
-            std::vector<std::string> results = GPTGenerator<float>::run_inference(model, bpe, seq_len, prompt, max_tokens, num_sequences, cpu, gpu, temperature);
+            std::vector<std::string> results = GPTGenerator<float>::run_inference(model, bpe, seq_len, prompt, max_tokens, num_sequences, cpu, gpu, temperature, top_k);
 
             std::cout << "--- Output ---\n";
             std::cout << results[0] << "\n----------------\n";

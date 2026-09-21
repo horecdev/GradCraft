@@ -1,19 +1,18 @@
-#include "gradc/gradc.hpp"
+#include "gradc/gradc.hpp" // IWYU pragma: keep
 
 int main() {
     try {
-        std::string vocab_dir = "C:/Local Projects/autograd_cpp/data/vocab";
-        std::string dataset_dir = "C:/Local Projects/autograd_cpp/data/datasets";
+        std::string vocab_dir = "C:/Local Projects/GradCraft/data/vocab";
+        std::string dataset_dir = "C:/Local Projects/GradCraft/data/datasets";
         std::string vocab_path = vocab_dir + "/vocab.bin";
-        std::string output_path = dataset_dir + "/cosmo_cpp_edit.bin";
+        std::string output_path = dataset_dir + "/python_edu.bin";
 
         std::filesystem::create_directories(vocab_dir);
         std::filesystem::create_directories(dataset_dir);
 
         std::vector<std::string> all_files;
-        for (int i = 0; i < 614; ++i) {
-            all_files.push_back(std::format("C:/Local Projects/autograd_cpp/data/raw_data/cosmopedia/cosmo_chunk_{:03d}.txt", i));
-            all_files.push_back(std::format("C:/Local Projects/autograd_cpp/data/raw_data/cpp/cpp_chunk_{:03d}.txt", i));
+        for (int i = 0; i < 122; ++i) {
+            all_files.push_back(std::format("C:/Local Projects/GradCraft/data/raw_data/python_edu_{:04d}.txt", i));
         }
 
         if (!std::filesystem::exists(vocab_path)) {

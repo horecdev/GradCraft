@@ -9,7 +9,7 @@ namespace gradc {
     template <typename T>
     struct GPTGenerator {
         public:
-            static std::vector<std::string> run_inference(GPT<T>& gpt, BytePairEncoding& bpe, int64_t context_length, const std::string& start_text, int64_t max_tokens, int64_t num_sequences, Device cpu, Device infer_device, std::optional<float> temperature) {
+            static std::vector<std::string> run_inference(GPT<T>& gpt, BytePairEncoding& bpe, int64_t context_length, const std::string& start_text, int64_t max_tokens, int64_t num_sequences, Device cpu, Device infer_device, std::optional<float> temperature = std::nullopt, int64_t top_k = 30) {
                 std::vector<uint32_t> tokens = bpe.encode(start_text);
                 int64_t current_length = std::ssize(tokens);
 
@@ -74,9 +74,27 @@ namespace gradc {
                         int64_t vocab_size = cpu_probs.shape().back();
 
                         for (int64_t b = 0; b < num_sequences; ++b) {
-                            std::discrete_distribution<int64_t> dist(probs_ptr + (b * vocab_size), probs_ptr + ((b + 1) * vocab_size));
+                            T* row_ptr = probs_ptr + (b * vocab_size);
 
-                            int64_t next_token_id = dist(rng);
+                            std::vector<std::pair<T, int64_t>> candidates(vocab_size);
+                            for (int64_t i = 0; i < vocab_size; ++i) {
+                                candidates[i] = {row_ptr[i], i}; // pack into {prob, token_id}
+                            }
+
+                            int64_t k = std::min(top_k, vocab_size);
+                            // reorder so that top_k probs are at the front
+                            std::nth_element(candidates.begin(), candidates.begin() + k - 1, candidates.end(),[](const auto& a, const auto& b) { return a.first > b.first; });
+
+                            std::vector<T> weights(k);
+                            std::vector<int64_t> indices(k);
+                            // create two arrays with probs and indices
+                            for (int64_t i = 0; i < k; ++i) {
+                                weights[i] = candidates[i].first;
+                                indices[i] = candidates[i].second;
+                            }
+
+                            std::discrete_distribution<int64_t> dist(weights.begin(), weights.end());
+                            int64_t next_token_id = indices[dist(rng)]; // sample one prob at index, pick token_id of the prob
 
                             if (infer_device.is_cpu()) {
                                 moved_tokens_ptr[b * max_tokens + step] = next_token_id;
