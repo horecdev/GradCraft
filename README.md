@@ -166,7 +166,7 @@ If your training crashed, you can use the `--resume` flag to start off from the 
 
 - `model_dir/config.bin`: Serialized model architecture (so you dont have to specify everything when running `inference.exe`)
 - `model_dir/trained_model.bin`: Final trained model weights
-- `model_dir/latest_model.bin`: Latest weight checkpoint (every 500 steps)
+- `model_dir/latest_model.bin`: Latest weight checkpoint
 - `model_dir/latest_optim.bin`: Latest AdamW checkpoint
 - `model_dir/latest_scheduler.bin`: Latest CosineScheduler checkpoint
 - `model_dir/training_log.csv`: Step/Loss/Norm/LR log file
