@@ -7,7 +7,7 @@ A custom, 12,000-line C++ Deep Learning framework built entirely from scratch. I
 It reaches **45-50%** eager `PyTorch` speed while training a 90 000 000 param GPT under the same conditions (no `FlashAttention`, `fp32`).  
 More benchmarks are in [BENCHMARK.md](BENCHMARK.md)
 
-## Proof.
+## A Working Clanker Trained in GradCraft.
 To prove the math holds up I trained a (90M) param LLM called **MALLMOC** (LLM + MALLOC = MALLMOC) in `GradCraft` on an RTX 3090.
 
 `PROMPT:`
@@ -22,9 +22,9 @@ input stuff when it finally trains
 
 As you can see, the clanker correctly reversed the string. He is only pre-trained, so you cannot prompt him directly unfortunately.
 
-## Under the Hood.
+## A Few Words About the Engine Itself.
 
-Building `GradCraft` was brutal but rewarding. It's built for hardware efficiency. More in-detail architecture is in [ARCHITECTURE.md](ARCHITECTURE.md)
+Building `GradCraft` was brutal but rewarding. It's built for hardware efficiency. More in-detail deep dive into architecture is in [ARCHITECTURE.md](ARCHITECTURE.md)
 
 Really shortly:
 * GradCraft is lazily-evaluated. This means you first build the graph, and then call `.realize()`.
@@ -39,7 +39,7 @@ Really shortly:
 * A batched BPE tokenizer with multi-threading
 * ... and many more.
 
-## Documentation.
+## Documentation (I actually wrote it).
 
 As mentioned, there are two more files.
 * [ARCHITECTURE.md](ARCHITECTURE.md): A technical deepdive into how the architecture parts interact (memory, core classes)
@@ -52,6 +52,7 @@ There are 3 executables: `tokenize.exe`, `train.exe` and `inference.exe`.
 
 ## Step 0: Prerequisites.
 
+* **GPU:** NVIDIA GPU with Compute Capability 7.5+ (RTX 20/30/40 series, GTX 16 series, A100, T4)
 * **Operating System:** Windows (MSVC host compiler required for NVCC)
 * **Compiler:** Visual Studio 2022 (v17.5+) with C++23 support enabled
 * **CUDA Toolkit:** 12.0+ (Tested on RTX 3090 / Compute Capability 8.6)
