@@ -171,4 +171,14 @@ namespace gradc {
 
     struct UninitializedTag{};
     inline constexpr UninitializedTag uninitialized = UninitializedTag();
+
+    // UTILS
+    struct GPTConfig {
+        int64_t vocab_size = 8192;
+        int64_t max_seq_len = 512;
+        int64_t embed_dim = 768;
+        int64_t num_heads = 12;
+        int64_t num_layers = 11;
+        float calc_eps = 1e-5f;
+    };
 }

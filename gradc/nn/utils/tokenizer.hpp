@@ -112,7 +112,7 @@ namespace gradc {
             std::vector<std::string> m_vocab;
             int32_t m_num_tokens = 8192;
         public:
-            BytePairEncoding() {
+            BytePairEncoding(int32_t vocab_size = 8192) : m_num_tokens(vocab_size) {
                 m_vocab.resize(m_num_tokens);
                 for (int i = 0; i < 256; ++i) {
                     m_vocab[i] = std::string(1, static_cast<char>(i));
@@ -378,6 +378,7 @@ namespace gradc {
                 uint32_t num_vocab;
                 in.read(reinterpret_cast<char*>(&num_vocab), sizeof(num_vocab));
                 m_vocab.resize(num_vocab);
+                m_num_tokens = static_cast<int32_t>(num_vocab);
 
                 for (int32_t i = 0; i < num_vocab; ++i) {
                     uint32_t len;
@@ -390,40 +391,58 @@ namespace gradc {
     };
 
     struct TokenManager {
-        static void create_vocab_out_of_files(std::string vocab_save_path, std::vector<std::string> paths) {
-            int64_t total_bytes = 0;
-            const int64_t MAX_BYTES_PER_FILE = (200 * 1024 * 1024) / std::ssize(paths); // the total is 200MB
+        static void create_vocab_out_of_files(std::string vocab_save_path, std::vector<std::string> paths, int32_t target_vocab_size = 8192, int64_t max_sample_mb = 200) {
+            if (paths.empty()) {
+                throw std::runtime_error("Cannot create vocabulary from an empty list of files.");
+            }
 
+            int64_t max_sample_bytes = max_sample_mb * 1024 * 1024;
+            int64_t remaining_budget = max_sample_bytes;
+            int64_t total_bytes = 0;
+
+            // first calculate how much we can actually take
             for (const std::string& path : paths) {
+                if (remaining_budget <= 0) break;
                 if (std::filesystem::exists(path)) {
                     int64_t file_bytes = std::filesystem::file_size(path);
-                    total_bytes += std::min(file_bytes, MAX_BYTES_PER_FILE);
+                    int64_t bytes_to_take = std::min(file_bytes, remaining_budget);
+                    total_bytes += bytes_to_take;
+                    remaining_budget -= bytes_to_take;
                 }
             }
 
+            if (total_bytes == 0) {
+                throw std::runtime_error("No valid text data found in file paths.");
+            }
+
+            std::cout << "Sampling " << (static_cast<double>(total_bytes) / (1024.0 * 1024.0)) << " MB of text for vocab." << std::endl;
 
             std::vector<char> raw_data(total_bytes);
-
             int64_t write_offset = 0;
+            remaining_budget = total_bytes;
+
+            // then go over and load the data into a buffer
             for (const std::string& path : paths) {
+                if (remaining_budget <= 0) {break;}
                 if (std::filesystem::exists(path)) {
                     int64_t file_bytes = std::filesystem::file_size(path);
-                    int64_t bytes_to_read = std::min(file_bytes, MAX_BYTES_PER_FILE);
-                    std::ifstream file(path, std::ios::binary);
-
-                    if (file) {
-                        file.read(raw_data.data() + write_offset, bytes_to_read);
-                        write_offset += bytes_to_read;
+                    int64_t bytes_to_read = std::min(file_bytes, remaining_budget);
+                    if (bytes_to_read > 0) {
+                        std::ifstream file(path, std::ios::binary);
+                        if (file) {
+                            file.read(raw_data.data() + write_offset, bytes_to_read);
+                            write_offset += bytes_to_read;
+                            remaining_budget -= bytes_to_read;
+                        }
                     }
                 }
             }
 
             std::string_view full_text(raw_data.data(), raw_data.size());
-
-            std::cout << "Processing chunks." << std::endl;
+            std::cout << "Running pre-tokenizer." << std::endl;
             std::vector<std::string_view> pieces = PreTokenizer::process_chunks(full_text);
 
-            BytePairEncoding bpe;
+            BytePairEncoding bpe(target_vocab_size);
             bpe.create_vocabulary(pieces);
             bpe.save_vocab(vocab_save_path);
         }

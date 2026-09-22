@@ -91,6 +91,8 @@ namespace gradc {
                 this->register_module("final_norm", &m_final_norm);
             }
 
+            GPT(const GPTConfig& cfg, const Initializer<T>& base_init, const Initializer<T>& residual_init) : GPT(cfg.vocab_size, cfg.max_seq_len, cfg.embed_dim, cfg.num_heads, cfg.num_layers, base_init, residual_init, cfg.calc_eps) {}
+
             Tensor<T> forward(Tensor<int64_t> indices) { // (B, T)
                 int64_t seq_len = indices.shape()[1];
 

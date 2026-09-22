@@ -129,4 +129,18 @@ namespace gradc {
 
         return dict;
     }
+
+    inline void save_gpt_config(const GPTConfig& config, const std::string& path) {
+        std::ofstream out(path, std::ios::binary);
+        if (!out) {throw std::runtime_error("Failed to open file for saving config: " + path);}
+        out.write(reinterpret_cast<const char*>(&config), sizeof(GPTConfig));
+    }
+
+    inline GPTConfig load_gpt_config(const std::string& path) {
+        std::ifstream in(path, std::ios::binary);
+        if (!in) {throw std::runtime_error("Failed to open file for loading config: " + path);}
+        GPTConfig config;
+        in.read(reinterpret_cast<char*>(&config), sizeof(GPTConfig));
+        return config;
+    }
 }
