@@ -632,12 +632,12 @@ To prove that the architecture actually works and it trained *something* here is
 
 `PROMPT:`
 ```py
-def reverse_string(s: str) -> str:
-    """Reverses the input string and returns it."""
+def reverse_string(
 ```
 `PROMPT + ANSWER:`
 ```py
-input stuff when it finally trains
+def reverse_string(string: str):
+    return ''.join(reversed(string))
 ```
 
 Summing up: you could just do `[::-1]` or you could write a 12,000 line deep learning framework with your own kernels, and train a 90M clanker to do the job for you. For me the choice was obvious.
