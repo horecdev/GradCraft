@@ -4,13 +4,13 @@ A custom C++ Deep Learning framework built entirely from scratch. It doesn't rel
 
 `GradCraft` consists of an autograd engine, memory pools (for both `CPU` and `CUDA`), tons of math and algos (tons is an understatement honestly), and handwritten kernels. 
 
-It reaches **45-50%** eager `PyTorch` speed while training a 90 000 000 param GPT under the same conditions (no `FlashAttention`, `fp32`).  
+It reaches **45-50%** eager `PyTorch` speed while training a 180 000 000 param GPT under the same conditions (no `FlashAttention`, `fp32`).  
 More benchmarks are in [BENCHMARK.md](BENCHMARK.md)
 
 ## Contents
 - [A few words about the engine](#a-few-words-about-the-engine-itself)
 - [Documentation (it exists)](#documentation-i-actually-wrote-it)
-- [A working clanker!!!](#a-working-clanker-trained-in-gradcraft)
+- [Slop-generating LLM in GradCraft!!!](#a-working-clanker-trained-in-gradcraft)
 - [MALLMOC Training run](#mallmoc-training-run)
 - [Running it on your machine](#running-it-on-your-machine)
   - [Prerequisites](#step-0-prerequisites)
