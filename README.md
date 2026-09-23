@@ -107,6 +107,7 @@ I love that it refused `fibonacci` and wrote `fabonacci`.
 
 ## MALLMOC Training run.
 It made 6300 steps on an RTX 3090 with `B=512`. Loss drop: `9.01` -> `1.35`. Throughput: `~8650` tok/s.  
+MALLMOC was trained on a part of the `python_edu` dataset.  
 Weights are not in the repo. They are like `350MB`.  
   
   
