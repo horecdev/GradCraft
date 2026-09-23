@@ -43,7 +43,7 @@ As mentioned, there are two more files.
 * [BENCHMARK.md](BENCHMARK.md): How fused kernels obliterate naive ones, comparison to PyTorch, etc.
 
 ## A Working Clanker Trained in GradCraft.
-To prove the math holds up I trained a (90M) param LLM called **MALLMOC** (LLM + MALLOC = MALLMOC) in `GradCraft` on an RTX 3090. It is definitely not smart, but it is trained.  
+To prove the math holds up I trained a (90M) param LLM called **MALLMOC** (LLM + MALLOC = MALLMOC) in `GradCraft` on an RTX 3090. It is definitely NOT smart, but it is trained.  
 
 ### When it does not write slop:
 `PROMPT:`
@@ -73,7 +73,7 @@ def linear_search(arr, x):
 Trust me, it took a bit of prompting for it to shine with some correct code.
 
 ### When it writes slop:
-This is way funnier.
+This is way more entertaining.
 
 `PROMPT:`
 ```py
@@ -103,7 +103,7 @@ def fabonacci(n):
     
     return fibonacci(n-2)*n+fibonacci(n-1)
 ```
-I love that it skipped my signature and wrote `fabonacci` slop.
+I love that it refused `fibonacci` and wrote `fabonacci`.
 
 ## MALLMOC Training run.
 It made 6300 steps on an RTX 3090 with `B=512`. Loss drop: `9.01` -> `1.35`. Throughput: `~8650` tok/s.  
