@@ -1,26 +1,23 @@
 # GradCraft Autograd Engine.
 
-A custom, 12,000-line C++ Deep Learning framework built entirely from scratch. It doesn't rely on any other framework.
+A custom C++ Deep Learning framework built entirely from scratch. It doesn't rely on any other framework.
 
 `GradCraft` consists of an autograd engine, memory pools (for both `CPU` and `CUDA`), tons of math and algos (tons is an understatement honestly), and handwritten kernels. 
 
 It reaches **45-50%** eager `PyTorch` speed while training a 90 000 000 param GPT under the same conditions (no `FlashAttention`, `fp32`).  
 More benchmarks are in [BENCHMARK.md](BENCHMARK.md)
 
-## A Working Clanker Trained in GradCraft.
-To prove the math holds up I trained a (90M) param LLM called **MALLMOC** (LLM + MALLOC = MALLMOC) in `GradCraft` on an RTX 3090.
-
-`PROMPT:`
-```py
-def reverse_string(s: str) -> str:
-    """Reverses the input string and returns it."""
-```
-`PROMPT + ANSWER:`
-```py
-input stuff when it finally trains
-```
-
-As you can see, the clanker correctly reversed the string. He is only pre-trained, so you cannot prompt him directly unfortunately.
+## Contents
+- [A few words about the engine](#a-few-words-about-the-engine-itself)
+- [Documentation (it exists)](#documentation-i-actually-wrote-it)
+- [A working clanker!!!](#a-working-clanker-trained-in-gradcraft)
+- [MALLMOC Training run](#mallmoc-training-run)
+- [Running it on your machine](#running-it-on-your-machine)
+  - [Prerequisites](#step-0-prerequisites)
+  - [Build](#step-1-binaries)
+  - [Tokenize](#step-2-tokenizing)
+  - [Train](#step-3-training)
+  - [Inference](#step-4-inference)
 
 ## A Few Words About the Engine Itself.
 
@@ -45,8 +42,80 @@ As mentioned, there are two more files.
 * [ARCHITECTURE.md](ARCHITECTURE.md): A technical deepdive into how the architecture parts interact (memory, core classes)
 * [BENCHMARK.md](BENCHMARK.md): How fused kernels obliterate naive ones, comparison to PyTorch, etc.
 
+## A Working Clanker Trained in GradCraft.
+To prove the math holds up I trained a (90M) param LLM called **MALLMOC** (LLM + MALLOC = MALLMOC) in `GradCraft` on an RTX 3090. It is definitely not smart, but it is trained.  
+
+### When it does not write slop:
+`PROMPT:`
+```py
+def reverse_string(
+```
+`PROMPT + ANSWER:`
+```py
+def reverse_string(string: str):
+    return ''.join(reversed(string))
+```
+
+`PROMPT:`
+```py
+def linear_search(arr, x):
+```
+`PROMPT + ANSWER:`
+```py
+def linear_search(arr, x):
+    for i in range(len(arr)):
+        if x == arr[i]:
+            return i
+
+    return -1
+```
+
+Trust me, it took a bit of prompting for it to shine with some correct code.
+
+### When it writes slop:
+This is way funnier.
+
+`PROMPT:`
+```py
+def is_sunday
+```
+`PROMPT + ANSWER:`
+```py
+def is_sunday(sun):
+    if not is_tuesday(sun):    # if is sunday, the day is not tuesday, not by the week number
+        return False
+
+    days = sun - sun
+    weeks = weeks + 3
+```
+
+`PROMPT:`
+```py
+def fibonacci(n):
+```
+`PROMPT + ANSWER:`
+```py
+def fibonacci(n):
+
+def fabonacci(n):
+    if n < 4:   
+        return 1
+    
+    return fibonacci(n-2)*n+fibonacci(n-1)
+```
+I love that it skipped my signature and wrote `fabonacci` slop.
+
+## MALLMOC Training run.
+It made 6300 steps on an RTX 3090 with `B=512`. Loss drop: `9.01` -> `1.35`. Throughput: `~8650` tok/s.  
+Weights are not in the repo. They are like `350MB`.  
+  
+  
+<img src="mallmoc_loss.png" width="640" alt="train loss" />  
+
+---
+
 # Running it on your machine.
-> Important info for Windows: you must run build commands inside Developer Powershell `x64`. Standard `PowerShell` defaults to `32-bit`compiler tools, what blows up the `nvcc`.  
+> Important info for Windows: you must run build commands inside Developer Powershell `x64`. Standard `PowerShell` defaults to `32-bit`compiler tools, which up the `nvcc`.  
   
 There are 3 executables: `tokenize.exe`, `train.exe` and `inference.exe`.
 
@@ -160,7 +229,7 @@ If your training crashed, you can use the `--resume` flag to start off from the 
 | `--print_every` | Step interval for printing and CSV log | `10` |
 | `--checkpoint_every` | How often a checkpoint is made | `500` |
 
-*Note: with default settings, you will train a 90M model. The same one as me. They are optimal for a 90M model. It is what trained this beautiful clanker that reversed a string for us at the start of README.md*
+*Note: with default settings, you will train a 90M model. The same one as me. They are optimal for a 90M model. It is what trained this beautiful clanker that you've just seen generate slop.*
 
 ### 4. Generated Files:
 
