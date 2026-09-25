@@ -9,7 +9,7 @@ More benchmarks are in [BENCHMARK.md](BENCHMARK.md)
 
 ## Contents
 - [A few words about the engine](#a-few-words-about-the-engine-itself)
-- [Documentation (it exists)](#documentation-i-actually-wrote-it)
+- [Documentation](#documentation-i-actually-wrote-it)
 - [Slop-generating LLM in GradCraft!!!](#a-working-clanker-trained-in-gradcraft)
 - [MALLMOC Training run](#mallmoc-training-run)
 - [Running it on your machine](#running-it-on-your-machine)
